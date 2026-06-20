@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}System Status - NikkoMusicHub{% endblock %}
+{% block content %}
+<h1>System Status</h1>
+
+<div class="grid">
+  <div class="card">
+    <h2>硬體與 OS</h2>
+    <div class="metric"><span class="label">Pi 型號</span><span class="value" id="pi-model">-</span></div>
+    <div class="metric"><span class="label">OS</span><span class="value" id="os-version">-</span></div>
+    <div class="metric"><span class="label">Python</span><span class="value" id="python-version">-</span></div>
+    <div class="metric"><span class="label">CPU 溫度</span><span class="value" id="cpu-temp">-</span></div>
+  </div>
+  <div class="card">
+    <h2>軟體版本</h2>
+    <div class="metric"><span class="label">rclone</span><span class="value" id="rclone-version">-</span></div>
+    <div class="metric"><span class="label">mpv</span><span class="value" id="mpv-version">-</span></div>
+  </div>
+  <div class="card">
+    <h2>網路</h2>
+    <div class="metric"><span class="label">LAN IP</span><span class="value" id="lan-ip">-</span></div>
+    <div class="metric"><span class="label">Tailscale IP</span><span class="value" id="tailscale-ip">-</span></div>
+    <div class="metric"><span class="label">Tailscale</span><span class="value" id="tailscale-status">-</span></div>
+  </div>
+  <div class="card">
+    <h2>服務狀態</h2>
+    <div class="metric"><span class="label">Web</span><span class="value" id="web-status">-</span></div>
+    <div class="metric"><span class="label">Player</span><span class="value" id="player-status">-</span></div>
+    <div class="metric"><span class="label">Sync Timer</span><span class="value" id="sync-status">-</span></div>
+    <div class="metric"><span class="label">開機播放</span><span class="value" id="player-enabled">-</span></div>
+  </div>
+  <div class="card">
+    <h2>儲存</h2>
+    <div class="metric"><span class="label">磁碟使用率</span><span class="value" id="disk">-</span></div>
+    <div class="metric"><span class="label">音樂資料夾</span><span class="value" id="music-size">-</span></div>
+    <div class="metric"><span class="label">MP3 數量</span><span class="value" id="mp3-count">-</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>維護操作</h2>
+  <div class="player-controls">
+    <button onclick="runAction(this, '/api/system/start-player', null, 'sys-log')">啟動播放服務</button>
+    <button onclick="runAction(this, '/api/system/stop-player', null, 'sys-log')">停止播放服務</button>
+    <button onclick="runAction(this, '/api/system/restart-player', null, 'sys-log')">重啟播放服務</button>
+    <button onclick="runAction(this, '/api/system/rescan', null, 'sys-log')">重新掃描音樂</button>
+    <button onclick="runAction(this, '/api/system/test-audio', null, 'sys-log')">測試音訊輸出</button>
+  </div>
+  <div class="player-controls">
+    <button onclick="document.getElementById('reboot-modal').classList.add('active')" class="danger">重開機 Raspberry Pi</button>
+    <button onclick="document.getElementById('clear-modal').classList.add('active')" class="danger">清空本地音樂</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>系統 Log</h2>
+  <pre class="log-output" id="sys-log">載入中…</pre>
+</div>
+
+<div class="modal-overlay" id="reboot-modal">
+  <div class="modal">
+    <h2>確認重開機？</h2>
+    <p>重開機後約 30 秒 ~ 2 分鐘服務會重新上線。</p>
+    <button onclick="runAction(this, '/api/system/reboot', null, 'sys-log'); document.getElementById('reboot-modal').classList.remove('active')" class="danger">確認重開機</button>
+    <button onclick="document.getElementById('reboot-modal').classList.remove('active')">取消</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="clear-modal">
+  <div class="modal">
+    <h2>確認清空本地音樂？</h2>
+    <p>此操作會刪除 /srv/nikko-music/music 內所有檔案，無法復原。</p>
+    <p>請在下方輸入 <code>DELETE</code> 以確認。</p>
+    <input type="text" id="clear-confirm" placeholder="DELETE">
+    <button onclick="clearMusic(this)" class="danger">確認清空</button>
+    <button onclick="document.getElementById('clear-modal').classList.remove('active')">取消</button>
+  </div>
+</div>
+
+<script>
+async function loadSystem() {
+  const s = await apiGet('/api/system/info');
+  document.getElementById('pi-model').textContent = s.pi_model;
+  document.getElementById('os-version').textContent = s.os_version;
+  document.getElementById('python-version').textContent = s.python_version.split(' ')[0];
+  document.getElementById('cpu-temp').textContent = s.cpu_temp_c !== null ? s.cpu_temp_c + ' °C' : 'N/A';
+  document.getElementById('rclone-version').textContent = s.rclone_version;
+  document.getElementById('mpv-version').textContent = s.mpv_version;
+  document.getElementById('lan-ip').textContent = s.lan_ip || 'N/A';
+  document.getElementById('tailscale-ip').textContent = s.tailscale_ip || 'N/A';
+  document.getElementById('tailscale-status').innerHTML = statusDot(s.tailscale_up ? 'green' : 'gray') + (s.tailscale_up ? 'Up' : 'Down');
+  document.getElementById('web-status').innerHTML = statusDot(s.web_service_status === 'active' ? 'green' : 'gray') + s.web_service_status;
+  document.getElementById('player-status').innerHTML = statusDot(s.player_service_status === 'active' ? 'green' : 'gray') + s.player_service_status;
+  document.getElementById('sync-status').innerHTML = statusDot(s.sync_timer_status === 'active' ? 'green' : 'gray') + s.sync_timer_status;
+  document.getElementById('player-enabled').innerHTML = statusDot(s.player_service_enabled ? 'green' : 'gray') + (s.player_service_enabled ? 'Enabled' : 'Disabled');
+  document.getElementById('disk').innerHTML = statusDot(s.disk.percent > 85 ? 'red' : 'green') + `${s.disk.percent}%`;
+  document.getElementById('music-size').textContent = s.music_folder_size;
+  document.getElementById('mp3-count').textContent = s.mp3_count;
+
+  const logs = await apiGet('/api/system/logs');
+  document.getElementById('sys-log').textContent = logs.system_log + '\n--- sync ---\n' + logs.sync_log + '\n--- player ---\n' + logs.player_log;
+}
+async function clearMusic(btn) {
+  const confirm = document.getElementById('clear-confirm').value;
+  if (confirm !== 'DELETE') { showToast('請輸入 DELETE', 'error'); return; }
+  const fd = new FormData(); fd.append('confirm', confirm);
+  await runAction(btn, '/api/system/clear-music', fd, 'sys-log');
+  document.getElementById('clear-modal').classList.remove('active');
+}
+loadSystem();
+setInterval(loadSystem, 10000);
+</script>
+{% endblock %}

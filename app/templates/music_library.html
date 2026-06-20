@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Music Library - NikkoMusicHub{% endblock %}
+{% block content %}
+<h1>Music Library</h1>
+
+<div class="card">
+  <h2>本地音樂檔案</h2>
+  <p style="color: var(--muted);">顯示 <span id="lib-count">0</span> 首 MP3</p>
+  <ul id="file-list" style="max-height: 60vh; overflow-y: auto; font-size: .9rem;">
+    <li>載入中…</li>
+  </ul>
+</div>
+
+<script>
+async function loadLibrary() {
+  const data = await apiGet('/api/player/library');
+  document.getElementById('lib-count').textContent = data.files.length;
+  const list = document.getElementById('file-list');
+  if (!data.files.length) { list.innerHTML = '<li style="color:var(--muted)">無音樂檔案</li>'; return; }
+  list.innerHTML = data.files.map(f => `<li>${f.path} <span style="color:var(--muted)">(${(f.size/1024/1024).toFixed(2)} MB)</span></li>`).join('');
+}
+loadLibrary();
+</script>
+{% endblock %}

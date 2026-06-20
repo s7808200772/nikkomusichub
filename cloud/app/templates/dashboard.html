@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - NikkoMusicHub Cloud{% endblock %}
+{% block content %}
+<h1>中央 Dashboard</h1>
+
+<div class="grid">
+  <div class="card">
+    <h2>總覽</h2>
+    <div class="metric"><span class="label">總店數</span><span class="value" id="total-stores">0</span></div>
+    <div class="metric"><span class="label">線上</span><span class="value" id="online-stores">0</span></div>
+    <div class="metric"><span class="label">異常</span><span class="value" id="error-stores">0</span></div>
+    <div class="metric"><span class="label">未知</span><span class="value" id="unknown-stores">0</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>店點列表</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>狀態</th>
+        <th>Store ID</th>
+        <th>店名</th>
+        <th>Tailscale IP</th>
+        <th>最近連線</th>
+        <th>最近同步</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="store-table">
+      <tr><td colspan="7">載入中…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+async function loadDashboard() {
+  const data = await apiGet('/api/dashboard/stores');
+  const stores = data.stores;
+  document.getElementById('total-stores').textContent = stores.length;
+  document.getElementById('online-stores').textContent = stores.filter(s => s.status === 'online').length;
+  document.getElementById('error-stores').textContent = stores.filter(s => s.status === 'error').length;
+  document.getElementById('unknown-stores').textContent = stores.filter(s => !s.status || s.status === 'unknown').length;
+
+  const tbody = document.getElementById('store-table');
+  if (!stores.length) { tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">尚無店點，請到 Stores 新增。</td></tr>'; return; }
+  tbody.innerHTML = stores.map(s => {
+    const color = s.status === 'online' ? 'green' : (s.status === 'error' ? 'red' : 'gray');
+    return `<tr>
+      <td>${statusDot(color)} ${s.status || 'unknown'}</td>
+      <td>${s.store_id}</td>
+      <td>${s.store_name}</td>
+      <td>${s.tailscale_ip}</td>
+      <td>${s.last_seen || '-'}</td>
+      <td>${s.last_sync_at || '-'}</td>
+      <td><a href="/commands?store=${s.store_id}">指令</a></td>
+    </tr>`;
+  }).join('');
+}
+loadDashboard();
+setInterval(loadDashboard, 30000);
+</script>
+{% endblock %}

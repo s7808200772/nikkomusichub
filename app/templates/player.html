@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Player Control - NikkoMusicHub{% endblock %}
+{% block content %}
+<h1>Player Control</h1>
+
+<div class="grid">
+  <div class="card">
+    <h2>播放狀態</h2>
+    <div class="metric"><span class="label">狀態</span><span class="value" id="p-state">-</span></div>
+    <div class="metric"><span class="label">曲目</span><span class="value" id="p-track" style="font-size:.85rem">-</span></div>
+    <div class="metric"><span class="label">時間</span><span class="value" id="p-time">-</span></div>
+    <div class="metric"><span class="label">音量</span><span class="value" id="p-volume">-</span></div>
+  </div>
+
+  <div class="card">
+    <h2>控制</h2>
+    <div class="player-controls">
+      <button onclick="runAction(this, '/api/player/play', null, 'player-log')" class="success">▶ 播放</button>
+      <button onclick="runAction(this, '/api/player/pause', null, 'player-log')">⏸ 暫停</button>
+      <button onclick="runAction(this, '/api/player/resume', null, 'player-log')">▶ 繼續</button>
+      <button onclick="runAction(this, '/api/player/stop', null, 'player-log')" class="danger">⏹ 停止</button>
+      <button onclick="runAction(this, '/api/player/prev', null, 'player-log')">⏮ 上一首</button>
+      <button onclick="runAction(this, '/api/player/next', null, 'player-log')">⏭ 下一首</button>
+      <button onclick="runAction(this, '/api/player/reload', null, 'player-log')">🔄 重新載入</button>
+    </div>
+    <div class="form-group">
+      <label>音量 (0-150)</label>
+      <input type="range" min="0" max="150" id="volume-slider" onchange="setVolume(this.value)">
+    </div>
+    <div class="player-controls">
+      <button onclick="toggleMute(1)">靜音</button>
+      <button onclick="toggleMute(0)">取消靜音</button>
+      <button onclick="toggleShuffle()">隨機</button>
+      <button onclick="toggleLoop()">循環</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>目前播放清單</h2>
+  <pre class="log-output" id="playlist-output">載入中…</pre>
+</div>
+
+<div class="card">
+  <h2>Log</h2>
+  <pre class="log-output" id="player-log">等待操作…</pre>
+</div>
+
+<script>
+let currentState = {};
+async function refresh() {
+  const s = await apiGet('/api/player/status');
+  currentState = s;
+  document.getElementById('p-state').innerHTML = statusDot(s.state === 'playing' ? 'green' : (s.state === 'paused' ? 'yellow' : 'gray')) + s.state;
+  document.getElementById('p-track').textContent = s.current || '-';
+  document.getElementById('p-time').textContent = `${s.position}s / ${s.duration}s`;
+  document.getElementById('p-volume').textContent = s.volume;
+  document.getElementById('volume-slider').value = s.volume;
+  const pl = await apiGet('/api/player/playlist');
+  document.getElementById('playlist-output').textContent = JSON.stringify(pl.playlist, null, 2);
+}
+async function setVolume(v) { await apiPost('/api/player/volume', new URLSearchParams({volume:v})); refresh(); }
+async function toggleMute(m) { await apiPost('/api/player/mute', new URLSearchParams({mute:m})); refresh(); }
+async function toggleShuffle() { await apiPost('/api/player/shuffle', new URLSearchParams({enabled: currentState.shuffle ? 0 : 1})); refresh(); }
+async function toggleLoop() { await apiPost('/api/player/loop', new URLSearchParams({enabled: currentState.loop ? 0 : 1})); refresh(); }
+refresh();
+setInterval(refresh, 3000);
+</script>
+{% endblock %}

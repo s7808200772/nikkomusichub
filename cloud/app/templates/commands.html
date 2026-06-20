@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Commands - NikkoMusicHub Cloud{% endblock %}
+{% block content %}
+<h1>遠端指令</h1>
+
+<div class="grid">
+  <div class="card">
+    <h2>選擇店點</h2>
+    <select id="store-select" onchange="loadCommands()">
+      <option value="">-- 選擇店點 --</option>
+    </select>
+  </div>
+  <div class="card">
+    <h2>可用指令</h2>
+    <div id="command-buttons"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>執行結果</h2>
+  <pre class="log-output" id="command-output">請先選擇店點並點擊指令。</pre>
+</div>
+
+<script>
+let commands = [];
+
+async function loadStores() {
+  const data = await apiGet('/api/stores');
+  const select = document.getElementById('store-select');
+  const params = new URLSearchParams(window.location.search);
+  const preselect = params.get('store');
+  select.innerHTML = '<option value="">-- 選擇店點 --</option>' +
+    data.stores.map(s => `<option value="${s.store_id}" ${s.store_id === preselect ? 'selected' : ''}>${s.store_name} (${s.store_id})</option>`).join('');
+  if (preselect) loadCommands();
+}
+
+async function loadCommands() {
+  const storeId = document.getElementById('store-select').value;
+  if (!storeId) { document.getElementById('command-buttons').innerHTML = ''; return; }
+  if (!commands.length) {
+    const data = await apiGet('/api/commands/allowed');
+    commands = data.commands;
+  }
+  const container = document.getElementById('command-buttons');
+  container.innerHTML = commands.map(c =>
+    `<button onclick="runCommand(this, '${storeId}', '${c.key}', 'command-output')">${c.label}</button>`
+  ).join('');
+}
+
+loadStores();
+</script>
+{% endblock %}

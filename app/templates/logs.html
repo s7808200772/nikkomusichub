@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Logs - NikkoMusicHub{% endblock %}
+{% block content %}
+<h1>Logs</h1>
+
+<div class="grid">
+  <div class="card">
+    <h2>同步 Log</h2>
+    <pre class="log-output" id="log-sync">載入中…</pre>
+  </div>
+  <div class="card">
+    <h2>播放 Log</h2>
+    <pre class="log-output" id="log-player">載入中…</pre>
+  </div>
+  <div class="card">
+    <h2>Audit Log</h2>
+    <pre class="log-output" id="log-audit">載入中…</pre>
+  </div>
+</div>
+
+<script>
+async function loadLogs() {
+  const data = await apiGet('/api/logs/all');
+  document.getElementById('log-sync').textContent = data.sync_log || '無紀錄';
+  document.getElementById('log-player').textContent = data.player_log || '無紀錄';
+  document.getElementById('log-audit').textContent = data.audit_log || '無紀錄';
+}
+loadLogs();
+setInterval(loadLogs, 10000);
+</script>
+{% endblock %}

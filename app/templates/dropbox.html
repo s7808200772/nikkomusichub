@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Dropbox Sync - NikkoMusicHub{% endblock %}
+{% block content %}
+<h1>Dropbox Sync</h1>
+
+<div class="grid">
+  <div class="card">
+    <h2>同步設定</h2>
+    <form id="sync-form" onsubmit="saveSyncSettings(event)">
+      <div class="form-group"><label>Remote Name</label><input name="remote_name" id="remote_name" value="dropbox" required></div>
+      <div class="form-group"><label>Dropbox 路徑</label><input name="dropbox_path" id="dropbox_path" value="NikkoMusic" required></div>
+      <div class="form-group"><label>本地路徑</label><input name="local_path" id="local_path" value="/srv/nikko-music/music" required></div>
+      <div class="form-group"><label>同步模式</label>
+        <select name="sync_mode" id="sync_mode">
+          <option value="sync">sync（Dropbox 為主，本地同步）</option>
+        </select>
+      </div>
+      <div class="form-group"><label>每日同步時間</label><input name="sync_time" id="sync_time" value="03:00" required></div>
+      <div class="form-group"><label>開機延遲同步（分鐘）</label><input name="boot_delay_min" id="boot_delay_min" type="number" value="2" required></div>
+      <div class="form-group">
+        <label><input type="checkbox" name="auto_restart_player" id="auto_restart_player" value="1" checked> 同步完成後自動重啟播放</label>
+      </div>
+      <button type="submit" class="primary">儲存設定</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>手動操作</h2>
+    <button onclick="runAction(this, '/api/dropbox/dry-run', null, 'sync-log')">Dry-run 測試</button>
+    <button onclick="runAction(this, '/api/dropbox/sync', null, 'sync-log')" class="success" style="margin-top:.5rem">立即同步</button>
+  </div>
+
+  <div class="card">
+    <h2>最近同步紀錄</h2>
+    <div id="sync-history"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>同步 Log</h2>
+  <pre class="log-output" id="sync-log">等待操作…</pre>
+</div>
+
+<script>
+async function loadSettings() {
+  const s = await apiGet('/api/dropbox/settings');
+  document.getElementById('remote_name').value = s.remote_name;
+  document.getElementById('dropbox_path').value = s.dropbox_path;
+  document.getElementById('local_path').value = s.local_path;
+  document.getElementById('sync_mode').value = s.sync_mode;
+  document.getElementById('sync_time').value = s.sync_time;
+  document.getElementById('boot_delay_min').value = s.boot_delay_min;
+  document.getElementById('auto_restart_player').checked = s.auto_restart_player;
+}
+
+async function saveSyncSettings(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]');
+  const fd = new FormData(e.target);
+  if (!document.getElementById('auto_restart_player').checked) fd.set('auto_restart_player', '0');
+  setBusy(btn, true);
+  const res = await apiPost('/api/dropbox/settings', fd);
+  showToast(res.ok ? '已儲存' : '失敗', res.ok ? 'success' : 'error');
+  setBusy(btn, false);
+}
+
+async function loadHistory() {
+  const data = await apiGet('/api/dropbox/sync-logs');
+  const el = document.getElementById('sync-history');
+  if (!data.logs.length) { el.innerHTML = '<p style="color:var(--muted)">尚無紀錄</p>'; return; }
+  el.innerHTML = '<table style="width:100%;font-size:.85rem"><tr><th>時間</th><th>狀態</th><th>訊息</th></tr>' +
+    data.logs.map(l => `<tr><td>${l.finished_at || l.started_at}</td><td>${l.status}</td><td>${l.message}</td></tr>`).join('') + '</table>';
+}
+
+loadSettings();
+loadHistory();
+</script>
+{% endblock %}

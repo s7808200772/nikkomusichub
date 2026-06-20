@@ -1,0 +1,10 @@
+[Unit]
+Description=NikkoMusicHub Dropbox sync timer
+
+[Timer]
+OnBootSec=2min
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

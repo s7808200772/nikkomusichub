@@ -1,0 +1,20 @@
+[Unit]
+Description=NikkoMusicHub Music Player (mpv)
+After=network.target nikko-music-hub-web.service
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/srv/nikko-music/app
+Environment=HOME=/home/pi
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/srv/nikko-music/venv/bin/python -m app.services.mpv_check
+ExecStart=/usr/bin/mpv --no-video --shuffle --loop-playlist=inf --input-ipc-server=/tmp/nikko-mpv.sock --playlist=/srv/nikko-music/playlist.m3u --log-file=/srv/nikko-music/logs/player.log
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/srv/nikko-music/logs/player.log
+StandardError=append:/srv/nikko-music/logs/player.log
+
+[Install]
+WantedBy=multi-user.target

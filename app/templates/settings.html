@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Settings - NikkoMusicHub{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+
+<div class="grid">
+  <div class="card">
+    <h2>店家與裝置資訊</h2>
+    <form id="device-form" onsubmit="saveDevice(event)">
+      <div class="form-group"><label>店名</label><input name="store_name" id="store_name" required></div>
+      <div class="form-group"><label>Store ID</label><input name="store_id" id="store_id"></div>
+      <div class="form-group"><label>Device ID</label><input name="device_id" id="device_id"></div>
+      <div class="form-group"><label>Location Note</label><input name="location_note" id="location_note"></div>
+      <div class="form-group"><label>Music Profile</label><input name="music_profile" id="music_profile"></div>
+      <button type="submit" class="primary">儲存</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>修改密碼</h2>
+    <form id="pwd-form" onsubmit="changePassword(event)">
+      <div class="form-group"><label>目前密碼</label><input type="password" name="current" required></div>
+      <div class="form-group"><label>新密碼</label><input type="password" name="new_password" required minlength="6"></div>
+      <button type="submit" class="primary">修改密碼</button>
+    </form>
+    <p id="pwd-msg" style="color: var(--muted); font-size: .85rem;"></p>
+  </div>
+</div>
+
+<script>
+async function loadDevice() {
+  const s = await apiGet('/api/settings/device');
+  document.getElementById('store_name').value = s.store_name || '';
+  document.getElementById('store_id').value = s.store_id || '';
+  document.getElementById('device_id').value = s.device_id || '';
+  document.getElementById('location_note').value = s.location_note || '';
+  document.getElementById('music_profile').value = s.music_profile || '';
+}
+async function saveDevice(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const res = await apiPost('/api/settings/device', fd);
+  showToast(res.ok ? '已儲存' : '失敗', res.ok ? 'success' : 'error');
+}
+async function changePassword(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const res = await apiPost('/api/change-password', fd);
+  document.getElementById('pwd-msg').textContent = res.ok ? '密碼已修改，請重新登入。' : '修改失敗';
+  if (res.ok) e.target.reset();
+}
+loadDevice();
+</script>
+{% endblock %}

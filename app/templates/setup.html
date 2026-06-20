@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Setup Wizard - NikkoMusicHub{% endblock %}
+{% block content %}
+<h1>Setup Wizard</h1>
+<p style="color: var(--muted);">請按照順序點擊按鈕完成初始化。所有執行紀錄會顯示在下方。</p>
+
+<div class="grid">
+  <div class="card">
+    <h2>1. 系統更新</h2>
+    <button onclick="runAction(this, '/api/setup/apt-update', null, 'setup-log')">apt update + upgrade</button>
+  </div>
+  <div class="card">
+    <h2>2. 安裝依賴</h2>
+    <button onclick="runAction(this, '/api/setup/install-rclone', null, 'setup-log')">安裝 rclone</button>
+    <button onclick="runAction(this, '/api/setup/install-mpv', null, 'setup-log')" style="margin-top:.5rem">安裝 mpv</button>
+  </div>
+  <div class="card">
+    <h2>3. 建立資料夾</h2>
+    <button onclick="runAction(this, '/api/setup/create-folders', null, 'setup-log')">建立音樂資料夾</button>
+  </div>
+  <div class="card">
+    <h2>4. Dropbox 設定</h2>
+    <form id="dropbox-form" onsubmit="saveDropbox(event)">
+      <div class="form-group"><label>Remote Name</label><input name="remote_name" value="dropbox" required></div>
+      <div class="form-group"><label>Dropbox Token JSON</label><textarea name="token_json" rows="5" placeholder='{"access_token":"...","token_type":"..."}' required></textarea></div>
+      <div class="form-group"><label>Dropbox 音樂路徑</label><input name="dropbox_path" value="NikkoMusic" required></div>
+      <div class="form-group"><label>本地音樂路徑</label><input name="local_path" value="/srv/nikko-music/music" required></div>
+      <button type="submit" class="primary">儲存 Dropbox 設定</button>
+    </form>
+    <button onclick="runAction(this, '/api/setup/test-dropbox', null, 'setup-log')" style="margin-top:.5rem">測試 Dropbox 連線</button>
+  </div>
+  <div class="card">
+    <h2>5. 同步音樂</h2>
+    <button onclick="runAction(this, '/api/setup/sync', null, 'setup-log')" class="success">立即同步 Dropbox</button>
+  </div>
+  <div class="card">
+    <h2>6. 播放服務</h2>
+    <button onclick="runAction(this, '/api/setup/install-service', null, 'setup-log')">重新載入 systemd</button>
+    <button onclick="runAction(this, '/api/setup/enable-player', null, 'setup-log')" class="success" style="margin-top:.5rem">啟用開機自動播放</button>
+    <button onclick="runAction(this, '/api/setup/disable-player', null, 'setup-log')" style="margin-top:.5rem">停用開機自動播放</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>執行紀錄</h2>
+  <pre class="log-output" id="setup-log">等待操作…</pre>
+</div>
+
+<script>
+async function saveDropbox(e) {
+  e.preventDefault();
+  const form = e.target;
+  const btn = form.querySelector('button[type="submit"]');
+  const fd = new FormData(form);
+  setBusy(btn, true);
+  const res = await apiPost('/api/setup/dropbox', fd);
+  document.getElementById('setup-log').textContent = (res.stdout || '') + '\n' + (res.stderr || '');
+  showToast(res.ok ? '已儲存' : '失敗', res.ok ? 'success' : 'error');
+  setBusy(btn, false);
+}
+</script>
+{% endblock %}

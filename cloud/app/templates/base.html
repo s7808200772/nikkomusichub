@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}NikkoMusicHub Cloud{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h1>☁️ NikkoMusicHub Cloud</h1>
+      <nav>
+        <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
+        <a href="/stores" class="{% if request.url.path == '/stores' %}active{% endif %}">Stores</a>
+        <a href="/commands" class="{% if request.url.path == '/commands' %}active{% endif %}">Commands</a>
+        <a href="/logout">Logout</a>
+      </nav>
+    </aside>
+    <main class="main">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <div id="toast" class="toast" style="display:none;"></div>
+  <script src="/static/app.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
