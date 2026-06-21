@@ -35,18 +35,6 @@ from app.config import (
 )
 from app.db import get_setting, init_db
 from app.services import mpv, rclone
-
-# Ensure DB tables exist before reading settings
-init_db()
-
-# Resolve MQTT Store ID: env var > settings db > hostname
-MQTT_STORE_ID = os.environ.get("NIKKO_MQTT_STORE_ID") or get_setting("store_id", "")
-if not MQTT_STORE_ID:
-    import socket
-    MQTT_STORE_ID = socket.gethostname().lower().replace(" ", "-")
-
-logger.info("Resolved MQTT_STORE_ID=%s", MQTT_STORE_ID)
-
 from app.services.system import (
     command_exists,
     count_mp3_files,
@@ -66,15 +54,32 @@ from app.services.system import (
     tail_log,
 )
 
+# Ensure log directory exists before configuring file handler
+LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
         logging.FileHandler(LOGS_DIR / "mqtt.log"),
-        logging.StreamHandler(),
+        logging.StreamHandler(sys.stderr),
     ],
 )
 logger = logging.getLogger("nikko-mqtt")
+
+# Ensure DB tables exist before reading settings
+try:
+    init_db()
+except Exception as e:
+    logger.error("init_db failed: %s", e)
+
+# Resolve MQTT Store ID: env var > settings db > hostname
+MQTT_STORE_ID = os.environ.get("NIKKO_MQTT_STORE_ID") or get_setting("store_id", "")
+if not MQTT_STORE_ID:
+    import socket
+    MQTT_STORE_ID = socket.gethostname().lower().replace(" ", "-")
+
+logger.info("Resolved MQTT_STORE_ID=%s", MQTT_STORE_ID)
 
 CMD_TOPIC = f"{MQTT_TOPIC_PREFIX}/{MQTT_STORE_ID}/cmd"
 RESP_TOPIC = f"{MQTT_TOPIC_PREFIX}/{MQTT_STORE_ID}/resp"

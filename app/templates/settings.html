@@ -36,6 +36,7 @@ async function saveDevice(e) {
   const fd = new FormData(e.target);
   const res = await apiPost('/api/settings/device', fd);
   showToast(res.ok ? '已儲存。修改 Store ID 後請重新啟動 MQTT 服務以生效。' : '失敗', res.ok ? 'success' : 'error');
+  if (res.ok) await loadDevice();
 }
 async function changePassword(e) {
   e.preventDefault();
