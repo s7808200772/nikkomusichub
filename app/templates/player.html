@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Player Control - NikkoMusicHub{% endblock %}
+{% block title %}Player - NikkoMusicHub{% endblock %}
 {% block content %}
-<h1>Player Control</h1>
+<h1>Player</h1>
 
 <div class="grid">
   <div class="card">
@@ -14,31 +14,46 @@
 
   <div class="card">
     <h2>控制</h2>
-    <div class="player-controls">
-      <button onclick="runAction(this, '/api/player/play', null, 'player-log')" class="success">▶ 播放</button>
-      <button onclick="runAction(this, '/api/player/pause', null, 'player-log')">⏸ 暫停</button>
-      <button onclick="runAction(this, '/api/player/resume', null, 'player-log')">▶ 繼續</button>
-      <button onclick="runAction(this, '/api/player/stop', null, 'player-log')" class="danger">⏹ 停止</button>
-      <button onclick="runAction(this, '/api/player/prev', null, 'player-log')">⏮ 上一首</button>
-      <button onclick="runAction(this, '/api/player/next', null, 'player-log')">⏭ 下一首</button>
-      <button onclick="runAction(this, '/api/player/reload', null, 'player-log')">🔄 重新載入</button>
+    <div class="player-controls" style="justify-content:center;">
+      <button onclick="runAction(this, '/api/player/prev', null, 'player-log')" title="上一首">⏮</button>
+      <button onclick="runAction(this, '/api/player/play', null, 'player-log')" class="success" title="播放" id="btn-play">▶</button>
+      <button onclick="runAction(this, '/api/player/pause', null, 'player-log')" title="暫停" id="btn-pause">⏸</button>
+      <button onclick="runAction(this, '/api/player/stop', null, 'player-log')" class="danger" title="停止">⏹</button>
+      <button onclick="runAction(this, '/api/player/next', null, 'player-log')" title="下一首">⏭</button>
     </div>
-    <div class="form-group">
-      <label>音量 (0-150)</label>
+    <div class="form-group" style="margin-top:1rem;">
+      <label>音量 <span id="volume-val">-</span></label>
       <input type="range" min="0" max="150" id="volume-slider" onchange="setVolume(this.value)">
     </div>
     <div class="player-controls">
-      <button onclick="toggleMute(1)">靜音</button>
-      <button onclick="toggleMute(0)">取消靜音</button>
-      <button onclick="toggleShuffle()">隨機</button>
-      <button onclick="toggleLoop()">循環</button>
+      <button onclick="toggleShuffle()" id="btn-shuffle" class="toggle">🔀 隨機</button>
+      <button onclick="toggleLoop()" id="btn-loop" class="toggle">🔁 循環</button>
+      <button onclick="runAction(this, '/api/player/reload', null, 'player-log')">🔄 重新載入</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>播放服務</h2>
+    <div class="metric"><span class="label">開機自動播放</span><span class="value" id="service-enabled">-</span></div>
+    <div class="player-controls">
+      <button onclick="runAction(this, '/api/player/enable-service', null, 'player-log')">啟用開機播放</button>
+      <button onclick="runAction(this, '/api/player/disable-service', null, 'player-log')">停用開機播放</button>
     </div>
   </div>
 </div>
 
-<div class="card">
-  <h2>目前播放清單</h2>
-  <pre class="log-output" id="playlist-output">載入中…</pre>
+<div class="grid">
+  <div class="card">
+    <h2>音樂庫 <span id="lib-count" style="font-size:.85rem; color:var(--muted);">0 首</span></h2>
+    <div id="file-list" style="max-height: 50vh; overflow-y: auto; font-size: .9rem;">
+      <p style="color:var(--muted)">載入中…</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>播放清單</h2>
+    <pre class="log-output" id="playlist-output" style="max-height: 50vh;">載入中…</pre>
+  </div>
 </div>
 
 <div class="card">
@@ -53,16 +68,37 @@ async function refresh() {
   currentState = s;
   document.getElementById('p-state').innerHTML = statusDot(s.state === 'playing' ? 'green' : (s.state === 'paused' ? 'yellow' : 'gray')) + s.state;
   document.getElementById('p-track').textContent = s.current || '-';
-  document.getElementById('p-time').textContent = `${s.position}s / ${s.duration}s`;
+  document.getElementById('p-time').textContent = `${formatTime(s.position)} / ${formatTime(s.duration)}`;
   document.getElementById('p-volume').textContent = s.volume;
+  document.getElementById('volume-val').textContent = s.volume;
   document.getElementById('volume-slider').value = s.volume;
+
+  document.getElementById('btn-shuffle').classList.toggle('active', s.shuffle);
+  document.getElementById('btn-loop').classList.toggle('active', s.loop);
+
   const pl = await apiGet('/api/player/playlist');
   document.getElementById('playlist-output').textContent = JSON.stringify(pl.playlist, null, 2);
+
+  const lib = await apiGet('/api/player/library');
+  document.getElementById('lib-count').textContent = `${lib.files.length} 首`;
+  const list = document.getElementById('file-list');
+  if (!lib.files.length) { list.innerHTML = '<p style="color:var(--muted)">無音樂檔案</p>'; }
+  else {
+    list.innerHTML = '<ul>' + lib.files.map(f => `<li>${f.path} <span style="color:var(--muted)">(${(f.size/1024/1024).toFixed(2)} MB)</span></li>`).join('') + '</ul>';
+  }
+
+  const svc = await apiGet('/api/player/service-status');
+  document.getElementById('service-enabled').innerHTML = statusDot(svc.enabled ? 'green' : 'gray') + (svc.enabled ? '已啟用' : '已停用');
 }
 async function setVolume(v) { await apiPost('/api/player/volume', new URLSearchParams({volume:v})); refresh(); }
-async function toggleMute(m) { await apiPost('/api/player/mute', new URLSearchParams({mute:m})); refresh(); }
 async function toggleShuffle() { await apiPost('/api/player/shuffle', new URLSearchParams({enabled: currentState.shuffle ? 0 : 1})); refresh(); }
 async function toggleLoop() { await apiPost('/api/player/loop', new URLSearchParams({enabled: currentState.loop ? 0 : 1})); refresh(); }
+function formatTime(sec) {
+  if (!sec || isNaN(sec)) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
 refresh();
 setInterval(refresh, 3000);
 </script>

@@ -4,8 +4,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: 'NikkoMusicHub Cloud',
-  description: 'NikkoMusicHub Central Management',
+  title: 'NikkoMusicHub',
+  description: 'NikkoMusicHub Store Management',
 };
 
 export default function RootLayout({ children }) {

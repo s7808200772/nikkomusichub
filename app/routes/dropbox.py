@@ -36,6 +36,7 @@ async def dropbox_settings(request: Request):
         "dropbox_path": get_setting("dropbox_path", RCLONE_DROPBOX_PATH_DEFAULT),
         "local_path": get_setting("local_music_path", str(MUSIC_DIR)),
         "sync_mode": get_setting("sync_mode", "sync"),
+        "daily_sync_enabled": bool(int(get_setting("daily_sync_enabled", "1"))),
         "sync_time": get_setting("sync_time", SYNC_TIME_DEFAULT),
         "boot_delay_min": int(get_setting("sync_boot_delay_min", "2")),
         "auto_restart_player": bool(int(get_setting("auto_restart_player", "1"))),
@@ -53,6 +54,7 @@ async def save_dropbox_settings(
     sync_time: str = Form(SYNC_TIME_DEFAULT),
     boot_delay_min: int = Form(2),
     auto_restart_player: int = Form(1),
+    daily_sync_enabled: int = Form(1),
 ):
     user = get_current_user_or_local(request)
     remote_name = re.sub(r"[^a-zA-Z0-9_-]", "", remote_name) or RCLONE_REMOTE_NAME_DEFAULT
@@ -64,19 +66,33 @@ async def save_dropbox_settings(
     set_setting("dropbox_path", dropbox_path)
     set_setting("local_music_path", local_path)
     set_setting("sync_mode", sync_mode)
+    set_setting("daily_sync_enabled", str(daily_sync_enabled))
     set_setting("sync_time", sync_time)
     set_setting("sync_boot_delay_min", str(boot_delay_min))
     set_setting("auto_restart_player", str(auto_restart_player))
 
     # Update systemd timer
     h, m = sync_time.split(":")
-    timer_content = f"""[Unit]
+    if daily_sync_enabled:
+        timer_content = f"""[Unit]
 Description=NikkoMusicHub Dropbox sync timer
 
 [Timer]
 OnBootSec={boot_delay_min}min
 OnCalendar=*-*-* {h}:{m}:00
 Persistent=true
+
+[Install]
+WantedBy=timers.target
+"""
+    else:
+        timer_content = f"""[Unit]
+Description=NikkoMusicHub Dropbox sync timer (disabled)
+
+[Timer]
+# Daily sync disabled; only run once after boot if needed
+OnBootSec={boot_delay_min}min
+Persistent=false
 
 [Install]
 WantedBy=timers.target
@@ -89,10 +105,12 @@ WantedBy=timers.target
         run(["sudo", "chmod", "644", timer_path], timeout=10)
         run(["sudo", "systemctl", "daemon-reload"], timeout=10)
         run(["sudo", "systemctl", "restart", "nikko-music-sync.timer"], timeout=10)
+        if not daily_sync_enabled:
+            run(["sudo", "systemctl", "stop", "nikko-music-sync.timer"], timeout=10)
     except Exception as e:
         return {"ok": False, "stderr": str(e)}
 
-    audit(user, "save_dropbox_settings", {"remote": remote_name, "path": dropbox_path})
+    audit(user, "save_dropbox_settings", {"remote": remote_name, "path": dropbox_path, "daily_sync": bool(daily_sync_enabled)})
     return {"ok": True}
 
 

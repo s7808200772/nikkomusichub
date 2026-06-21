@@ -7,7 +7,7 @@ from app.config import MUSIC_DIR
 from app.db import audit
 from app.routes.auth import get_current_user_or_local
 from app.services import mpv
-from app.services.system import list_music_files
+from app.services.system import list_music_files, run, service_enabled
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -123,3 +123,25 @@ async def player_playlist(request: Request):
 async def player_library(request: Request):
     get_current_user_or_local(request)
     return {"files": list_music_files(MUSIC_DIR)}
+
+
+@router.get("/api/player/service-status")
+async def player_service_status(request: Request):
+    get_current_user_or_local(request)
+    return {"enabled": service_enabled("nikko-music-player.service")}
+
+
+@router.post("/api/player/enable-service")
+async def enable_player_service(request: Request):
+    user = get_current_user_or_local(request)
+    res = run(["sudo", "systemctl", "enable", "nikko-music-player.service"], timeout=30)
+    audit(user, "enable_player_service", {"ok": res["ok"]})
+    return res
+
+
+@router.post("/api/player/disable-service")
+async def disable_player_service(request: Request):
+    user = get_current_user_or_local(request)
+    res = run(["sudo", "systemctl", "disable", "nikko-music-player.service"], timeout=30)
+    audit(user, "disable_player_service", {"ok": res["ok"]})
+    return res
