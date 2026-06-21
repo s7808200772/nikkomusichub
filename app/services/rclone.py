@@ -41,7 +41,7 @@ def write_rclone_config(remote_name: str, token_json: str):
 
     config = f"""[{remote_name}]
 type = dropbox
-token = {json.dumps(token_json)}
+token = {json.dumps(token)}
 """
     RCLONE_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     RCLONE_CONFIG_PATH.write_text(config)
