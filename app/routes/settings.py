@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from app.config import MUSIC_DIR
 from app.db import audit, get_setting, set_setting
 from app.routes.auth import get_current_user_or_local
-from app.services.system import get_hostname, get_ip_addresses
+from app.services.system import get_hostname, get_ip_addresses, run
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -30,7 +30,12 @@ async def save_device_settings(
     store_id: str = Form(""),
 ):
     user = get_current_user_or_local(request)
+    old_store_id = get_setting("store_id", "")
+    new_store_id = store_id.strip().lower()
     set_setting("store_name", store_name)
-    set_setting("store_id", store_id.strip().lower())
-    audit(user, "save_device_settings", {"store_name": store_name, "store_id": store_id})
+    set_setting("store_id", new_store_id)
+    audit(user, "save_device_settings", {"store_name": store_name, "store_id": new_store_id})
+    # Restart MQTT agent so the new store ID takes effect immediately
+    if old_store_id != new_store_id:
+        run(["sudo", "systemctl", "restart", "nikko-music-mqtt.service"], timeout=30)
     return {"ok": True}

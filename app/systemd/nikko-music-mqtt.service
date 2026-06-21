@@ -8,7 +8,6 @@ User=pi
 Group=pi
 WorkingDirectory=/srv/nikko-music/app
 Environment="PATH=/srv/nikko-music/venv/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="NIKKO_MQTT_STORE_ID=unset"
 Environment="PYTHONUNBUFFERED=1"
 ExecStart=/srv/nikko-music/venv/bin/python -m app.mqtt_client
 Restart=always

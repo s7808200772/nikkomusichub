@@ -72,10 +72,6 @@ for unit in nikko-music-hub-web.service nikko-music-player.service nikko-music-s
   sed -i "s/^User=.*/User=${USER_NAME}/" "/etc/systemd/system/${unit}"
   sed -i "s/^Group=.*/Group=${USER_NAME}/" "/etc/systemd/system/${unit}"
   sed -i "s|/home/pi|/home/${USER_NAME}|g" "/etc/systemd/system/${unit}"
-  # Inject MQTT store ID into mqtt service
-  if [ "${unit}" = "nikko-music-mqtt.service" ]; then
-    sed -i "s|Environment=NIKKO_MQTT_STORE_ID=unset|Environment=NIKKO_MQTT_STORE_ID=${MQTT_STORE_ID}|" "/etc/systemd/system/${unit}"
-  fi
 done
 
 systemctl daemon-reload
