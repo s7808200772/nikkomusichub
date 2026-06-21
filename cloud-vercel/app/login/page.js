@@ -15,7 +15,7 @@ export default async function LoginPage() {
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>☁️</div>
           <h1>NikkoMusicHub Cloud</h1>
-          <p className="subtitle">中央店點管理平台</p>
+          <p className="subtitle">店點管理平台</p>
         </div>
         <LoginForm />
       </div>
