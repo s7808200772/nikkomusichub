@@ -16,6 +16,7 @@ from app.db import audit, get_recent_sync_logs, get_setting, set_setting
 from app.routes.auth import get_current_user_or_local
 from app.services import rclone
 from app.services.system import run, safe_path_validate
+from app.config import RCLONE_CONFIG_PATH
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -38,6 +39,7 @@ async def dropbox_settings(request: Request):
         "sync_time": get_setting("sync_time", SYNC_TIME_DEFAULT),
         "boot_delay_min": int(get_setting("sync_boot_delay_min", "2")),
         "auto_restart_player": bool(int(get_setting("auto_restart_player", "1"))),
+        "configured": RCLONE_CONFIG_PATH.exists(),
     }
 
 

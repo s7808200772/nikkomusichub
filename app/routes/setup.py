@@ -92,12 +92,14 @@ async def setup_dropbox(
         remote_name = re.sub(r"[^a-zA-Z0-9_-]", "", remote_name) or RCLONE_REMOTE_NAME_DEFAULT
         if not safe_path_validate(local_path):
             raise ValueError("Invalid local path")
-        remote = rclone.write_rclone_config(remote_name, token_json)
-        set_setting("dropbox_remote", remote)
+        # Only update rclone config if a token was provided; otherwise keep existing config
+        if token_json and token_json.strip():
+            remote = rclone.write_rclone_config(remote_name, token_json)
+            set_setting("dropbox_remote", remote)
         set_setting("dropbox_path", dropbox_path.strip("/"))
         set_setting("local_music_path", local_path)
-        audit(user, "setup_dropbox", {"remote": remote, "dropbox_path": dropbox_path, "local_path": local_path})
-        return {"ok": True, "stdout": f"Dropbox remote '{remote}' configured", "stderr": ""}
+        audit(user, "setup_dropbox", {"remote": remote_name, "dropbox_path": dropbox_path, "local_path": local_path})
+        return {"ok": True, "stdout": f"Dropbox remote '{remote_name}' settings saved", "stderr": ""}
     except Exception as e:
         return {"ok": False, "stdout": "", "stderr": str(e)}
 

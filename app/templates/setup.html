@@ -24,11 +24,11 @@
       <div class="form-group"><label>Remote Name</label><input name="remote_name" value="dropbox" required></div>
       <div class="form-group">
         <label>Dropbox Token JSON（支援 refresh token）</label>
-        <textarea name="token_json" rows="6" placeholder='{"access_token":"...","token_type":"bearer","refresh_token":"...","expiry":"2026-06-22T00:00:00Z"}' required></textarea>
-        <small style="color:var(--muted)">建議使用 rclone 在本機產生的 token JSON，內含 refresh_token，過期後會自動續約。</small>
+        <textarea name="token_json" rows="6" placeholder='{"access_token":"...","token_type":"bearer","refresh_token":"...","expiry":"2026-06-22T00:00:00Z"}'></textarea>
+        <small style="color:var(--muted)">建議使用 rclone 在本機產生的 token JSON，內含 refresh_token，過期後會自動續約。<br><span id="token-status" style="color:var(--accent-2)"></span></small>
       </div>
-      <div class="form-group"><label>Dropbox 音樂路徑</label><input name="dropbox_path" value="NikkoMusic" required></div>
-      <div class="form-group"><label>本地音樂路徑</label><input name="local_path" value="/srv/nikko-music/music" required></div>
+      <div class="form-group"><label>Dropbox 音樂路徑</label><input name="dropbox_path" id="setup_dropbox_path" value="NikkoMusic" required></div>
+      <div class="form-group"><label>本地音樂路徑</label><input name="local_path" id="setup_local_path" value="/srv/nikko-music/music" required></div>
       <button type="submit" class="primary">儲存 Dropbox 設定</button>
     </form>
     <button onclick="runAction(this, '/api/setup/test-dropbox', null, 'setup-log')" style="margin-top:.5rem">測試 Dropbox 連線</button>
@@ -51,6 +51,17 @@
 </div>
 
 <script>
+async function loadSetupDropbox() {
+  try {
+    const s = await apiGet('/api/dropbox/settings');
+    document.querySelector('input[name="remote_name"]').value = s.remote_name;
+    document.getElementById('setup_dropbox_path').value = s.dropbox_path;
+    document.getElementById('setup_local_path').value = s.local_path;
+    document.getElementById('token-status').textContent = s.configured ? '✅ 已設定 Dropbox token（重新貼上可覆蓋）' : '⚠️ 尚未設定 Dropbox token';
+  } catch (e) {
+    document.getElementById('token-status').textContent = '無法載入設定';
+  }
+}
 async function saveDropbox(e) {
   e.preventDefault();
   const form = e.target;
@@ -60,7 +71,9 @@ async function saveDropbox(e) {
   const res = await apiPost('/api/setup/dropbox', fd);
   document.getElementById('setup-log').textContent = (res.stdout || '') + '\n' + (res.stderr || '');
   showToast(res.ok ? '已儲存' : '失敗', res.ok ? 'success' : 'error');
+  if (res.ok) await loadSetupDropbox();
   setBusy(btn, false);
 }
+loadSetupDropbox();
 </script>
 {% endblock %}
