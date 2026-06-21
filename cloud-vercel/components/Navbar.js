@@ -25,7 +25,7 @@ export default function Navbar() {
     <header className="navbar">
       <Link href="/" className="navbar-brand">
         <Cloud size={22} color="var(--accent-2)" />
-        NikkoMusicHub Cloud
+        NikkoMusicHub
       </Link>
       <nav>
         {links.map((l) => {

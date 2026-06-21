@@ -5,13 +5,11 @@
 
 <div class="grid">
   <div class="card">
-    <h2>店家與裝置資訊</h2>
+    <h2>店家資訊</h2>
     <form id="device-form" onsubmit="saveDevice(event)">
       <div class="form-group"><label>店名</label><input name="store_name" id="store_name" required></div>
-      <div class="form-group"><label>Store ID</label><input name="store_id" id="store_id"></div>
-      <div class="form-group"><label>Device ID</label><input name="device_id" id="device_id"></div>
-      <div class="form-group"><label>Location Note</label><input name="location_note" id="location_note"></div>
-      <div class="form-group"><label>Music Profile</label><input name="music_profile" id="music_profile"></div>
+      <div class="form-group"><label>MQTT Store ID *</label><input name="store_id" id="store_id" required placeholder="store-001"></div>
+      <p style="color: var(--muted); font-size: .85rem;">Store ID 必須與 Cloud 平台新增的店點 Store ID 完全一致。</p>
       <button type="submit" class="primary">儲存</button>
     </form>
   </div>
@@ -32,15 +30,12 @@ async function loadDevice() {
   const s = await apiGet('/api/settings/device');
   document.getElementById('store_name').value = s.store_name || '';
   document.getElementById('store_id').value = s.store_id || '';
-  document.getElementById('device_id').value = s.device_id || '';
-  document.getElementById('location_note').value = s.location_note || '';
-  document.getElementById('music_profile').value = s.music_profile || '';
 }
 async function saveDevice(e) {
   e.preventDefault();
   const fd = new FormData(e.target);
   const res = await apiPost('/api/settings/device', fd);
-  showToast(res.ok ? '已儲存' : '失敗', res.ok ? 'success' : 'error');
+  showToast(res.ok ? '已儲存。修改 Store ID 後請重新啟動 MQTT 服務以生效。' : '失敗', res.ok ? 'success' : 'error');
 }
 async function changePassword(e) {
   e.preventDefault();

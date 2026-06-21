@@ -26,7 +26,6 @@ from app.config import (
     MQTT_BROKER,
     MQTT_PASSWORD,
     MQTT_PORT,
-    MQTT_STORE_ID,
     MQTT_TOPIC_PREFIX,
     MQTT_USERNAME,
     MUSIC_DIR,
@@ -34,8 +33,20 @@ from app.config import (
     RCLONE_CONFIG_PATH,
     SYNC_LOG_PATH,
 )
-from app.db import get_recent_sync_logs, get_setting
+from app.db import get_setting, init_db
 from app.services import mpv, rclone
+
+# Ensure DB tables exist before reading settings
+init_db()
+
+# Resolve MQTT Store ID: env var > settings db > hostname
+MQTT_STORE_ID = os.environ.get("NIKKO_MQTT_STORE_ID") or get_setting("store_id", "")
+if not MQTT_STORE_ID:
+    import socket
+    MQTT_STORE_ID = socket.gethostname().lower().replace(" ", "-")
+
+logger.info("Resolved MQTT_STORE_ID=%s", MQTT_STORE_ID)
+
 from app.services.system import (
     command_exists,
     count_mp3_files,

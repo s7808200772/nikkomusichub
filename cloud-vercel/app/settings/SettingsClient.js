@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Save, KeyRound, Folder, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Save, KeyRound, AlertTriangle, CheckCircle2, AlertCircle, Loader2, Database } from 'lucide-react';
 
 export default function SettingsClient({ initialSettings }) {
   const [settings, setSettings] = useState(initialSettings || {});
@@ -32,39 +32,48 @@ export default function SettingsClient({ initialSettings }) {
     setBusy(false);
   }
 
+  const hasKV = process.env.NEXT_PUBLIC_KV_AVAILABLE === '1';
+
   return (
     <div className="settings-grid">
       <div className="card">
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <KeyRound size={20} color="var(--accent-2)" /> Dropbox
+          <Database size={20} color="var(--accent-2)" /> 資料儲存
+        </h2>
+        <p style={{ color: 'var(--text-2)', lineHeight: 1.7 }}>
+          店點資料與設定統一由後端儲存。本地開發會寫入專案目錄的暫存檔；
+          部署到 Vercel 後若要資料持久化，請在 Vercel Dashboard 綁定 KV 並設定環境變數
+          <code style={{ background: 'var(--bg-2)', padding: '0.15rem 0.4rem', borderRadius: '0.3rem' }}>KV_REST_API_URL</code> 與{' '}
+          <code style={{ background: 'var(--bg-2)', padding: '0.15rem 0.4rem', borderRadius: '0.3rem' }}>KV_REST_API_TOKEN</code>。
+        </p>
+        {!hasKV && (
+          <div className="badge badge-yellow" style={{ marginTop: '1rem', width: 'fit-content' }}>
+            <AlertTriangle size={14} /> 未偵測到 KV，部署後資料可能會重置
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <KeyRound size={20} color="var(--accent-2)" /> MQTT 預設 Broker
         </h2>
         <form onSubmit={save}>
           <div className="form-group">
-            <label>Dropbox Access Token</label>
+            <label>預設 MQTT Broker</label>
             <input
-              type="password"
-              value={settings.dropboxToken || ''}
-              onChange={(e) => setSettings({ ...settings, dropboxToken: e.target.value })}
-              placeholder="sl.xxx..."
+              value={settings.defaultMqttBroker || ''}
+              onChange={(e) => setSettings({ ...settings, defaultMqttBroker: e.target.value })}
+              placeholder="broker.hivemq.com"
             />
-            <p style={{ color: 'var(--muted)', fontSize: '0.8rem', margin: '0.3rem 0 0' }}>
-              用於各店 Pi 自動同步音樂檔案的 Dropbox Token。
-            </p>
           </div>
           <div className="form-group">
-            <label>Dropbox 音樂目錄</label>
-            <div style={{ position: 'relative' }}>
-              <Folder size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
-              <input
-                value={settings.dropboxMusicPath || ''}
-                onChange={(e) => setSettings({ ...settings, dropboxMusicPath: e.target.value })}
-                placeholder="/Music"
-                style={{ paddingLeft: '2.4rem' }}
-              />
-            </div>
-            <p style={{ color: 'var(--muted)', fontSize: '0.8rem', margin: '0.3rem 0 0' }}>
-              雲端音樂檔案所在的 Dropbox 路徑，例如 /Music 或 /StoreMusic。
-            </p>
+            <label>預設 MQTT Port</label>
+            <input
+              type="number"
+              value={settings.defaultMqttPort || ''}
+              onChange={(e) => setSettings({ ...settings, defaultMqttPort: e.target.value })}
+              placeholder="1883"
+            />
           </div>
 
           {msg && (
@@ -79,17 +88,6 @@ export default function SettingsClient({ initialSettings }) {
             {busy ? '儲存中…' : '儲存設定'}
           </button>
         </form>
-      </div>
-
-      <div className="card">
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Folder size={20} color="var(--success)" /> 使用說明
-        </h2>
-        <ul style={{ color: 'var(--text-2)', lineHeight: 1.8, paddingLeft: '1.2rem' }}>
-          <li>Dropbox Token 不會回傳到前端，僅在後端儲存。</li>
-          <li>設定變更後，新同步的 Pi 會使用新的音樂目錄。</li>
-          <li>建議在 Pi 端安裝完成後，再到 Settings 填入 Token。</li>
-        </ul>
       </div>
     </div>
   );

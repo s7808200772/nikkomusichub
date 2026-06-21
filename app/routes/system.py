@@ -66,6 +66,7 @@ async def system_info(request: Request):
         "web_service_status": service_status("nikko-music-hub-web.service"),
         "player_service_status": service_status("nikko-music-player.service"),
         "sync_timer_status": service_status("nikko-music-sync.timer"),
+        "mqtt_service_status": service_status("nikko-music-mqtt.service"),
         "player_service_enabled": service_enabled("nikko-music-player.service"),
     }
 

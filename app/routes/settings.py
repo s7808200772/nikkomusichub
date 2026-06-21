@@ -16,13 +16,10 @@ templates = Jinja2Templates(directory="app/templates")
 async def get_device_settings(request: Request):
     get_current_user_or_local(request)
     return {
-        "store_id": get_setting("store_id", ""),
         "store_name": get_setting("store_name", "未命名店鋪"),
-        "device_id": get_setting("device_id", get_hostname()),
+        "store_id": get_setting("store_id", ""),
         "hostname": get_hostname(),
         "tailscale_ip": get_ip_addresses()["tailscale_ip"],
-        "location_note": get_setting("location_note", ""),
-        "music_profile": get_setting("music_profile", ""),
     }
 
 
@@ -31,15 +28,9 @@ async def save_device_settings(
     request: Request,
     store_name: str = Form(...),
     store_id: str = Form(""),
-    device_id: str = Form(""),
-    location_note: str = Form(""),
-    music_profile: str = Form(""),
 ):
     user = get_current_user_or_local(request)
     set_setting("store_name", store_name)
-    set_setting("store_id", store_id)
-    set_setting("device_id", device_id or get_hostname())
-    set_setting("location_note", location_note)
-    set_setting("music_profile", music_profile)
+    set_setting("store_id", store_id.strip().lower())
     audit(user, "save_device_settings", {"store_name": store_name, "store_id": store_id})
     return {"ok": True}

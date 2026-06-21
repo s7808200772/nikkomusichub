@@ -14,8 +14,8 @@ export async function POST(request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const data = await request.json();
   const settings = {
-    dropboxToken: data.dropboxToken?.trim() || '',
-    dropboxMusicPath: data.dropboxMusicPath?.trim() || '',
+    defaultMqttBroker: data.defaultMqttBroker?.trim() || '',
+    defaultMqttPort: data.defaultMqttPort ? parseInt(data.defaultMqttPort, 10) : '',
   };
   await saveSettings(settings);
   return NextResponse.json({ settings });

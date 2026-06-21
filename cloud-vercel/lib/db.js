@@ -4,9 +4,13 @@ import path from 'path';
 import os from 'os';
 
 const USE_KV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
-const memory = { stores: [], settings: {} };
 
-const localDbPath = path.join(os.tmpdir(), 'nikko-cloud-local-db.json');
+// Use project-local file for local dev so data persists across restarts.
+// On Vercel /tmp is ephemeral per function instance, so KV is required for production persistence.
+const isVercel = process.env.VERCEL === '1';
+const localDbPath = isVercel
+  ? path.join(os.tmpdir(), 'nikko-cloud-local-db.json')
+  : path.join(process.cwd(), '.nikko-cloud-db.json');
 
 async function readLocalDb() {
   try {

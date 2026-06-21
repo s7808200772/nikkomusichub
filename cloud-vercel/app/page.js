@@ -17,7 +17,7 @@ export default async function DashboardPage() {
       <Navbar />
       <main className="container">
         <div className="page-header">
-          <h1>中央 Dashboard</h1>
+          <h1>Dashboard</h1>
           <p>即時掌握所有店點狀態</p>
         </div>
         <DashboardClient initialStores={stores} />
