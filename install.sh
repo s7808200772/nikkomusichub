@@ -30,11 +30,19 @@ else
   SOURCE_DIR="/tmp/nikkomusichub"
   rm -rf "${SOURCE_DIR}"
   log "Cloning repository..."
-  git clone "${REPO_URL}" "${SOURCE_DIR}"
+  git clone --depth 1 --branch main "${REPO_URL}" "${SOURCE_DIR}"
+  cd "${SOURCE_DIR}"
+  log "Installed from commit: $(git rev-parse HEAD 2>/dev/null || echo unknown)"
 fi
 
 log "Copying application files..."
 rsync -a --delete --exclude='.git' --exclude='venv' "${SOURCE_DIR}/" "${APP_DIR}/"
+
+# Sanity check: mqtt client must exist after copy
+if [ ! -f "${APP_DIR}/mqtt_client.py" ]; then
+  log "ERROR: mqtt_client.py not found after copy. Source dir may be incomplete."
+  exit 1
+fi
 
 log "Setting up Python virtual environment..."
 python3 -m venv "${INSTALL_DIR}/venv"
@@ -55,6 +63,10 @@ fi
 
 log "Installing systemd services..."
 for unit in nikko-music-hub-web.service nikko-music-player.service nikko-music-sync.service nikko-music-sync.timer nikko-music-mqtt.service; do
+  if [ ! -f "${APP_DIR}/systemd/${unit}" ]; then
+    log "ERROR: systemd unit ${unit} missing in ${APP_DIR}/systemd/"
+    exit 1
+  fi
   cp "${APP_DIR}/systemd/${unit}" "/etc/systemd/system/${unit}"
   # Replace placeholder user with actual user
   sed -i "s/^User=.*/User=${USER_NAME}/" "/etc/systemd/system/${unit}"
