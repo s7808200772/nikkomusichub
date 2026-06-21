@@ -22,7 +22,11 @@
     <h2>4. Dropbox 設定</h2>
     <form id="dropbox-form" onsubmit="saveDropbox(event)">
       <div class="form-group"><label>Remote Name</label><input name="remote_name" value="dropbox" required></div>
-      <div class="form-group"><label>Dropbox Token JSON</label><textarea name="token_json" rows="5" placeholder='{"access_token":"...","token_type":"..."}' required></textarea></div>
+      <div class="form-group">
+        <label>Dropbox Token JSON（支援 refresh token）</label>
+        <textarea name="token_json" rows="6" placeholder='{"access_token":"...","token_type":"bearer","refresh_token":"...","expiry":"2026-06-22T00:00:00Z"}' required></textarea>
+        <small style="color:var(--muted)">建議使用 rclone 在本機產生的 token JSON，內含 refresh_token，過期後會自動續約。</small>
+      </div>
       <div class="form-group"><label>Dropbox 音樂路徑</label><input name="dropbox_path" value="NikkoMusic" required></div>
       <div class="form-group"><label>本地音樂路徑</label><input name="local_path" value="/srv/nikko-music/music" required></div>
       <button type="submit" class="primary">儲存 Dropbox 設定</button>

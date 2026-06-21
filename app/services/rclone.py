@@ -21,11 +21,20 @@ def get_rclone_config_exists() -> bool:
 
 
 def write_rclone_config(remote_name: str, token_json: str):
-    """Write an rclone config file from Dropbox token JSON."""
+    """Write an rclone config file from Dropbox token JSON.
+
+    Accepts either:
+    - A short-lived access token: {"access_token":"...","token_type":"bearer"}
+    - Or a refreshable token from rclone config / Dropbox App Console:
+      {"access_token":"...","token_type":"bearer","refresh_token":"...","expiry":"..."}
+
+    When a refresh_token is present, rclone will automatically refresh the
+    access_token when it expires, so the user does not need to re-enter tokens.
+    """
     token = json.loads(token_json)
-    # Validate expected shape
-    if "access_token" not in token:
-        raise ValueError("Token JSON missing access_token")
+    # Validate expected shape: need at least an access_token or a refresh_token
+    if "access_token" not in token and "refresh_token" not in token:
+        raise ValueError("Token JSON 必須包含 access_token 或 refresh_token")
 
     # Normalize remote name
     remote_name = re.sub(r"[^a-zA-Z0-9_-]", "", remote_name) or RCLONE_REMOTE_NAME_DEFAULT
