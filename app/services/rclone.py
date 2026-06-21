@@ -31,7 +31,12 @@ def write_rclone_config(remote_name: str, token_json: str):
     When a refresh_token is present, rclone will automatically refresh the
     access_token when it expires, so the user does not need to re-enter tokens.
     """
-    token = json.loads(token_json)
+    raw = token_json.strip()
+    # Defensive: if the input is itself a JSON-encoded string (e.g. wrapped in
+    # quotes and escaped), decode it once first.
+    if raw.startswith('"') and raw.endswith('"'):
+        raw = json.loads(raw)
+    token = json.loads(raw)
     # Validate expected shape: need at least an access_token or a refresh_token
     if "access_token" not in token and "refresh_token" not in token:
         raise ValueError("Token JSON 必須包含 access_token 或 refresh_token")
