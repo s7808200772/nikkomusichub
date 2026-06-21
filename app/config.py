@@ -41,6 +41,15 @@ WEB_SERVICE = "nikko-music-hub-web.service"
 PLAYER_SERVICE = "nikko-music-player.service"
 SYNC_SERVICE = "nikko-music-sync.service"
 SYNC_TIMER = "nikko-music-sync.timer"
+MQTT_SERVICE = "nikko-music-mqtt.service"
+
+# MQTT settings for central cloud management
+MQTT_BROKER = os.environ.get("NIKKO_MQTT_BROKER", "broker.hivemq.com")
+MQTT_PORT = int(os.environ.get("NIKKO_MQTT_PORT", "1883"))
+MQTT_USERNAME = os.environ.get("NIKKO_MQTT_USERNAME", "")
+MQTT_PASSWORD = os.environ.get("NIKKO_MQTT_PASSWORD", "")
+MQTT_STORE_ID = os.environ.get("NIKKO_MQTT_STORE_ID", "")
+MQTT_TOPIC_PREFIX = os.environ.get("NIKKO_MQTT_TOPIC_PREFIX", "nikko")
 
 # Sync schedule defaults
 SYNC_TIME_DEFAULT = "03:00"

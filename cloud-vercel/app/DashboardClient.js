@@ -71,6 +71,7 @@ export default function DashboardClient({ initialStores }) {
         <div className="store-grid">
           {stores.map((s) => {
             const st = status[s.storeId];
+            const dashboard = st?.parsed || st?.result || {};
             const isOnline = st?.ok;
             const isChecking = !st;
             return (
@@ -78,7 +79,7 @@ export default function DashboardClient({ initialStores }) {
                 <div className="store-card-header">
                   <div>
                     <div className="store-card-title">{s.storeName}</div>
-                    <div className="store-card-meta">{s.storeId} · {s.tailscaleIp}</div>
+                    <div className="store-card-meta">{s.storeId} · {s.mqttBroker}</div>
                   </div>
                   {isChecking ? (
                     <span className="badge badge-gray"><Loader2 size={12} className="spin" /> 檢查中</span>
@@ -88,22 +89,19 @@ export default function DashboardClient({ initialStores }) {
                     <span className="badge badge-red"><WifiOff size={12} /> 異常</span>
                   )}
                 </div>
+                {!isOnline && st && (
+                  <div style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>
+                    <strong>錯誤：</strong>{st.error || '狀態取得失敗'}
+                  </div>
+                )}
                 <div style={{ display: 'grid', gap: '0.6rem', fontSize: '0.9rem' }}>
-                  {!isOnline && st && (
-                    <div style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>
-                      <strong>錯誤：</strong>{st.error || '狀態取得失敗'}
-                      {st.stderr && (
-                        <pre style={{ margin: '0.4rem 0 0', whiteSpace: 'pre-wrap', fontSize: '0.8rem', color: 'var(--muted)' }}>{st.stderr}</pre>
-                      )}
-                    </div>
-                  )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-2)' }}>
                     <Music size={16} color="var(--accent-2)" />
-                    {st?.parsed?.current_track || '-'}
+                    {dashboard?.current_track || '-'}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-2)' }}>
                     <RefreshCw size={16} color="var(--success)" />
-                    {st?.parsed?.last_sync_at || '-'}
+                    {dashboard?.last_sync_at || '-'}
                   </div>
                 </div>
               </div>

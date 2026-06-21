@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { getStore } from '@/lib/db';
-import { getCommand, runSSH, listCommands } from '@/lib/ssh';
+import { publishCommand, listCommands } from '@/lib/mqtt';
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -17,26 +17,15 @@ export async function POST(request) {
   const store = await getStore(data.storeId);
   if (!store) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
 
-  const command = getCommand(data.commandKey);
-  if (!command) return NextResponse.json({ error: 'Command not allowed' }, { status: 400 });
-
-  const result = await runSSH({
-    host: store.tailscaleIp,
-    port: store.sshPort,
-    username: store.sshUsername,
-    password: store.sshPassword,
-    command,
+  const result = await publishCommand({
+    broker: store.mqttBroker,
+    port: store.mqttPort,
+    username: store.mqttUsername,
+    password: store.mqttPassword,
+    storeId: store.storeId,
+    commandKey: data.commandKey,
     timeout: 15000,
   });
 
-  let parsed = null;
-  if (result.ok && result.stdout) {
-    try {
-      parsed = JSON.parse(result.stdout);
-    } catch (e) {
-      // not JSON
-    }
-  }
-
-  return NextResponse.json({ ...result, parsed });
+  return NextResponse.json(result);
 }

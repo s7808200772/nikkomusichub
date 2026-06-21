@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { getStore } from '@/lib/db';
-import { testSSH } from '@/lib/ssh';
+import { testMQTT } from '@/lib/mqtt';
 
 export async function POST(request) {
   const user = await getCurrentUser();
@@ -11,11 +11,12 @@ export async function POST(request) {
   const store = await getStore(data.storeId);
   if (!store) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
 
-  const result = await testSSH({
-    host: store.tailscaleIp,
-    port: store.sshPort,
-    username: store.sshUsername,
-    password: store.sshPassword,
+  const result = await testMQTT({
+    broker: store.mqttBroker,
+    port: store.mqttPort,
+    username: store.mqttUsername,
+    password: store.mqttPassword,
+    storeId: store.storeId,
     timeout: 10000,
   });
 

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Server, User, Lock, Globe, Hash, Save, AlertCircle, CheckCircle2, Search, Pencil, X, Activity, Loader2, Wifi, WifiOff } from 'lucide-react';
+import { Plus, Trash2, Server, Hash, Save, AlertCircle, CheckCircle2, Search, Pencil, X, Activity, Loader2, Wifi, WifiOff } from 'lucide-react';
 
 export default function StoresClient({ initialStores }) {
   const [stores, setStores] = useState(initialStores || []);
-  const [form, setForm] = useState({ sshPort: 22, sshUsername: 'pi' });
+  const [form, setForm] = useState({ mqttBroker: 'broker.hivemq.com', mqttPort: 1883 });
   const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState('');
   const [busy, setBusy] = useState(false);
@@ -30,7 +30,7 @@ export default function StoresClient({ initialStores }) {
     });
     const data = await res.json();
     if (res.ok) {
-      setForm({ sshPort: 22, sshUsername: 'pi' });
+      setForm({ mqttBroker: 'broker.hivemq.com', mqttPort: 1883 });
       setMsg('店點新增成功');
       setMsgType('success');
       load();
@@ -87,11 +87,9 @@ export default function StoresClient({ initialStores }) {
       (s) =>
         s.storeId.toLowerCase().includes(q) ||
         s.storeName.toLowerCase().includes(q) ||
-        s.tailscaleIp.toLowerCase().includes(q)
+        s.mqttBroker.toLowerCase().includes(q)
     );
   }, [stores, search]);
-
-  const iconProps = { size: 16, color: 'var(--muted)' };
 
   return (
     <>
@@ -113,23 +111,23 @@ export default function StoresClient({ initialStores }) {
 
           <div className="form-row">
             <div className="form-group">
-              <label><Globe size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Tailscale IP *</label>
-              <input value={form.tailscaleIp || ''} onChange={(e) => setForm({ ...form, tailscaleIp: e.target.value })} placeholder="100.x.x.x" required />
+              <label>MQTT Broker *</label>
+              <input value={form.mqttBroker || 'broker.hivemq.com'} onChange={(e) => setForm({ ...form, mqttBroker: e.target.value })} placeholder="broker.hivemq.com" required />
             </div>
             <div className="form-group">
-              <label><Hash size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} /> SSH Port</label>
-              <input type="number" value={form.sshPort || 22} onChange={(e) => setForm({ ...form, sshPort: e.target.value })} />
+              <label>MQTT Port</label>
+              <input type="number" value={form.mqttPort || 1883} onChange={(e) => setForm({ ...form, mqttPort: e.target.value })} />
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label><User size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} /> SSH 使用者 *</label>
-              <input value={form.sshUsername || 'pi'} onChange={(e) => setForm({ ...form, sshUsername: e.target.value })} required />
+              <label>MQTT 使用者（選填）</label>
+              <input value={form.mqttUsername || ''} onChange={(e) => setForm({ ...form, mqttUsername: e.target.value })} placeholder="公開 broker 可留空" />
             </div>
             <div className="form-group">
-              <label><Lock size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} /> SSH 密碼 *</label>
-              <input type="password" value={form.sshPassword || ''} onChange={(e) => setForm({ ...form, sshPassword: e.target.value })} placeholder="連入 Pi 的密碼" required />
+              <label>MQTT 密碼（選填）</label>
+              <input type="password" value={form.mqttPassword || ''} onChange={(e) => setForm({ ...form, mqttPassword: e.target.value })} placeholder="公開 broker 可留空" />
             </div>
           </div>
 
@@ -158,7 +156,7 @@ export default function StoresClient({ initialStores }) {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索 Store ID、店名、IP"
+              placeholder="搜索 Store ID、店名、Broker"
               style={{ paddingLeft: '2.4rem', marginBottom: 0 }}
             />
           </div>
@@ -175,22 +173,22 @@ export default function StoresClient({ initialStores }) {
                   </div>
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Tailscale IP</label>
-                      <input value={editing.tailscaleIp} onChange={(e) => setEditing({ ...editing, tailscaleIp: e.target.value })} required />
+                      <label>MQTT Broker</label>
+                      <input value={editing.mqttBroker} onChange={(e) => setEditing({ ...editing, mqttBroker: e.target.value })} required />
                     </div>
                     <div className="form-group">
-                      <label>SSH Port</label>
-                      <input type="number" value={editing.sshPort} onChange={(e) => setEditing({ ...editing, sshPort: e.target.value })} required />
+                      <label>MQTT Port</label>
+                      <input type="number" value={editing.mqttPort} onChange={(e) => setEditing({ ...editing, mqttPort: e.target.value })} required />
                     </div>
                   </div>
                   <div className="form-row">
                     <div className="form-group">
-                      <label>SSH 使用者</label>
-                      <input value={editing.sshUsername} onChange={(e) => setEditing({ ...editing, sshUsername: e.target.value })} required />
+                      <label>MQTT 使用者</label>
+                      <input value={editing.mqttUsername} onChange={(e) => setEditing({ ...editing, mqttUsername: e.target.value })} />
                     </div>
                     <div className="form-group">
-                      <label>SSH 密碼</label>
-                      <input type="password" value={editing.sshPassword} onChange={(e) => setEditing({ ...editing, sshPassword: e.target.value })} placeholder="留空則不變" />
+                      <label>MQTT 密碼</label>
+                      <input type="password" value={editing.mqttPassword} onChange={(e) => setEditing({ ...editing, mqttPassword: e.target.value })} placeholder="留空則不變" />
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -213,7 +211,7 @@ export default function StoresClient({ initialStores }) {
                       <button className="icon-btn" onClick={() => testConnection(s.storeId)} title="測試連線" disabled={testStatus[s.storeId]?.loading}>
                         {testStatus[s.storeId]?.loading ? <Loader2 size={16} className="spin" /> : <Activity size={16} />}
                       </button>
-                      <button className="icon-btn" onClick={() => setEditing({ ...s, sshPassword: '' })} title="編輯">
+                      <button className="icon-btn" onClick={() => setEditing({ ...s, mqttPassword: '' })} title="編輯">
                         <Pencil size={16} />
                       </button>
                       <button className="danger icon-btn" onClick={() => remove(s.storeId)} title="刪除">
@@ -223,27 +221,20 @@ export default function StoresClient({ initialStores }) {
                   </div>
                   <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-2)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Globe {...iconProps} /> {s.tailscaleIp}:{s.sshPort}
+                      <Server size={16} color="var(--muted)" /> {s.mqttBroker}:{s.mqttPort}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <User {...iconProps} /> {s.sshUsername}
-                    </div>
+                    {s.mqttUsername && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ color: 'var(--muted)' }}>使用者：</span>{s.mqttUsername}
+                      </div>
+                    )}
                   </div>
                   {testStatus[s.storeId] && !testStatus[s.storeId].loading && (
                     <div>
                       <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: testStatus[s.storeId].ok ? 'var(--success)' : 'var(--danger)' }}>
                         {testStatus[s.storeId].ok ? <Wifi size={14} /> : <WifiOff size={14} />}
-                        {testStatus[s.storeId].error || testStatus[s.storeId].message}
-                        {testStatus[s.storeId].stage && ` (${testStatus[s.storeId].stage})`}
+                        {testStatus[s.storeId].error || 'MQTT 連線成功'}
                       </div>
-                      {testStatus[s.storeId].debug && testStatus[s.storeId].debug.length > 0 && (
-                        <details style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--muted)' }}>
-                          <summary>除錯日誌</summary>
-                          <pre style={{ background: 'var(--bg-2)', padding: '0.5rem', borderRadius: '0.4rem', overflow: 'auto', maxHeight: '120px', margin: '0.4rem 0 0' }}>
-                            {testStatus[s.storeId].debug.join('\n')}
-                          </pre>
-                        </details>
-                      )}
                     </div>
                   )}
                 </>

@@ -1,18 +1,25 @@
 # NikkoMusicHub Cloud (Vercel 版)
 
-這是中央管理平台的 **Vercel 可部署版本**，讓你可以透過一個網址登入，管理各地 Raspberry Pi。
-
-> ⚠️ 注意：Vercel Serverless Functions 有執行時間限制（Hobby 10 秒、Pro 60 秒），不適合長期保持連線。後期建議遷移到 VPS。此版本是為了「先跑上」而設計的過渡方案。
+中央管理平台，透過 MQTT 管理各地 Raspberry Pi 音樂節點。
 
 ## 功能
 
-- 網頁登入（JWT + cookie）
-- 管理店點（Tailscale IP、SSH 帳號密碼）
+- 登入頁面與 JWT 認證
+- 店點管理（Store ID、店名、MQTT broker 設定）
 - Dashboard 查看各店狀態
 - 遠端執行預定義指令（播放控制、同步、重啟、重開機）
 - Commands 頁面以圖示卡片列出所有店點
 - 全域設定：Dropbox Token、Dropbox 音樂目錄
-- 資料儲存：本地開發用 JSON 暫存檔，生產環境建議使用 Vercel KV
+
+## 運作方式
+
+Cloud 與 Pi 之間透過 MQTT 溝通：
+
+- Cloud 發布指令到 `nikko/<storeId>/cmd`
+- Pi 訂閱指令、執行後回傳結果到 `nikko/<storeId>/resp`
+- Pi 定期發布狀態到 `nikko/<storeId>/status`
+
+不需要 Tailscale、不需要 SSH，只要 Pi 與 Cloud 都能連到同一個 MQTT broker 即可。
 
 ## 本地開發
 
@@ -22,73 +29,51 @@ npm install
 npm run dev
 ```
 
-開啟 http://localhost:3000
-
-預設帳號：`nikkolh`  
-預設密碼：`topup30%off`
+開啟 http://localhost:3000/login，預設帳號密碼請看專案 `app/config.py`。
 
 ## 部署到 Vercel
 
-### 1. 建立 Vercel 專案
-
 ```bash
 cd cloud-vercel
-npx vercel
+npx vercel --prod
 ```
 
-### 2. 設定環境變數
+建議設定環境變數：
 
-在 Vercel Dashboard → Project Settings → Environment Variables 新增：
+- `NIKKO_ADMIN_USER`：管理員帳號（預設 nikkolh）
+- `NIKKO_ADMIN_PASSWORD`：管理員密碼
+- `NIKKO_JWT_SECRET`：JWT 簽章金鑰
+- `KV_REST_API_URL`、`KV_REST_API_TOKEN`：Vercel KV（生產環境建議）
 
-| 變數名稱 | 說明 |
-|----------|------|
-| `NIKKO_ADMIN_USER` | 管理員帳號，建議改為非預設值 |
-| `NIKKO_ADMIN_PASS` | 管理員密碼，建議改為強密碼 |
-| `NIKKO_CLOUD_SECRET` | JWT 簽章密鑰，使用隨機長字串 |
-| `KV_REST_API_URL` | （可選）Vercel KV URL |
-| `KV_REST_API_TOKEN` | （可選）Vercel KV Token |
+## 新增店點
 
-### 3. 關於資料儲存
-
-- **無 KV**：店點資料存在記憶體 / 本地 JSON 暫存檔，每次重新部署或冷啟動會重置。適合 demo。
-- **有 KV**：店點資料會持久化。在 Vercel Dashboard 安裝 KV storage 並取得 URL / Token。
-
-### 4. Pi 端準備
-
-1. 各店 Pi 必須完成 NikkoMusicHub 安裝（上層 `install.sh`）
-2. 確保 Cloud 平台能透過 Tailscale 連到 Pi 的 Tailscale IP
-3. 確保 Pi 的 SSH 允許帳號密碼登入（或 Cloud 平台可連入的使用者帳密）
-
-### 5. 新增店點
-
-登入後到 `/stores`，填入：
-- Store ID、店名
-- Tailscale IP
-- SSH 使用者（預設 pi）
-- SSH 密碼
-
-### 6. 設定 Dropbox
-
-到 `/settings` 填入：
-- Dropbox Access Token
-- Dropbox 音樂目錄路徑（例如 `/Music`）
+1. 各店 Pi 完成 NikkoMusicHub 安裝（上層 `install.sh`）
+2. 記下 Pi 的 MQTT Store ID（安裝完成時會顯示，通常是 hostname）
+3. 登入 Cloud，到 `/stores` 填入：
+   - Store ID（必須與 Pi 的 Store ID 一致）
+   - 店名
+   - MQTT Broker（預設 `broker.hivemq.com`，生產環境請換成自己的 broker）
+   - MQTT Port（預設 `1883`）
+   - MQTT 使用者 / 密碼（公開測試 broker 可留空）
+4. 點「測試連線」確認 Pi 有回應
 
 ## 技術限制
 
-- SSH 指令若超過 Vercel timeout 會被中斷
-- 不建議用於 30+ 店大規模管理
-- 後期請遷移到 `cloud/`（VPS 版）
+- 未設定 Vercel KV 時，店點與設定存在記憶體 / 本地 JSON 暫存檔，每次重新部署會重置。
+- 公開 MQTT broker 僅供測試，生產環境請使用有認證的私有 broker。
+- Vercel Serverless Function 每次請求獨立連線 MQTT，指令回應上限約 10~15 秒。
 
-## 目錄結構
+## 檔案結構
 
 ```
 cloud-vercel/
 ├── app/
 │   ├── api/
 │   │   ├── auth/route.js
-│   │   ├── stores/route.js
 │   │   ├── command/route.js
-│   │   └── settings/route.js
+│   │   ├── settings/route.js
+│   │   ├── stores/route.js
+│   │   └── test-connection/route.js
 │   ├── commands/
 │   ├── login/
 │   ├── settings/
@@ -97,14 +82,12 @@ cloud-vercel/
 │   ├── globals.css
 │   ├── layout.js
 │   └── page.js
-├── components/
-│   └── Navbar.js
+├── components/Navbar.js
 ├── lib/
 │   ├── auth.js
 │   ├── db.js
-│   └── ssh.js
-├── README.md
-├── jsconfig.json
+│   └── mqtt.js
 ├── next.config.js
-└── package.json
+├── package.json
+└── README.md
 ```

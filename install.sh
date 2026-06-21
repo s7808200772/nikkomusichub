@@ -47,21 +47,33 @@ ln -sf "${APP_DIR}/scripts/nikko-test-audio.sh" "${INSTALL_DIR}/scripts/nikko-te
 
 chown -R "${USER_NAME}:${USER_NAME}" "${INSTALL_DIR}/data"
 
+# Generate a default MQTT store ID based on hostname
+MQTT_STORE_ID=$(hostname | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
+if [ -z "${MQTT_STORE_ID}" ]; then
+  MQTT_STORE_ID="store-$(openssl rand -hex 4)"
+fi
+
 log "Installing systemd services..."
-for unit in nikko-music-hub-web.service nikko-music-player.service nikko-music-sync.service nikko-music-sync.timer; do
+for unit in nikko-music-hub-web.service nikko-music-player.service nikko-music-sync.service nikko-music-sync.timer nikko-music-mqtt.service; do
   cp "${APP_DIR}/systemd/${unit}" "/etc/systemd/system/${unit}"
   # Replace placeholder user with actual user
   sed -i "s/^User=.*/User=${USER_NAME}/" "/etc/systemd/system/${unit}"
   sed -i "s/^Group=.*/Group=${USER_NAME}/" "/etc/systemd/system/${unit}"
   sed -i "s|/home/pi|/home/${USER_NAME}|g" "/etc/systemd/system/${unit}"
+  # Inject MQTT store ID into mqtt service
+  if [ "${unit}" = "nikko-music-mqtt.service" ]; then
+    sed -i "s|Environment=NIKKO_MQTT_STORE_ID=unset|Environment=NIKKO_MQTT_STORE_ID=${MQTT_STORE_ID}|" "/etc/systemd/system/${unit}"
+  fi
 done
 
 systemctl daemon-reload
 systemctl enable nikko-music-hub-web.service
 systemctl enable nikko-music-sync.timer
+systemctl enable nikko-music-mqtt.service
 
-log "Starting web service..."
+log "Starting services..."
 systemctl restart nikko-music-hub-web.service
+systemctl restart nikko-music-mqtt.service
 
 # Get IP addresses for display
 IP_LINE=""
@@ -84,7 +96,9 @@ cat <<EOF
 預設密碼：topup30%off
 
 資料目錄：${INSTALL_DIR}
+MQTT Store ID：${MQTT_STORE_ID}
 Web 服務：systemctl status nikko-music-hub-web.service
+MQTT 服務：systemctl status nikko-music-mqtt.service
 播放服務：systemctl status nikko-music-player.service
 同步排程：systemctl status nikko-music-sync.timer
 

@@ -1,0 +1,20 @@
+[Unit]
+Description=NikkoMusicHub MQTT cloud client
+After=network-online.target nikko-music-hub-web.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nikkolh
+Group=nikkolh
+WorkingDirectory=/srv/nikko-music/app
+Environment=NIKKO_SECRET_KEY=%H-%M:%S-nikko-music-hub
+Environment=NIKKO_MQTT_BROKER=broker.hivemq.com
+Environment=NIKKO_MQTT_PORT=1883
+Environment=NIKKO_MQTT_STORE_ID=unset
+ExecStart=/srv/nikko-music/venv/bin/python /srv/nikko-music/app/mqtt_client.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -2,12 +2,21 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { listStores, getStore, saveStore, deleteStore } from '@/lib/db';
 
+const SENSITIVE = ['mqttPassword'];
+
+function sanitize(store) {
+  const copy = { ...store };
+  SENSITIVE.forEach((k) => {
+    if (copy[k]) copy[k] = '***';
+  });
+  return copy;
+}
+
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const stores = await listStores();
-  const safe = stores.map((s) => ({ ...s, sshPassword: '***' }));
-  return NextResponse.json({ stores: safe });
+  return NextResponse.json({ stores: stores.map(sanitize) });
 }
 
 export async function POST(request) {
@@ -17,12 +26,12 @@ export async function POST(request) {
   const store = {
     storeId: data.storeId?.trim(),
     storeName: data.storeName?.trim(),
-    tailscaleIp: data.tailscaleIp?.trim(),
-    sshPort: parseInt(data.sshPort || '22', 10),
-    sshUsername: data.sshUsername?.trim() || 'pi',
-    sshPassword: data.sshPassword?.trim(),
+    mqttBroker: data.mqttBroker?.trim() || 'broker.hivemq.com',
+    mqttPort: parseInt(data.mqttPort || '1883', 10),
+    mqttUsername: data.mqttUsername?.trim() || '',
+    mqttPassword: data.mqttPassword?.trim() || '',
   };
-  if (!store.storeId || !store.storeName || !store.tailscaleIp || !store.sshPassword) {
+  if (!store.storeId || !store.storeName) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
   const existing = await getStore(store.storeId);
@@ -30,7 +39,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'storeId already exists' }, { status: 400 });
   }
   await saveStore(store);
-  return NextResponse.json({ ...store, sshPassword: '***' });
+  return NextResponse.json(sanitize(store));
 }
 
 export async function PUT(request) {
@@ -40,11 +49,10 @@ export async function PUT(request) {
   const existing = await getStore(data.storeId);
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const updated = { ...existing };
-  ['storeName', 'tailscaleIp', 'sshPort', 'sshUsername', 'sshPassword'].forEach((k) => {
+  ['storeName', 'mqttBroker', 'mqttPort', 'mqttUsername', 'mqttPassword'].forEach((k) => {
     if (data[k] === undefined) return;
-    if (k === 'sshPort') {
-      updated[k] = parseInt(data[k], 10);
-    } else if (k === 'sshPassword') {
+    if (k === 'mqttPort') updated[k] = parseInt(data[k], 10);
+    else if (k === 'mqttPassword') {
       const v = data[k]?.trim();
       if (v) updated[k] = v;
     } else {
@@ -52,7 +60,7 @@ export async function PUT(request) {
     }
   });
   await saveStore(updated);
-  return NextResponse.json({ ...updated, sshPassword: '***' });
+  return NextResponse.json(sanitize(updated));
 }
 
 export async function DELETE(request) {

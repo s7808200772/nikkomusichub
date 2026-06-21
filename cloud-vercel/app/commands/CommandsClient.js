@@ -105,14 +105,14 @@ export default function CommandsClient({ initialStores }) {
       (s) =>
         s.storeId.toLowerCase().includes(q) ||
         s.storeName.toLowerCase().includes(q) ||
-        s.tailscaleIp.toLowerCase().includes(q)
+        s.mqttBroker.toLowerCase().includes(q)
     );
   }, [stores, search]);
 
   return (
     <>
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h2 style={{ margin: '0 0 0.3rem' }}>全域指令</h2>
             <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>點擊按鈕對「所有店點」同時執行</p>
@@ -148,7 +148,7 @@ export default function CommandsClient({ initialStores }) {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索 Store ID、店名、IP"
+              placeholder="搜索 Store ID、店名、Broker"
               style={{ paddingLeft: '2.4rem', marginBottom: 0 }}
             />
           </div>
@@ -167,7 +167,7 @@ export default function CommandsClient({ initialStores }) {
                   </div>
                   <div>
                     <div className="store-card-title">{s.storeName}</div>
-                    <div className="store-card-meta">{s.storeId} · {s.tailscaleIp}</div>
+                    <div className="store-card-meta">{s.storeId} · {s.mqttBroker}</div>
                   </div>
                 </div>
                 {last?.loading ? (
@@ -224,11 +224,7 @@ export default function CommandsClient({ initialStores }) {
               {expanded[s.storeId] && (
                 <div className="log-output" style={{ maxHeight: '200px' }}>
                   {last ? (
-                    <>
-                      {last.parsed ? JSON.stringify(last.parsed, null, 2) : (last.stdout || '') + '\n' + (last.stderr || '')}
-                      {last.error && `\nERROR: ${last.error}`}
-                      {`\nok=${last.ok}`}
-                    </>
+                    JSON.stringify(last.parsed || last.result || {}, null, 2)
                   ) : (
                     '尚未執行指令'
                   )}
