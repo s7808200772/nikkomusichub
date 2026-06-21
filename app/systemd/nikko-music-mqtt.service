@@ -1,0 +1,21 @@
+[Unit]
+Description=NikkoMusicHub MQTT Cloud Agent
+After=network.target nikko-music-hub-web.service
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/srv/nikko-music/app
+Environment="PATH=/srv/nikko-music/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="NIKKO_MQTT_STORE_ID=unset"
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/srv/nikko-music/venv/bin/python -m app.mqtt_client
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nikko-mqtt
+
+[Install]
+WantedBy=multi-user.target

@@ -38,20 +38,25 @@ from app.services import mpv, rclone
 from app.services.system import (
     command_exists,
     count_mp3_files,
+    get_cpu_temp,
     get_cpu_usage,
     get_disk_usage,
     get_hostname,
     get_ip_addresses,
     get_mpv_version,
+    get_os_version,
     get_pi_model,
+    get_python_version,
     get_rclone_version,
     get_ram_usage,
     get_uptime_seconds,
+    is_tailscale_up,
     reboot,
     run,
     service_enabled,
     service_status,
     tail_log,
+    get_music_folder_size,
 )
 
 # Ensure log directory exists before configuring file handler
@@ -143,18 +148,18 @@ def build_system_info():
     ips = get_ip_addresses()
     return {
         "pi_model": get_pi_model(),
-        "os_version": "",
-        "python_version": "",
+        "os_version": get_os_version(),
+        "python_version": get_python_version(),
         "rclone_version": get_rclone_version(),
         "mpv_version": get_mpv_version(),
         "hostname": get_hostname(),
         "lan_ip": ips["lan_ip"],
         "tailscale_ip": ips["tailscale_ip"],
-        "tailscale_up": False,
-        "cpu_temp_c": 0,
+        "tailscale_up": is_tailscale_up(),
+        "cpu_temp_c": get_cpu_temp(),
         "uptime_seconds": get_uptime_seconds(),
         "disk": get_disk_usage("/"),
-        "music_folder_size": 0,
+        "music_folder_size": get_music_folder_size(MUSIC_DIR),
         "mp3_count": count_mp3_files(MUSIC_DIR),
         "web_service_status": service_status("nikko-music-hub-web.service"),
         "player_service_status": service_status("nikko-music-player.service"),
@@ -225,7 +230,7 @@ def on_message(client, userdata, msg):
 
     request_id = payload.get("requestId", str(uuid.uuid4()))
     command_key = payload.get("commandKey")
-    logger.info("Received command: %s (requestId=%s)", command_key, request_id)
+    logger.info("Received command: %s (requestId=%s) on %s", command_key, request_id, msg.topic)
 
     ok, result = handle_command(command_key)
     response = {
@@ -236,11 +241,15 @@ def on_message(client, userdata, msg):
         "error": result.get("error") if isinstance(result, dict) else None,
         "timestamp": int(time.time()),
     }
+    logger.info("Sending response for %s: ok=%s error=%s", command_key, ok, response.get("error"))
     publish(client, RESP_TOPIC, response)
 
 
 def on_disconnect(client, userdata, rc, properties=None):
-    logger.warning("Disconnected from broker (rc=%s)", rc)
+    if rc == 0:
+        logger.info("Disconnected from broker (clean disconnect)")
+    else:
+        logger.warning("Disconnected from broker (rc=%s). Auto-reconnect enabled.", rc)
 
 
 def publish_status(client):
@@ -271,6 +280,16 @@ def main():
         logger.error("NIKKO_MQTT_STORE_ID is not set. Exiting.")
         sys.exit(1)
 
+    logger.info("=" * 60)
+    logger.info("NikkoMusicHub MQTT Agent starting")
+    logger.info("Store ID: %s", MQTT_STORE_ID)
+    logger.info("Broker:   %s:%s", MQTT_BROKER, MQTT_PORT)
+    logger.info("Username: %s", MQTT_USERNAME or "(none)")
+    logger.info("CMD topic:    %s", CMD_TOPIC)
+    logger.info("RESP topic:   %s", RESP_TOPIC)
+    logger.info("STATUS topic: %s", STATUS_TOPIC)
+    logger.info("=" * 60)
+
     client = mqtt.Client(
         callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
         client_id=f"nikko-pi-{MQTT_STORE_ID}",
@@ -283,6 +302,9 @@ def main():
     client.on_message = on_message
     client.on_disconnect = on_disconnect
 
+    # Enable automatic reconnect with exponential backoff
+    client.reconnect_delay_set(min_delay=1, max_delay=30)
+
     # Start status publisher thread
     threading.Thread(target=status_loop, args=(client,), daemon=True).start()
 
@@ -291,6 +313,7 @@ def main():
         client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
     except Exception as e:
         logger.error("Initial connect failed: %s", e)
+        # With Restart=always systemd will restart us; exit non-zero to trigger it
         sys.exit(1)
 
     client.loop_forever()

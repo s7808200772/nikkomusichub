@@ -1,0 +1,20 @@
+[Unit]
+Description=NikkoMusicHub Web UI
+After=network.target sound.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/srv/nikko-music/app
+Environment="PATH=/srv/nikko-music/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="NIKKO_PORT=8080"
+Environment="NIKKO_MQTT_STORE_ID=unset"
+ExecStart=/srv/nikko-music/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8080
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=NikkoMusicHub Dropbox Sync Runner
+After=network.target
+
+[Service]
+Type=oneshot
+User=pi
+Group=pi
+WorkingDirectory=/srv/nikko-music/app
+Environment="PATH=/srv/nikko-music/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/srv/nikko-music/venv/bin/python -m app.services.sync_runner
+StandardOutput=journal
+StandardError=journal

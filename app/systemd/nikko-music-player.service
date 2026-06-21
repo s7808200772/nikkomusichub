@@ -1,0 +1,18 @@
+[Unit]
+Description=NikkoMusicHub mpv Player
+After=network.target sound.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+Environment="PATH=/srv/nikko-music/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="XDG_RUNTIME_DIR=/run/user/1000"
+ExecStart=/srv/nikko-music/venv/bin/python -m app.services.mpv_check
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
