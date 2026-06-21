@@ -3,27 +3,77 @@
 {% block content %}
 <h1>Logs</h1>
 
-<div class="grid">
-  <div class="card">
-    <h2>同步 Log</h2>
-    <pre class="log-output" id="log-sync">載入中…</pre>
+<div class="card">
+  <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1rem;">
+    <button class="badge badge-blue" onclick="filterLogs('all')">全部</button>
+    <button class="badge badge-green" onclick="filterLogs('audit')">Audit</button>
+    <button class="badge badge-yellow" onclick="filterLogs('sync')">Sync</button>
+    <button class="badge badge-purple" onclick="filterLogs('player')">Player</button>
   </div>
-  <div class="card">
-    <h2>播放 Log</h2>
-    <pre class="log-output" id="log-player">載入中…</pre>
-  </div>
-  <div class="card">
-    <h2>Audit Log</h2>
-    <pre class="log-output" id="log-audit">載入中…</pre>
+
+  <div style="overflow-x:auto;">
+    <table style="width:100%; font-size:.85rem; border-collapse:collapse;">
+      <thead>
+        <tr style="text-align:left; border-bottom:1px solid var(--border);">
+          <th style="padding:.5rem; width:90px;">類型</th>
+          <th style="padding:.5rem; width:160px;">時間</th>
+          <th style="padding:.5rem;">訊息</th>
+        </tr>
+      </thead>
+      <tbody id="log-table">
+        <tr><td colspan="3" style="padding:.5rem; color:var(--muted)">載入中…</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
 <script>
+let allEntries = [];
+let currentFilter = 'all';
+
+function typeBadge(type) {
+  const map = {
+    audit: 'badge-green',
+    'audit-file': 'badge-green',
+    sync: 'badge-yellow',
+    player: 'badge-purple',
+  };
+  return `<span class="badge ${map[type] || 'badge-blue'}">${type}</span>`;
+}
+
+function renderLogs() {
+  const tbody = document.getElementById('log-table');
+  const filtered = currentFilter === 'all'
+    ? allEntries
+    : allEntries.filter(e => e.type === currentFilter || (currentFilter === 'audit' && e.type === 'audit-file'));
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="padding:.5rem; color:var(--muted)">無紀錄</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(e => `
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:.5rem; vertical-align:top;">${typeBadge(e.type)}</td>
+      <td style="padding:.5rem; color:var(--muted); vertical-align:top; white-space:nowrap;">${e.timestamp || '-'}</td>
+      <td style="padding:.5rem; vertical-align:top;">${escapeHtml(e.message)}</td>
+    </tr>
+  `).join('');
+}
+
+function filterLogs(type) {
+  currentFilter = type;
+  renderLogs();
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 async function loadLogs() {
   const data = await apiGet('/api/logs/all');
-  document.getElementById('log-sync').textContent = data.sync_log || '無紀錄';
-  document.getElementById('log-player').textContent = data.player_log || '無紀錄';
-  document.getElementById('log-audit').textContent = data.audit_log || '無紀錄';
+  allEntries = data.entries || [];
+  renderLogs();
 }
 loadLogs();
 setInterval(loadLogs, 10000);

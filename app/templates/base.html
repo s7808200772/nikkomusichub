@@ -12,12 +12,10 @@
       <h1>🎵 NikkoMusicHub</h1>
       <nav>
         <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
-        <a href="/setup" class="{% if request.url.path == '/setup' %}active{% endif %}">Setup Wizard</a>
+        <a href="/player" class="{% if request.url.path == '/player' %}active{% endif %}">Player</a>
         <a href="/dropbox" class="{% if request.url.path == '/dropbox' %}active{% endif %}">Dropbox Sync</a>
-        <a href="/player" class="{% if request.url.path == '/player' %}active{% endif %}">Player Control</a>
-        <a href="/music-library" class="{% if request.url.path == '/music-library' %}active{% endif %}">Music Library</a>
-        <a href="/system" class="{% if request.url.path == '/system' %}active{% endif %}">System Status</a>
         <a href="/logs" class="{% if request.url.path == '/logs' %}active{% endif %}">Logs</a>
+        <a href="/setup" class="{% if request.url.path == '/setup' %}active{% endif %}">Setup</a>
         <a href="/settings" class="{% if request.url.path == '/settings' %}active{% endif %}">Settings</a>
         <a href="/logout">Logout</a>
       </nav>

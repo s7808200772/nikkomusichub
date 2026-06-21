@@ -1,7 +1,7 @@
 """System status and maintenance routes."""
 import shutil
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import MUSIC_DIR, PLAYER_LOG_PATH, SYNC_LOG_PATH, SYSTEM_LOG_PATH
@@ -38,10 +38,10 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/system", response_class=HTMLResponse)
+@router.get("/system")
 async def system_page(request: Request):
     get_current_user_or_local(request)
-    return templates.TemplateResponse("system.html", {"request": request})
+    return RedirectResponse(url="/", status_code=303)
 
 
 @router.get("/api/system/info")
