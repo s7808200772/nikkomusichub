@@ -11,7 +11,7 @@ from app.config import (
 )
 from app.db import get_recent_sync_logs, get_setting
 from app.routes.auth import get_current_user_or_local
-from app.services import mpv, rclone
+from app.services import mpv
 from app.services.system import (
     command_exists,
     count_mp3_files,
@@ -53,11 +53,10 @@ async def dashboard_data(request: Request):
     mpv_installed = command_exists("mpv")
     player_active = service_status("nikko-music-player.service")
 
-    # Check WebDAV connectivity without leaking credentials
-    webdav_ok = False
-    if rclone_installed and RCLONE_CONFIG_PATH.exists():
-        test = rclone.test_remote(get_setting("webdav_remote", "qnapmusic"))
-        webdav_ok = test["ok"]
+    # Report WebDAV status based on whether a config exists.
+    # Actual connectivity is tested manually from Settings to avoid blocking
+    # the dashboard worker with a synchronous network call every 5 seconds.
+    webdav_ok = rclone_installed and RCLONE_CONFIG_PATH.exists()
 
     last_sync = get_setting("last_sync_at")
     last_sync_status = get_setting("last_sync_status", "never")
