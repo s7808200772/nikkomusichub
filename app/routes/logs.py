@@ -3,6 +3,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
 from app.config import AUDIT_LOG_PATH, PLAYER_LOG_PATH, SYNC_LOG_PATH
 from app.db import get_recent_audit_logs
