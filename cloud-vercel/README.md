@@ -9,7 +9,7 @@
 - Dashboard 查看各店狀態
 - 遠端執行預定義指令（播放控制、同步、重啟、重開機）
 - Commands 頁面以圖示卡片列出所有店點
-- 全域設定：Dropbox Token、Dropbox 音樂目錄
+- 全域設定：預設 MQTT broker
 
 ## 運作方式
 

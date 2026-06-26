@@ -31,10 +31,17 @@ DEFAULT_PASSWORD = "topup30%off"
 # mpv IPC
 MPV_SOCKET = "/tmp/nikko-mpv.sock"
 
-# rclone
+# rclone / WebDAV
 RCLONE_CONFIG_PATH = DATA_DIR / "rclone.conf"
-RCLONE_REMOTE_NAME_DEFAULT = "dropbox"
-RCLONE_DROPBOX_PATH_DEFAULT = "NikkoMusic"
+RCLONE_REMOTE_NAME_DEFAULT = "qnapmusic"
+RCLONE_WEBDAV_URL_DEFAULT = "http://100.106.208.65:5005/"
+RCLONE_WEBDAV_VENDOR_DEFAULT = "other"
+RCLONE_REMOTE_PATH_DEFAULT = "qnapmusic:NikkoMusic"
+
+# QNAP NAS (Tailscale)
+QNAP_TAILSCALE_IP = "100.106.208.65"
+QNAP_WEBDAV_HTTP_PORT = 5005
+QNAP_WEBDAV_HTTPS_PORT = 5006
 
 # Service names
 WEB_SERVICE = "nikko-music-hub-web.service"

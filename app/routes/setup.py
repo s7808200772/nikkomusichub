@@ -10,7 +10,6 @@ from app.config import (
     BASE_DIR,
     LOGS_DIR,
     MUSIC_DIR,
-    RCLONE_DROPBOX_PATH_DEFAULT,
     RCLONE_REMOTE_NAME_DEFAULT,
     SCRIPTS_DIR,
 )
@@ -77,51 +76,6 @@ async def create_folders(request: Request):
         return {"ok": True, "stdout": f"Folders created under {BASE_DIR}", "stderr": ""}
     except Exception as e:
         return {"ok": False, "stdout": "", "stderr": str(e)}
-
-
-@router.post("/api/setup/dropbox")
-async def setup_dropbox(
-    request: Request,
-    remote_name: str = Form(RCLONE_REMOTE_NAME_DEFAULT),
-    token_json: str = Form(...),
-    dropbox_path: str = Form(RCLONE_DROPBOX_PATH_DEFAULT),
-    local_path: str = Form(str(MUSIC_DIR)),
-):
-    user = get_current_user_or_local(request)
-    try:
-        remote_name = re.sub(r"[^a-zA-Z0-9_-]", "", remote_name) or RCLONE_REMOTE_NAME_DEFAULT
-        if not safe_path_validate(local_path):
-            raise ValueError("Invalid local path")
-        # Only update rclone config if a token was provided; otherwise keep existing config
-        if token_json and token_json.strip():
-            remote = rclone.write_rclone_config(remote_name, token_json)
-            set_setting("dropbox_remote", remote)
-        set_setting("dropbox_path", dropbox_path.strip("/"))
-        set_setting("local_music_path", local_path)
-        audit(user, "setup_dropbox", {"remote": remote_name, "dropbox_path": dropbox_path, "local_path": local_path})
-        return {"ok": True, "stdout": f"Dropbox remote '{remote_name}' settings saved", "stderr": ""}
-    except Exception as e:
-        return {"ok": False, "stdout": "", "stderr": str(e)}
-
-
-@router.post("/api/setup/test-dropbox")
-async def test_dropbox(request: Request):
-    user = get_current_user_or_local(request)
-    remote = get_setting("dropbox_remote", "dropbox")
-    res = rclone.test_dropbox(remote)
-    _log("test_dropbox", res, user)
-    return res
-
-
-@router.post("/api/setup/sync")
-async def manual_sync(request: Request):
-    user = get_current_user_or_local(request)
-    remote = get_setting("dropbox_remote", "dropbox")
-    path = get_setting("dropbox_path", RCLONE_DROPBOX_PATH_DEFAULT)
-    local = get_setting("local_music_path", str(MUSIC_DIR))
-    res = rclone.sync_music(remote, path, local)
-    _log("manual_sync", res, user)
-    return res
 
 
 @router.post("/api/setup/install-service")

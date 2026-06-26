@@ -113,7 +113,7 @@ MQTT 服務：systemctl status nikko-music-mqtt.service
 後續操作：
 1. 用瀏覽器開啟上述網址並登入。
 2. 進入 Setup Wizard 安裝 rclone 與 mpv。
-3. 設定 Dropbox token 並測試連線。
+3. 進入 NAS WebDAV Sync 設定 QNAP WebDAV 帳號密碼並測試連線。
 4. 同步音樂後即可播放。
 
 為了安全，請登入後立即到 Settings 修改預設密碼。

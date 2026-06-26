@@ -34,7 +34,7 @@ const CATEGORIES = [
     label: '同步與掃描',
     color: '#0ea5e9',
     commands: [
-      { key: 'sync', label: '同步 Dropbox', icon: RefreshCw },
+      { key: 'sync', label: '同步 NAS WebDAV', icon: RefreshCw },
       { key: 'rescan', label: '重新掃描', icon: FolderSearch },
     ],
   },

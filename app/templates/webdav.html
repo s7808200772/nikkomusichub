@@ -1,24 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Dropbox Sync - NikkoMusicHub{% endblock %}
+{% block title %}NAS WebDAV Sync - NikkoMusicHub{% endblock %}
 {% block content %}
-<h1>Dropbox Sync</h1>
+<h1>NAS WebDAV Sync</h1>
 
 <div class="grid">
   <div class="card">
-    <h2>Dropbox 連線</h2>
-    <form id="token-form" onsubmit="saveToken(event)">
-      <div class="form-group"><label>Remote Name</label><input name="remote_name" id="remote_name" value="dropbox" required></div>
-      <div class="form-group">
-        <label>Dropbox Token JSON（支援 refresh token）</label>
-        <textarea name="token_json" id="token_json" rows="5" placeholder='{"access_token":"...","token_type":"bearer","refresh_token":"...","expiry":"..."}'></textarea>
-        <small style="color:var(--muted)">建議用電腦執行 <code>rclone config</code> 產生含 refresh_token 的 token JSON。</small>
-        <p id="token-status" style="color:var(--accent-2); font-size:.85rem; margin-top:.3rem;"></p>
-      </div>
-      <div class="form-group"><label>Dropbox 音樂路徑</label><input name="dropbox_path" id="dropbox_path" value="NikkoMusic" required></div>
-      <div class="form-group"><label>本地音樂路徑</label><input name="local_path" id="local_path" value="/srv/nikko-music/music" required></div>
-      <button type="submit" class="primary">儲存連線設定</button>
+    <h2>WebDAV 連線</h2>
+    <form id="webdav-form" onsubmit="saveWebDAV(event)">
+      <div class="form-group"><label>Remote Name</label><input name="remote_name" id="remote_name" value="qnapmusic" required></div>
+      <div class="form-group"><label>WebDAV URL</label><input name="url" id="url" value="http://100.106.208.65:5005/" required></div>
+      <div class="form-group"><label>Vendor</label><input name="vendor" id="vendor" value="other" required></div>
+      <div class="form-group"><label>Username</label><input name="username" id="username" autocomplete="off" required></div>
+      <div class="form-group"><label>Password</label><input type="password" name="password" id="password" autocomplete="off"></div>
+      <div class="form-group"><label>Remote Music Path</label><input name="remote_path" id="remote_path" value="qnapmusic:NikkoMusic" required></div>
+      <div class="form-group"><label>Local Music Path</label><input name="local_path" id="local_path" value="/srv/nikko-music/music" required></div>
+      <p id="webdav-status" style="color:var(--accent-2); font-size:.85rem;"></p>
+      <button type="submit" class="primary">儲存 WebDAV 設定</button>
     </form>
-    <button onclick="runAction(this, '/api/setup/test-dropbox', null, 'sync-log')" style="margin-top:.5rem">測試 Dropbox 連線</button>
+    <button onclick="runAction(this, '/api/webdav/test-remote', null, 'sync-log')" style="margin-top:.5rem">測試 WebDAV 連線</button>
+    <button onclick="runAction(this, '/api/webdav/list-music', null, 'sync-log')" style="margin-top:.5rem">列出 NAS 音樂檔案</button>
   </div>
 
   <div class="card">
@@ -26,7 +26,7 @@
     <form id="sync-form" onsubmit="saveSyncSettings(event)">
       <div class="form-group"><label>同步模式</label>
         <select name="sync_mode" id="sync_mode">
-          <option value="sync">sync（Dropbox 為主，本地同步）</option>
+          <option value="sync">sync（NAS 為主，本地同步）</option>
         </select>
       </div>
       <div class="form-group">
@@ -35,7 +35,7 @@
       <div class="form-group"><label>每日同步時間</label><input name="sync_time" id="sync_time" value="03:00" required></div>
       <div class="form-group"><label>開機延遲同步（分鐘）</label><input name="boot_delay_min" id="boot_delay_min" type="number" value="2" required></div>
       <div class="form-group">
-        <label><input type="checkbox" name="auto_restart_player" id="auto_restart_player" value="1" checked> 同步完成後自動重啟播放</label>
+        <label><input type="checkbox" name="auto_restart_player" id="auto_restart_player" value="1" checked> 同步完成後自動重啟播放器</label>
       </div>
       <button type="submit" class="primary">儲存同步設定</button>
     </form>
@@ -43,8 +43,9 @@
 
   <div class="card">
     <h2>手動操作</h2>
-    <button onclick="runAction(this, '/api/dropbox/dry-run', null, 'sync-log')">Dry-run 測試</button>
-    <button onclick="runAction(this, '/api/dropbox/sync', null, 'sync-log')" class="success" style="margin-top:.5rem">立即同步</button>
+    <button onclick="runAction(this, '/api/webdav/dry-run', null, 'sync-log')">Dry-run 測試同步</button>
+    <button onclick="runAction(this, '/api/webdav/sync', null, 'sync-log')" class="success" style="margin-top:.5rem">立即同步</button>
+    <button onclick="if(confirm('確定要清空本地音樂並重新同步嗎？')) runAction(this, '/api/webdav/clear-local', null, 'sync-log')" class="danger" style="margin-top:.5rem">清空本地音樂</button>
   </div>
 
   <div class="card">
@@ -60,11 +61,14 @@
 
 <script>
 async function loadSettings() {
-  const s = await apiGet('/api/dropbox/settings');
+  const s = await apiGet('/api/webdav/settings');
   document.getElementById('remote_name').value = s.remote_name;
-  document.getElementById('dropbox_path').value = s.dropbox_path;
+  document.getElementById('url').value = s.url;
+  document.getElementById('vendor').value = s.vendor;
+  document.getElementById('username').value = s.username;
+  document.getElementById('remote_path').value = s.remote_path;
   document.getElementById('local_path').value = s.local_path;
-  document.getElementById('token-status').textContent = s.configured ? '✅ 已設定 Dropbox token（重新貼上可覆蓋）' : '⚠️ 尚未設定 Dropbox token';
+  document.getElementById('webdav-status').textContent = s.configured ? '✅ 已設定 WebDAV' : '⚠️ 尚未設定 WebDAV';
 
   document.getElementById('sync_mode').value = s.sync_mode;
   document.getElementById('daily_sync_enabled').checked = s.daily_sync_enabled;
@@ -73,12 +77,12 @@ async function loadSettings() {
   document.getElementById('auto_restart_player').checked = s.auto_restart_player;
 }
 
-async function saveToken(e) {
+async function saveWebDAV(e) {
   e.preventDefault();
   const btn = e.target.querySelector('button[type="submit"]');
   const fd = new FormData(e.target);
   setBusy(btn, true);
-  const res = await apiPost('/api/setup/dropbox', fd);
+  const res = await apiPost('/api/webdav/settings', fd);
   document.getElementById('sync-log').textContent = (res.stdout || '') + '\n' + (res.stderr || '');
   showToast(res.ok ? '已儲存' : '失敗', res.ok ? 'success' : 'error');
   if (res.ok) await loadSettings();
@@ -92,14 +96,14 @@ async function saveSyncSettings(e) {
   if (!document.getElementById('daily_sync_enabled').checked) fd.set('daily_sync_enabled', '0');
   if (!document.getElementById('auto_restart_player').checked) fd.set('auto_restart_player', '0');
   setBusy(btn, true);
-  const res = await apiPost('/api/dropbox/settings', fd);
+  const res = await apiPost('/api/webdav/settings', fd);
   showToast(res.ok ? '已儲存' : '失敗', res.ok ? 'success' : 'error');
   if (res.ok) await loadSettings();
   setBusy(btn, false);
 }
 
 async function loadHistory() {
-  const data = await apiGet('/api/dropbox/sync-logs');
+  const data = await apiGet('/api/webdav/sync-logs');
   const el = document.getElementById('sync-history');
   if (!data.logs.length) { el.innerHTML = '<p style="color:var(--muted)">尚無紀錄</p>'; return; }
   el.innerHTML = '<table style="width:100%;font-size:.85rem"><tr><th>時間</th><th>狀態</th><th>訊息</th></tr>' +

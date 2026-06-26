@@ -9,7 +9,7 @@ const COMMANDS = [
   { key: 'status_dashboard', label: 'Dashboard' },
   { key: 'status_system', label: '系統資訊' },
   { key: 'status_player', label: '播放狀態' },
-  { key: 'sync', label: '同步 Dropbox' },
+  { key: 'sync', label: '同步 NAS WebDAV' },
   { key: 'rescan', label: '重新掃描' },
   { key: 'restart_player', label: '重啟播放服務' },
   { key: 'reboot', label: '重開機' },

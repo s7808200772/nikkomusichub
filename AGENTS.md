@@ -16,7 +16,8 @@
   - Pi 定期發布狀態到 `nikko/<storeId>/status`
 - 不再需要 Tailscale、不再需要 SSH。
 - Pi 本機 API 仍綁定 `127.0.0.1:8080`，只接受本機存取。
-- 音樂同步使用 rclone + Dropbox。
+- 音樂同步使用 rclone + QNAP NAS WebDAV（經 Tailscale 內網）。
+- 預設 WebDAV URL：`http://100.106.208.65:5005/`，remote：`qnapmusic:NikkoMusic`，本地：`/srv/nikko-music/music`。
 - 播放器使用 mpv + IPC socket。
 
 ## 開發與部署慣例

@@ -18,7 +18,7 @@ export default async function SettingsPage() {
       <main className="container">
         <div className="page-header">
           <h1>設定</h1>
-          <p>設定 Dropbox 與音樂目錄等全域參數</p>
+          <p>設定 MQTT broker 等全域參數</p>
         </div>
         <SettingsClient initialSettings={settings} />
       </main>

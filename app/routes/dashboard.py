@@ -53,11 +53,11 @@ async def dashboard_data(request: Request):
     mpv_installed = command_exists("mpv")
     player_active = service_status("nikko-music-player.service")
 
-    # Check dropbox connectivity without leaking token
-    dropbox_ok = False
+    # Check WebDAV connectivity without leaking credentials
+    webdav_ok = False
     if rclone_installed and RCLONE_CONFIG_PATH.exists():
-        test = rclone.test_dropbox(get_setting("dropbox_remote", "dropbox"))
-        dropbox_ok = test["ok"]
+        test = rclone.test_remote(get_setting("webdav_remote", "qnapmusic"))
+        webdav_ok = test["ok"]
 
     last_sync = get_setting("last_sync_at")
     last_sync_status = get_setting("last_sync_status", "never")
@@ -82,10 +82,14 @@ async def dashboard_data(request: Request):
         "rclone_installed": rclone_installed,
         "mpv_installed": mpv_installed,
         "player_active": player_active,
-        "dropbox_connected": dropbox_ok,
+        "webdav_connected": webdav_ok,
         "last_sync_at": last_sync,
         "last_sync_status": last_sync_status,
         "last_sync_message": last_sync_message,
+        "webdav_remote": get_setting("webdav_remote", "qnapmusic"),
+        "webdav_url": get_setting("webdav_url", "http://100.106.208.65:5005/"),
+        "webdav_remote_path": get_setting("webdav_remote_path", "qnapmusic:NikkoMusic"),
+        "local_music_path": get_setting("local_music_path", str(MUSIC_DIR)),
         "player_status": mpv_status["state"],
         "current_track": mpv_status.get("current"),
         "mp3_count": count_mp3_files(MUSIC_DIR),

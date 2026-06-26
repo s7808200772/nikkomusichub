@@ -1,5 +1,5 @@
 [Unit]
-Description=NikkoMusicHub Daily Sync Timer
+Description=NikkoMusicHub WebDAV Daily Sync Timer
 
 [Timer]
 OnCalendar=*-*-* 03:00:00

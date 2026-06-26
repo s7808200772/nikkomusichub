@@ -107,12 +107,12 @@ def build_dashboard():
     mpv_installed = command_exists("mpv")
     player_active = service_status("nikko-music-player.service")
 
-    dropbox_ok = False
+    webdav_ok = False
     if rclone_installed and RCLONE_CONFIG_PATH.exists():
         try:
-            dropbox_ok = rclone.test_dropbox(get_setting("dropbox_remote", "dropbox")).get("ok", False)
+            webdav_ok = rclone.test_remote(get_setting("webdav_remote", "qnapmusic")).get("ok", False)
         except Exception:
-            dropbox_ok = False
+            webdav_ok = False
 
     recent_errors = ""
     for log_path in (SYNC_LOG_PATH, PLAYER_LOG_PATH):
@@ -133,7 +133,7 @@ def build_dashboard():
         "rclone_installed": rclone_installed,
         "mpv_installed": mpv_installed,
         "player_active": player_active,
-        "dropbox_connected": dropbox_ok,
+        "webdav_connected": webdav_ok,
         "last_sync_at": get_setting("last_sync_at"),
         "last_sync_status": get_setting("last_sync_status", "never"),
         "last_sync_message": get_setting("last_sync_message", ""),
@@ -188,16 +188,16 @@ def handle_command(command_key):
         if command_key == "player_next":
             return True, mpv.next_track()
         if command_key == "sync":
-            remote = get_setting("dropbox_remote", "dropbox")
-            path = get_setting("dropbox_path", "NikkoMusic")
+            remote_path = get_setting("webdav_remote_path", "qnapmusic:NikkoMusic")
             local = get_setting("local_music_path", str(MUSIC_DIR))
-            res = rclone.sync_music(remote, path, local)
+            res = rclone.sync_music(remote_path, local)
             if res.get("ok") and bool(int(get_setting("auto_restart_player", "1"))):
                 if mpv.mpv_is_running():
                     mpv.reload_playlist()
                 else:
                     mpv.start_player()
             return res.get("ok", False), res
+
         if command_key == "rescan":
             return True, mpv.reload_playlist()
         if command_key == "restart_player":

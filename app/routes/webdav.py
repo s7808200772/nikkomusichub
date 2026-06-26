@@ -1,6 +1,5 @@
-"""Dropbox sync settings page."""
+"""QNAP NAS WebDAV sync settings page."""
 import re
-from datetime import datetime
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
@@ -8,47 +7,55 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import (
     MUSIC_DIR,
-    RCLONE_DROPBOX_PATH_DEFAULT,
     RCLONE_REMOTE_NAME_DEFAULT,
+    RCLONE_REMOTE_PATH_DEFAULT,
+    RCLONE_WEBDAV_URL_DEFAULT,
+    RCLONE_WEBDAV_VENDOR_DEFAULT,
     SYNC_TIME_DEFAULT,
 )
 from app.db import audit, get_recent_sync_logs, get_setting, set_setting
 from app.routes.auth import get_current_user_or_local
 from app.services import rclone
 from app.services.system import run, safe_path_validate
-from app.config import RCLONE_CONFIG_PATH
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/dropbox", response_class=HTMLResponse)
-async def dropbox_page(request: Request):
+@router.get("/webdav", response_class=HTMLResponse)
+async def webdav_page(request: Request):
     get_current_user_or_local(request)
-    return templates.TemplateResponse("dropbox.html", {"request": request})
+    return templates.TemplateResponse("webdav.html", {"request": request})
 
 
-@router.get("/api/dropbox/settings")
-async def dropbox_settings(request: Request):
+@router.get("/api/webdav/settings")
+async def webdav_settings(request: Request):
     get_current_user_or_local(request)
     return {
-        "remote_name": get_setting("dropbox_remote", RCLONE_REMOTE_NAME_DEFAULT),
-        "dropbox_path": get_setting("dropbox_path", RCLONE_DROPBOX_PATH_DEFAULT),
+        "remote_name": get_setting("webdav_remote", RCLONE_REMOTE_NAME_DEFAULT),
+        "url": get_setting("webdav_url", RCLONE_WEBDAV_URL_DEFAULT),
+        "vendor": get_setting("webdav_vendor", RCLONE_WEBDAV_VENDOR_DEFAULT),
+        "username": get_setting("webdav_username", ""),
+        "remote_path": get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT),
         "local_path": get_setting("local_music_path", str(MUSIC_DIR)),
         "sync_mode": get_setting("sync_mode", "sync"),
         "daily_sync_enabled": bool(int(get_setting("daily_sync_enabled", "1"))),
         "sync_time": get_setting("sync_time", SYNC_TIME_DEFAULT),
         "boot_delay_min": int(get_setting("sync_boot_delay_min", "2")),
         "auto_restart_player": bool(int(get_setting("auto_restart_player", "1"))),
-        "configured": RCLONE_CONFIG_PATH.exists(),
+        "configured": rclone.get_rclone_config_exists(),
     }
 
 
-@router.post("/api/dropbox/settings")
-async def save_dropbox_settings(
+@router.post("/api/webdav/settings")
+async def save_webdav_settings(
     request: Request,
     remote_name: str = Form(RCLONE_REMOTE_NAME_DEFAULT),
-    dropbox_path: str = Form(RCLONE_DROPBOX_PATH_DEFAULT),
+    url: str = Form(RCLONE_WEBDAV_URL_DEFAULT),
+    vendor: str = Form(RCLONE_WEBDAV_VENDOR_DEFAULT),
+    username: str = Form(""),
+    password: str = Form(""),
+    remote_path: str = Form(RCLONE_REMOTE_PATH_DEFAULT),
     local_path: str = Form(str(MUSIC_DIR)),
     sync_mode: str = Form("sync"),
     sync_time: str = Form(SYNC_TIME_DEFAULT),
@@ -58,12 +65,21 @@ async def save_dropbox_settings(
 ):
     user = get_current_user_or_local(request)
     remote_name = re.sub(r"[^a-zA-Z0-9_-]", "", remote_name) or RCLONE_REMOTE_NAME_DEFAULT
-    dropbox_path = dropbox_path.strip("/")
     if not safe_path_validate(local_path):
         return {"ok": False, "stderr": "Invalid local path"}
 
-    set_setting("dropbox_remote", remote_name)
-    set_setting("dropbox_path", dropbox_path)
+    # Only rewrite rclone config if a password was provided; otherwise keep existing config
+    if password:
+        try:
+            rclone.write_rclone_config(remote_name, url, vendor, username, password)
+        except Exception as e:
+            return {"ok": False, "stderr": str(e)}
+
+    set_setting("webdav_remote", remote_name)
+    set_setting("webdav_url", url)
+    set_setting("webdav_vendor", vendor)
+    set_setting("webdav_username", username)
+    set_setting("webdav_remote_path", remote_path)
     set_setting("local_music_path", local_path)
     set_setting("sync_mode", sync_mode)
     set_setting("daily_sync_enabled", str(daily_sync_enabled))
@@ -75,7 +91,7 @@ async def save_dropbox_settings(
     h, m = sync_time.split(":")
     if daily_sync_enabled:
         timer_content = f"""[Unit]
-Description=NikkoMusicHub Dropbox sync timer
+Description=NikkoMusicHub WebDAV sync timer
 
 [Timer]
 OnBootSec={boot_delay_min}min
@@ -87,7 +103,7 @@ WantedBy=timers.target
 """
     else:
         timer_content = f"""[Unit]
-Description=NikkoMusicHub Dropbox sync timer (disabled)
+Description=NikkoMusicHub WebDAV sync timer (disabled)
 
 [Timer]
 # Daily sync disabled; only run once after boot if needed
@@ -110,29 +126,51 @@ WantedBy=timers.target
     except Exception as e:
         return {"ok": False, "stderr": str(e)}
 
-    audit(user, "save_dropbox_settings", {"remote": remote_name, "path": dropbox_path, "daily_sync": bool(daily_sync_enabled)})
+    audit(user, "save_webdav_settings", {
+        "remote": remote_name,
+        "url": url,
+        "remote_path": remote_path,
+        "daily_sync": bool(daily_sync_enabled),
+    })
     return {"ok": True}
 
 
-@router.post("/api/dropbox/dry-run")
-async def dry_run_sync(request: Request):
+@router.post("/api/webdav/test-remote")
+async def test_webdav_remote(request: Request):
     user = get_current_user_or_local(request)
-    remote = get_setting("dropbox_remote", "dropbox")
-    path = get_setting("dropbox_path", RCLONE_DROPBOX_PATH_DEFAULT)
-    local = get_setting("local_music_path", str(MUSIC_DIR))
-    res = rclone.sync_music(remote, path, local, dry_run=True)
-    audit(user, "dry_run_sync", {"ok": res["ok"]})
+    remote = get_setting("webdav_remote", RCLONE_REMOTE_NAME_DEFAULT)
+    res = rclone.test_remote(remote)
+    audit(user, "test_webdav_remote", {"ok": res["ok"]})
     return res
 
 
-@router.post("/api/dropbox/sync")
-async def dropbox_sync(request: Request):
+@router.post("/api/webdav/list-music")
+async def list_webdav_music(request: Request):
     user = get_current_user_or_local(request)
-    remote = get_setting("dropbox_remote", "dropbox")
-    path = get_setting("dropbox_path", RCLONE_DROPBOX_PATH_DEFAULT)
+    remote = get_setting("webdav_remote", RCLONE_REMOTE_NAME_DEFAULT)
+    remote_path = get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT)
+    res = rclone.list_remote_music(remote, remote_path)
+    audit(user, "list_webdav_music", {"ok": res["ok"]})
+    return res
+
+
+@router.post("/api/webdav/dry-run")
+async def dry_run_sync(request: Request):
+    user = get_current_user_or_local(request)
+    remote_path = get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT)
     local = get_setting("local_music_path", str(MUSIC_DIR))
-    res = rclone.sync_music(remote, path, local)
-    audit(user, "dropbox_sync", {"ok": res["ok"]})
+    res = rclone.sync_music(remote_path, local, dry_run=True)
+    audit(user, "dry_run_webdav_sync", {"ok": res["ok"]})
+    return res
+
+
+@router.post("/api/webdav/sync")
+async def webdav_sync(request: Request):
+    user = get_current_user_or_local(request)
+    remote_path = get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT)
+    local = get_setting("local_music_path", str(MUSIC_DIR))
+    res = rclone.sync_music(remote_path, local)
+    audit(user, "webdav_sync", {"ok": res["ok"]})
 
     if res["ok"] and bool(int(get_setting("auto_restart_player", "1"))):
         from app.services import mpv
@@ -143,7 +181,16 @@ async def dropbox_sync(request: Request):
     return res
 
 
-@router.get("/api/dropbox/sync-logs")
+@router.post("/api/webdav/clear-local")
+async def clear_local(request: Request):
+    user = get_current_user_or_local(request)
+    local = get_setting("local_music_path", str(MUSIC_DIR))
+    res = rclone.clear_local_music(local)
+    audit(user, "clear_local_music", {"ok": res["ok"]})
+    return res
+
+
+@router.get("/api/webdav/sync-logs")
 async def sync_logs(request: Request, limit: int = 20):
     get_current_user_or_local(request)
     return {"logs": get_recent_sync_logs(limit)}

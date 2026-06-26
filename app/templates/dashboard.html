@@ -24,15 +24,23 @@
     <div class="metric"><span class="label">rclone</span><span class="value" id="rclone-status">-</span></div>
     <div class="metric"><span class="label">mpv</span><span class="value" id="mpv-status">-</span></div>
     <div class="metric"><span class="label">音樂服務</span><span class="value" id="player-service">-</span></div>
-    <div class="metric"><span class="label">Dropbox</span><span class="value" id="dropbox-status">-</span></div>
+
+
+  <div class="card">
+    <h2>NAS WebDAV 同步</h2>
+    <div class="metric"><span class="label">WebDAV 狀態</span><span class="value" id="webdav-status">-</span></div>
+    <div class="metric"><span class="label">Remote</span><span class="value" id="webdav-remote" style="font-size:.8rem">-</span></div>
+    <div class="metric"><span class="label">URL</span><span class="value" id="webdav-url" style="font-size:.75rem">-</span></div>
+    <div class="metric"><span class="label">Remote Path</span><span class="value" id="webdav-remote-path" style="font-size:.8rem">-</span></div>
+    <div class="metric"><span class="label">本地路徑</span><span class="value" id="local-music-path" style="font-size:.8rem">-</span></div>
+    <div class="metric"><span class="label">MP3 數量</span><span class="value" id="mp3-count">-</span></div>
+    <div class="metric"><span class="label">最近同步</span><span class="value" id="last-sync">-</span></div>
   </div>
 
   <div class="card">
-    <h2>音樂與同步</h2>
+    <h2>播放器</h2>
     <div class="metric"><span class="label">播放狀態</span><span class="value" id="player-state">-</span></div>
     <div class="metric"><span class="label">目前曲目</span><span class="value" id="current-track" style="font-size:.85rem">-</span></div>
-    <div class="metric"><span class="label">MP3 數量</span><span class="value" id="mp3-count">-</span></div>
-    <div class="metric"><span class="label">最近同步</span><span class="value" id="last-sync">-</span></div>
   </div>
 
   <div class="card">
@@ -101,11 +109,15 @@ async function loadDashboard() {
   document.getElementById('rclone-status').innerHTML = statusDot(data.rclone_installed ? 'green' : 'gray') + (data.rclone_installed ? '已安裝' : '未安裝');
   document.getElementById('mpv-status').innerHTML = statusDot(data.mpv_installed ? 'green' : 'gray') + (data.mpv_installed ? '已安裝' : '未安裝');
   document.getElementById('player-service').innerHTML = statusDot(data.player_active === 'active' ? 'green' : (data.player_active === 'activating' ? 'blue' : 'gray')) + data.player_active;
-  document.getElementById('dropbox-status').innerHTML = statusDot(data.dropbox_connected ? 'green' : 'gray') + (data.dropbox_connected ? '可連線' : '未連線');
-  document.getElementById('player-state').innerHTML = statusDot(data.player_status === 'playing' ? 'green' : (data.player_status === 'paused' ? 'yellow' : 'gray')) + data.player_status;
-  document.getElementById('current-track').textContent = data.current_track || '-';
+  document.getElementById('webdav-status').innerHTML = statusDot(data.webdav_connected ? 'green' : 'gray') + (data.webdav_connected ? '可連線' : '未連線');
+  document.getElementById('webdav-remote').textContent = data.webdav_remote;
+  document.getElementById('webdav-url').textContent = data.webdav_url;
+  document.getElementById('webdav-remote-path').textContent = data.webdav_remote_path;
+  document.getElementById('local-music-path').textContent = data.local_music_path;
   document.getElementById('mp3-count').textContent = data.mp3_count;
   document.getElementById('last-sync').innerHTML = (data.last_sync_at || '從未') + ' ' + (data.last_sync_status || '');
+  document.getElementById('player-state').innerHTML = statusDot(data.player_status === 'playing' ? 'green' : (data.player_status === 'paused' ? 'yellow' : 'gray')) + data.player_status;
+  document.getElementById('current-track').textContent = data.current_track || '-';
   document.getElementById('recent-errors').textContent = data.recent_errors || '無';
 
   // System status

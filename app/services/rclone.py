@@ -1,7 +1,6 @@
-"""rclone configuration and sync helpers."""
-import json
-import re
+"""rclone configuration and sync helpers for QNAP WebDAV."""
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -9,8 +8,10 @@ from app.config import (
     BASE_DIR,
     MUSIC_DIR,
     RCLONE_CONFIG_PATH,
-    RCLONE_DROPBOX_PATH_DEFAULT,
     RCLONE_REMOTE_NAME_DEFAULT,
+    RCLONE_REMOTE_PATH_DEFAULT,
+    RCLONE_WEBDAV_URL_DEFAULT,
+    RCLONE_WEBDAV_VENDOR_DEFAULT,
     SYNC_LOG_PATH,
 )
 from app.services.system import command_exists, run, safe_path_validate
@@ -20,33 +21,39 @@ def get_rclone_config_exists() -> bool:
     return RCLONE_CONFIG_PATH.exists()
 
 
-def write_rclone_config(remote_name: str, token_json: str):
-    """Write an rclone config file from Dropbox token JSON.
+def _obscure_password(password: str) -> str:
+    """Obscure a password using rclone obscure."""
+    if not command_exists("rclone"):
+        raise RuntimeError("rclone is required to obscure the password")
+    res = run(["rclone", "obscure", password], timeout=30)
+    if not res["ok"]:
+        raise RuntimeError(f"Failed to obscure password: {res['stderr']}")
+    return res["stdout"].strip()
 
-    Accepts either:
-    - A short-lived access token: {"access_token":"...","token_type":"bearer"}
-    - Or a refreshable token from rclone config / Dropbox App Console:
-      {"access_token":"...","token_type":"bearer","refresh_token":"...","expiry":"..."}
 
-    When a refresh_token is present, rclone will automatically refresh the
-    access_token when it expires, so the user does not need to re-enter tokens.
-    """
-    raw = token_json.strip()
-    # Defensive: if the input is itself a JSON-encoded string (e.g. wrapped in
-    # quotes and escaped), decode it once first.
-    if raw.startswith('"') and raw.endswith('"'):
-        raw = json.loads(raw)
-    token = json.loads(raw)
-    # Validate expected shape: need at least an access_token or a refresh_token
-    if "access_token" not in token and "refresh_token" not in token:
-        raise ValueError("Token JSON 必須包含 access_token 或 refresh_token")
+def write_rclone_config(
+    remote_name: str,
+    url: str,
+    vendor: str,
+    username: str,
+    password: str,
+):
+    """Write an rclone config file for a WebDAV remote (QNAP NAS)."""
+    if not username:
+        raise ValueError("Username is required")
+    if not password:
+        raise ValueError("Password is required")
 
-    # Normalize remote name
     remote_name = re.sub(r"[^a-zA-Z0-9_-]", "", remote_name) or RCLONE_REMOTE_NAME_DEFAULT
+    vendor = vendor.strip() or RCLONE_WEBDAV_VENDOR_DEFAULT
+    obscured = _obscure_password(password)
 
     config = f"""[{remote_name}]
-type = dropbox
-token = {json.dumps(token)}
+type = webdav
+url = {url.strip()}
+vendor = {vendor}
+user = {username}
+pass = {obscured}
 """
     RCLONE_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     RCLONE_CONFIG_PATH.write_text(config)
@@ -54,26 +61,44 @@ token = {json.dumps(token)}
     return remote_name
 
 
-def test_dropbox(remote_name: str) -> dict:
+def test_remote(remote_name: str) -> dict:
+    """Test listing the root of a remote."""
     if not command_exists("rclone"):
         return {"ok": False, "stderr": "rclone not installed"}
     remote_name = re.sub(r"[^a-zA-Z0-9_-]", "", remote_name) or RCLONE_REMOTE_NAME_DEFAULT
     return run(
-        ["rclone", "lsf", f"{remote_name}:", "--config", str(RCLONE_CONFIG_PATH), "--max-depth", "1"],
+        ["rclone", "lsd", f"{remote_name}:", "--config", str(RCLONE_CONFIG_PATH)],
         timeout=60,
     )
 
 
-def sync_music(remote_name: str, dropbox_path: str, local_path: str, dry_run: bool = False) -> dict:
+def list_remote_music(remote_name: str, remote_path: str) -> dict:
+    """List MP3 files under a remote path."""
+    if not command_exists("rclone"):
+        return {"ok": False, "stderr": "rclone not installed"}
+    remote_name = re.sub(r"[^a-zA-Z0-9_-]", "", remote_name) or RCLONE_REMOTE_NAME_DEFAULT
+    path = remote_path.replace(f"{remote_name}:", "").strip("/")
+    return run(
+        [
+            "rclone", "lsf", f"{remote_name}:{path}",
+            "--config", str(RCLONE_CONFIG_PATH),
+            "--include", "*.mp3",
+            "--include", "*.MP3",
+        ],
+        timeout=60,
+    )
+
+
+def sync_music(remote_path: str, local_path: str, dry_run: bool = False) -> dict:
+    """Sync music from a WebDAV remote path to local path."""
     if not command_exists("rclone"):
         return {"ok": False, "stderr": "rclone not installed"}
 
+    if not remote_path or ":" not in remote_path:
+        remote_path = RCLONE_REMOTE_PATH_DEFAULT
+    remote_name, _, remote_dir = remote_path.partition(":")
     remote_name = re.sub(r"[^a-zA-Z0-9_-]", "", remote_name) or RCLONE_REMOTE_NAME_DEFAULT
-    dropbox_path = dropbox_path.strip("/")
-    if not dropbox_path:
-        dropbox_path = RCLONE_DROPBOX_PATH_DEFAULT
-    if ".." in dropbox_path or dropbox_path.startswith("/"):
-        return {"ok": False, "stderr": "Invalid Dropbox path"}
+    remote_dir = remote_dir.strip("/")
 
     if not safe_path_validate(local_path):
         return {"ok": False, "stderr": "Invalid local path"}
@@ -83,7 +108,7 @@ def sync_music(remote_name: str, dropbox_path: str, local_path: str, dry_run: bo
     args = [
         "rclone",
         "sync",
-        f"{remote_name}:{dropbox_path}",
+        f"{remote_name}:{remote_dir}",
         local_path,
         "--config",
         str(RCLONE_CONFIG_PATH),
@@ -91,6 +116,8 @@ def sync_music(remote_name: str, dropbox_path: str, local_path: str, dry_run: bo
         "*.mp3",
         "--include",
         "*.MP3",
+        "--exclude",
+        "*",
         "--delete-excluded",
         "-v",
     ]
@@ -104,11 +131,13 @@ def sync_music(remote_name: str, dropbox_path: str, local_path: str, dry_run: bo
     status = "success" if result["ok"] else "failed"
     message = "Dry-run completed" if dry_run else ("Sync completed" if result["ok"] else "Sync failed")
 
-    # Append to sync log file
+    # Append to sync log file (sanitise password)
     SYNC_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    log_cmd = " ".join(args)
+    safe_log_cmd = re.sub(r"pass\s*=\s*\S+", "pass=***", log_cmd)
     with open(SYNC_LOG_PATH, "a", encoding="utf-8") as f:
         f.write(f"\n=== {started_at} {status} ===\n")
-        f.write(f"CMD: {' '.join(args)}\n")
+        f.write(f"CMD: {safe_log_cmd}\n")
         f.write(result["stdout"])
         f.write(result["stderr"])
 
@@ -130,3 +159,13 @@ def install_rclone() -> dict:
         f.write('#!/bin/bash\ncurl https://rclone.org/install.sh | sudo bash\n')
     os.chmod(script_path, 0o755)
     return run(["sudo", "bash", script_path], timeout=300)
+
+
+def clear_local_music(local_path: str) -> dict:
+    """Remove all MP3 files from the local music directory."""
+    if not safe_path_validate(local_path):
+        return {"ok": False, "stderr": "Invalid local path"}
+    target = Path(local_path)
+    if not target.exists():
+        return {"ok": True, "stdout": "Local music directory does not exist", "stderr": ""}
+    return run(["find", str(target), "-type", "f", "-name", "*.mp3", "-delete"], timeout=60)

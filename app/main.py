@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import BASE_DIR, DATA_DIR, LOGS_DIR, MUSIC_DIR, SCRIPTS_DIR
 from app.db import init_db
-from app.routes import auth, dashboard, dropbox, logs, player, settings, setup, system
+from app.routes import auth, dashboard, logs, player, settings, setup, system, webdav
 from app.routes.auth import init_default_user
 
 
@@ -32,7 +32,7 @@ templates = Jinja2Templates(directory="app/templates")
 app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(setup.router)
-app.include_router(dropbox.router)
+app.include_router(webdav.router)
 app.include_router(player.router)
 app.include_router(system.router)
 app.include_router(logs.router)
@@ -50,12 +50,6 @@ async def unauthorized_handler(request: Request, exc):
 async def settings_page(request: Request):
     auth.get_current_user(request)
     return templates.TemplateResponse("settings.html", {"request": request})
-
-
-@app.get("/music-library", response_class=HTMLResponse)
-async def music_library_page(request: Request):
-    auth.get_current_user(request)
-    return templates.TemplateResponse("music_library.html", {"request": request})
 
 
 if __name__ == "__main__":

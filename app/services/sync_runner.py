@@ -1,19 +1,18 @@
-"""CLI runner used by systemd timer to perform Dropbox sync."""
+"""CLI runner used by systemd timer to perform NAS WebDAV sync."""
 import os
 import sys
 
-from app.config import MUSIC_DIR, RCLONE_DROPBOX_PATH_DEFAULT
+from app.config import MUSIC_DIR, RCLONE_REMOTE_PATH_DEFAULT
 from app.db import init_db
 from app.services import mpv, rclone
 
 
 def main():
     init_db()
-    remote = os.environ.get("NIKKO_DROPBOX_REMOTE", "dropbox")
-    path = os.environ.get("NIKKO_DROPBOX_PATH", RCLONE_DROPBOX_PATH_DEFAULT)
+    remote_path = os.environ.get("NIKKO_WEBDAV_REMOTE_PATH", RCLONE_REMOTE_PATH_DEFAULT)
     local = os.environ.get("NIKKO_LOCAL_PATH", str(MUSIC_DIR))
 
-    result = rclone.sync_music(remote, path, local)
+    result = rclone.sync_music(remote_path, local)
 
     if result["ok"]:
         auto_restart = os.environ.get("NIKKO_AUTO_RESTART_PLAYER", "1") == "1"
