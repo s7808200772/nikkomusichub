@@ -88,7 +88,9 @@ def init_default_user():
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    error = request.query_params.get("error")
+    message = "帳號或密碼錯誤" if error == "invalid" else ""
+    return templates.TemplateResponse("login.html", {"request": request, "error": message})
 
 
 @router.post("/login")
@@ -97,7 +99,7 @@ async def login_post(response: Response, username: str = Form(...), password: st
     row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
     conn.close()
     if not row or not verify_password(password, row["hashed_password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        return RedirectResponse(url="/login?error=invalid", status_code=303)
     token = create_access_token({"sub": username})
     resp = RedirectResponse(url="/", status_code=303)
     resp.set_cookie("nikko_token", token, httponly=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60)

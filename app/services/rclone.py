@@ -4,9 +4,13 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+import pwd
+
 from app.config import (
     BASE_DIR,
     MUSIC_DIR,
+    NIKKO_GROUP,
+    NIKKO_USER,
     RCLONE_CONFIG_PATH,
     RCLONE_REMOTE_NAME_DEFAULT,
     RCLONE_REMOTE_PATH_DEFAULT,
@@ -15,6 +19,15 @@ from app.config import (
     SYNC_LOG_PATH,
 )
 from app.services.system import command_exists, run, safe_path_validate
+
+
+def _get_uid_gid(user: str, group: str):
+    try:
+        uid = pwd.getpwnam(user).pw_uid
+        gid = pwd.getpwnam(group).pw_gid if group else pwd.getpwnam(user).pw_gid
+        return uid, gid
+    except Exception:
+        return None, None
 
 
 def get_rclone_config_exists() -> bool:
@@ -58,6 +71,13 @@ pass = {obscured}
     RCLONE_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     RCLONE_CONFIG_PATH.write_text(config)
     os.chmod(RCLONE_CONFIG_PATH, 0o600)
+    uid, gid = _get_uid_gid(NIKKO_USER, NIKKO_GROUP)
+    if uid is not None and gid is not None:
+        try:
+            os.chown(RCLONE_CONFIG_PATH, uid, gid)
+            os.chown(RCLONE_CONFIG_PATH.parent, uid, gid)
+        except Exception:
+            pass
     return remote_name
 
 

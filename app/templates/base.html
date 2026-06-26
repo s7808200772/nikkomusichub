@@ -12,19 +12,18 @@
       <h1>🎵 NikkoMusicHub</h1>
       <nav>
         <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
-        <a href="/player" class="{% if request.url.path == '/player' %}active{% endif %}">Player</a>
-        <a href="/webdav" class="{% if request.url.path == '/webdav' %}active{% endif %}">NAS WebDAV Sync</a>
-        <a href="/logs" class="{% if request.url.path == '/logs' %}active{% endif %}">Logs</a>
-        <a href="/setup" class="{% if request.url.path == '/setup' %}active{% endif %}">Setup</a>
         <a href="/settings" class="{% if request.url.path == '/settings' %}active{% endif %}">Settings</a>
-        <a href="/logout">Logout</a>
+        <a href="/logs" class="{% if request.url.path == '/logs' %}active{% endif %}">Logs</a>
       </nav>
-      <div style="margin-top: 2rem; font-size: 0.8rem; color: var(--muted);">
-        <div id="nav-tailscale-ip">-</div>
-        <div id="nav-store-name">-</div>
-      </div>
     </aside>
     <main class="main">
+      <header class="topbar">
+        <div class="topbar-info">
+          <span id="nav-store-name">-</span>
+          <span class="text-muted" id="nav-tailscale-ip">-</span>
+        </div>
+        <a href="/logout" class="btn btn-sm">Logout</a>
+      </header>
       {% block content %}{% endblock %}
     </main>
   </div>

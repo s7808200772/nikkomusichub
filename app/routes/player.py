@@ -1,6 +1,6 @@
 """Player control routes."""
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import MUSIC_DIR
@@ -13,10 +13,10 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/player", response_class=HTMLResponse)
+@router.get("/player")
 async def player_page(request: Request):
     get_current_user_or_local(request)
-    return templates.TemplateResponse("player.html", {"request": request})
+    return RedirectResponse(url="/", status_code=303)
 
 
 @router.get("/api/player/status")

@@ -1,6 +1,7 @@
 async function apiGet(url) {
   const r = await fetch(url);
-  if (r.status === 401) { window.location.href = '/login'; return; }
+  if (r.status === 401) { window.location.href = '/login'; return undefined; }
+  if (!r.ok) { throw new Error(`HTTP ${r.status}`); }
   return await r.json();
 }
 
@@ -13,8 +14,13 @@ async function apiPost(url, body) {
     opts.body = JSON.stringify(body);
   }
   const r = await fetch(url, opts);
-  if (r.status === 401) { window.location.href = '/login'; return; }
-  return await r.json();
+  if (r.status === 401) { window.location.href = '/login'; return undefined; }
+  const text = await r.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    return { ok: r.ok, stdout: text, stderr: '' };
+  }
 }
 
 function statusDot(color) {
@@ -62,12 +68,22 @@ async function runAction(btn, url, body, outputId) {
   setBusy(btn, true);
   try {
     const res = await apiPost(url, body);
+    if (!res) {
+      showToast('未登入或網路中斷', 'error');
+      return { ok: false };
+    }
     const out = document.getElementById(outputId);
     if (out) {
-      const text = (res.stdout || '') + '\n' + (res.stderr || '') + (res.error || '');
-      out.textContent = text.trim();
+      let text = '';
+      if (typeof res.stdout === 'string') text += res.stdout;
+      if (typeof res.stderr === 'string') text += '\n' + res.stderr;
+      if (res.error) text += '\n' + (typeof res.error === 'string' ? res.error : JSON.stringify(res.error));
+      if (res.data && !text.trim()) text = JSON.stringify(res.data, null, 2);
+      if (!text.trim() && res.message) text = res.message;
+      out.textContent = text.trim() || (res.ok ? '執行完成' : '執行失敗，無詳細訊息');
     }
-    showToast(res.ok ? '執行成功' : '執行失敗', res.ok ? 'success' : 'error');
+    const message = res.message || (res.ok ? '執行成功' : '執行失敗');
+    showToast(message, res.ok ? 'success' : 'error');
     return res;
   } catch (e) {
     showToast('網路或系統錯誤: ' + e, 'error');

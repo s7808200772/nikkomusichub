@@ -2,7 +2,7 @@
 import re
 
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import (
@@ -22,10 +22,10 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/webdav", response_class=HTMLResponse)
+@router.get("/webdav")
 async def webdav_page(request: Request):
     get_current_user_or_local(request)
-    return templates.TemplateResponse("webdav.html", {"request": request})
+    return RedirectResponse(url="/settings", status_code=303)
 
 
 @router.get("/api/webdav/settings")
@@ -57,16 +57,13 @@ async def save_webdav_settings(
     password: str = Form(""),
     remote_path: str = Form(RCLONE_REMOTE_PATH_DEFAULT),
     local_path: str = Form(str(MUSIC_DIR)),
-    sync_mode: str = Form("sync"),
-    sync_time: str = Form(SYNC_TIME_DEFAULT),
-    boot_delay_min: int = Form(2),
-    auto_restart_player: int = Form(1),
-    daily_sync_enabled: int = Form(1),
 ):
     user = get_current_user_or_local(request)
     remote_name = re.sub(r"[^a-zA-Z0-9_-]", "", remote_name) or RCLONE_REMOTE_NAME_DEFAULT
     if not safe_path_validate(local_path):
         return {"ok": False, "stderr": "Invalid local path"}
+    if not username:
+        return {"ok": False, "stderr": "Username is required"}
 
     # Only rewrite rclone config if a password was provided; otherwise keep existing config
     if password:
@@ -74,6 +71,8 @@ async def save_webdav_settings(
             rclone.write_rclone_config(remote_name, url, vendor, username, password)
         except Exception as e:
             return {"ok": False, "stderr": str(e)}
+    elif not rclone.get_rclone_config_exists():
+        return {"ok": False, "stderr": "Password is required for first-time WebDAV setup"}
 
     set_setting("webdav_remote", remote_name)
     set_setting("webdav_url", url)
@@ -81,6 +80,29 @@ async def save_webdav_settings(
     set_setting("webdav_username", username)
     set_setting("webdav_remote_path", remote_path)
     set_setting("local_music_path", local_path)
+
+    audit(user, "save_webdav_settings", {
+        "remote": remote_name,
+        "url": url,
+        "remote_path": remote_path,
+    })
+    return {"ok": True}
+
+
+@router.post("/api/webdav/sync-settings")
+async def save_sync_settings(
+    request: Request,
+    sync_mode: str = Form("sync"),
+    sync_time: str = Form(SYNC_TIME_DEFAULT),
+    boot_delay_min: int = Form(2),
+    auto_restart_player: int = Form(1),
+    daily_sync_enabled: int = Form(1),
+):
+    user = get_current_user_or_local(request)
+
+    if not re.match(r"^\d{2}:\d{2}$", sync_time):
+        return {"ok": False, "stderr": "Sync time must be HH:MM"}
+
     set_setting("sync_mode", sync_mode)
     set_setting("daily_sync_enabled", str(daily_sync_enabled))
     set_setting("sync_time", sync_time)
@@ -126,11 +148,10 @@ WantedBy=timers.target
     except Exception as e:
         return {"ok": False, "stderr": str(e)}
 
-    audit(user, "save_webdav_settings", {
-        "remote": remote_name,
-        "url": url,
-        "remote_path": remote_path,
+    audit(user, "save_sync_settings", {
         "daily_sync": bool(daily_sync_enabled),
+        "sync_time": sync_time,
+        "boot_delay_min": boot_delay_min,
     })
     return {"ok": True}
 

@@ -2,6 +2,7 @@
 {% block title %}Dashboard - NikkoMusicHub{% endblock %}
 {% block content %}
 <h1>Dashboard</h1>
+
 <div class="grid">
   <div class="card">
     <h2>店家資訊</h2>
@@ -24,7 +25,7 @@
     <div class="metric"><span class="label">rclone</span><span class="value" id="rclone-status">-</span></div>
     <div class="metric"><span class="label">mpv</span><span class="value" id="mpv-status">-</span></div>
     <div class="metric"><span class="label">音樂服務</span><span class="value" id="player-service">-</span></div>
-
+  </div>
 
   <div class="card">
     <h2>NAS WebDAV 同步</h2>
@@ -67,6 +68,43 @@
 </div>
 
 <div class="card">
+  <h2>播放器控制</h2>
+  <div class="player-controls" style="justify-content:center;">
+    <button onclick="runAction(this, '/api/player/prev', null, 'dash-player-log')" title="上一首">⏮</button>
+    <button onclick="runAction(this, '/api/player/play', null, 'dash-player-log')" class="success" title="播放" id="btn-play">▶</button>
+    <button onclick="runAction(this, '/api/player/pause', null, 'dash-player-log')" title="暫停" id="btn-pause">⏸</button>
+    <button onclick="runAction(this, '/api/player/stop', null, 'dash-player-log')" class="danger" title="停止">⏹</button>
+    <button onclick="runAction(this, '/api/player/next', null, 'dash-player-log')" title="下一首">⏭</button>
+  </div>
+  <div class="form-group" style="margin-top:1rem;">
+    <label>音量 <span id="volume-val">-</span></label>
+    <input type="range" min="0" max="150" id="volume-slider" onchange="setVolume(this.value)">
+  </div>
+  <div class="player-controls">
+    <button onclick="toggleShuffle()" id="btn-shuffle" class="toggle">🔀 隨機</button>
+    <button onclick="toggleLoop()" id="btn-loop" class="toggle">🔁 循環</button>
+    <button onclick="runAction(this, '/api/player/reload', null, 'dash-player-log')">🔄 重新載入</button>
+  </div>
+  <div class="player-controls">
+    <button onclick="runAction(this, '/api/player/enable-service', null, 'dash-player-log')">啟用開機播放</button>
+    <button onclick="runAction(this, '/api/player/disable-service', null, 'dash-player-log')">停用開機播放</button>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>音樂庫 <span id="lib-count" style="font-size:.85rem; color:var(--muted);">0 首</span></h2>
+    <div id="file-list" style="max-height: 40vh; overflow-y: auto; font-size: .9rem;">
+      <p style="color:var(--muted)">載入中…</p>
+    </div>
+  </div>
+  <div class="card">
+    <h2>播放清單</h2>
+    <pre class="log-output" id="playlist-output" style="max-height: 40vh;">載入中…</pre>
+  </div>
+</div>
+
+<div class="card">
   <h2>維護操作</h2>
   <div class="player-controls">
     <button onclick="runAction(this, '/api/system/start-player', null, 'dash-log')">啟動播放服務</button>
@@ -85,6 +123,16 @@
   <pre class="log-output" id="recent-errors">-</pre>
 </div>
 
+<div class="card">
+  <h2>操作紀錄</h2>
+  <pre class="log-output" id="dash-log">等待操作…</pre>
+</div>
+
+<div class="card">
+  <h2>播放器操作紀錄</h2>
+  <pre class="log-output" id="dash-player-log">等待操作…</pre>
+</div>
+
 <div class="modal-overlay" id="reboot-modal">
   <div class="modal">
     <h2>確認重開機？</h2>
@@ -95,6 +143,8 @@
 </div>
 
 <script>
+let currentState = {};
+
 async function loadDashboard() {
   const data = await apiGet('/api/dashboard');
   document.getElementById('store-name').textContent = data.store_name;
@@ -120,7 +170,6 @@ async function loadDashboard() {
   document.getElementById('current-track').textContent = data.current_track || '-';
   document.getElementById('recent-errors').textContent = data.recent_errors || '無';
 
-  // System status
   document.getElementById('pi-model').textContent = data.pi_model;
   document.getElementById('os-version').textContent = data.os_version;
   document.getElementById('python-version').textContent = data.python_version;
@@ -135,7 +184,42 @@ async function loadDashboard() {
   document.getElementById('nav-tailscale-ip').textContent = data.tailscale_ip || data.lan_ip || '-';
   document.getElementById('nav-store-name').textContent = data.store_name;
 }
+
+async function refreshPlayer() {
+  const s = await apiGet('/api/player/status');
+  currentState = s;
+  document.getElementById('player-state').innerHTML = statusDot(s.state === 'playing' ? 'green' : (s.state === 'paused' ? 'yellow' : 'gray')) + s.state;
+  document.getElementById('current-track').textContent = s.current || '-';
+  document.getElementById('volume-val').textContent = s.volume;
+  document.getElementById('volume-slider').value = s.volume;
+  document.getElementById('btn-shuffle').classList.toggle('active', s.shuffle);
+  document.getElementById('btn-loop').classList.toggle('active', s.loop);
+
+  const pl = await apiGet('/api/player/playlist');
+  document.getElementById('playlist-output').textContent = JSON.stringify(pl.playlist, null, 2);
+
+  const lib = await apiGet('/api/player/library');
+  document.getElementById('lib-count').textContent = `${lib.files.length} 首`;
+  const list = document.getElementById('file-list');
+  if (!lib.files.length) { list.innerHTML = '<p style="color:var(--muted)">無音樂檔案</p>'; }
+  else {
+    list.innerHTML = '<ul>' + lib.files.map(f => `<li>${f.path} <span style="color:var(--muted)">(${(f.size/1024/1024).toFixed(2)} MB)</span></li>`).join('') + '</ul>';
+  }
+}
+
+async function setVolume(v) { await apiPost('/api/player/volume', new URLSearchParams({volume:v})); refreshPlayer(); }
+async function toggleShuffle() { await apiPost('/api/player/shuffle', new URLSearchParams({enabled: currentState.shuffle ? 0 : 1})); refreshPlayer(); }
+async function toggleLoop() { await apiPost('/api/player/loop', new URLSearchParams({enabled: currentState.loop ? 0 : 1})); refreshPlayer(); }
+function formatTime(sec) {
+  if (!sec || isNaN(sec)) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
 loadDashboard();
+refreshPlayer();
 setInterval(loadDashboard, 5000);
+setInterval(refreshPlayer, 3000);
 </script>
 {% endblock %}

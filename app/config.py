@@ -12,6 +12,10 @@ LOGS_DIR = BASE_DIR / "logs"
 SCRIPTS_DIR = BASE_DIR / "scripts"
 DATA_DIR = BASE_DIR / "data"
 
+# Runtime user/group used for file ownership (web service user)
+NIKKO_USER = os.environ.get("NIKKO_USER", "pi")
+NIKKO_GROUP = os.environ.get("NIKKO_GROUP", "pi")
+
 # Ensure directories exist at import time (for development)
 for d in (BASE_DIR, MUSIC_DIR, LOGS_DIR, SCRIPTS_DIR, DATA_DIR):
     d.mkdir(parents=True, exist_ok=True)

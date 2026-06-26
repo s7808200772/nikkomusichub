@@ -10,7 +10,7 @@
       <div class="form-group"><label>店名</label><input name="store_name" id="store_name" required></div>
       <div class="form-group"><label>MQTT Store ID *</label><input name="store_id" id="store_id" required placeholder="store-001"></div>
       <p style="color: var(--muted); font-size: .85rem;">Store ID 必須與 Cloud 平台新增的店點 Store ID 完全一致。</p>
-      <button type="submit" class="primary">儲存</button>
+      <button type="submit" class="primary">儲存店家資訊</button>
     </form>
   </div>
 
@@ -25,6 +25,74 @@
   </div>
 </div>
 
+<div class="grid">
+  <div class="card">
+    <h2>WebDAV 連線</h2>
+    <form id="webdav-form" onsubmit="saveWebDAV(event)">
+      <div class="form-group"><label>Remote Name</label><input name="remote_name" id="remote_name" required></div>
+      <div class="form-group"><label>WebDAV URL</label><input name="url" id="url" required></div>
+      <div class="form-group"><label>Vendor</label><input name="vendor" id="vendor" required></div>
+      <div class="form-group"><label>Username</label><input name="username" id="username" autocomplete="off" required></div>
+      <div class="form-group"><label>Password</label><input type="password" name="password" id="password" autocomplete="off" placeholder="已設定則留空保留原密碼"></div>
+      <div class="form-group"><label>Remote Music Path</label><input name="remote_path" id="remote_path" required></div>
+      <div class="form-group"><label>Local Music Path</label><input name="local_path" id="local_path" required></div>
+      <p id="webdav-config-status" style="color:var(--accent-2); font-size:.85rem;"></p>
+      <button type="submit" class="primary">儲存 WebDAV 設定</button>
+    </form>
+    <button onclick="runAction(this, '/api/webdav/test-remote', null, 'settings-log')" style="margin-top:.5rem">測試 WebDAV 連線</button>
+    <button onclick="runAction(this, '/api/webdav/list-music', null, 'settings-log')" style="margin-top:.5rem">列出 NAS 音樂檔案</button>
+  </div>
+
+  <div class="card">
+    <h2>同步設定</h2>
+    <form id="sync-form" onsubmit="saveSyncSettings(event)">
+      <div class="form-group"><label>同步模式</label>
+        <select name="sync_mode" id="sync_mode">
+          <option value="sync">sync（NAS 為主，本地同步）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" name="daily_sync_enabled" id="daily_sync_enabled" value="1"> 啟用每日同步</label>
+      </div>
+      <div class="form-group"><label>每日同步時間</label><input name="sync_time" id="sync_time" required></div>
+      <div class="form-group"><label>開機延遲同步（分鐘）</label><input name="boot_delay_min" id="boot_delay_min" type="number" required></div>
+      <div class="form-group">
+        <label><input type="checkbox" name="auto_restart_player" id="auto_restart_player" value="1"> 同步完成後自動重啟播放器</label>
+      </div>
+      <button type="submit" class="primary">儲存同步設定</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>手動操作</h2>
+    <button onclick="runAction(this, '/api/webdav/dry-run', null, 'settings-log')">Dry-run 測試同步</button>
+    <button onclick="runAction(this, '/api/webdav/sync', null, 'settings-log')" class="success" style="margin-top:.5rem">立即同步</button>
+    <button onclick="if(confirm('確定要清空本地音樂並重新同步嗎？')) runAction(this, '/api/webdav/clear-local', null, 'settings-log')" class="danger" style="margin-top:.5rem">清空本地音樂</button>
+  </div>
+
+  <div class="card">
+    <h2>系統初始化</h2>
+    <p style="color: var(--muted); font-size: .85rem;">新安裝或更新依賴時使用。執行紀錄顯示於下方。</p>
+    <button onclick="runAction(this, '/api/setup/apt-update', null, 'settings-log')">系統更新 (apt update + upgrade)</button>
+    <button onclick="runAction(this, '/api/setup/install-rclone', null, 'settings-log')" style="margin-top:.5rem">安裝 rclone</button>
+    <button onclick="runAction(this, '/api/setup/install-mpv', null, 'settings-log')" style="margin-top:.5rem">安裝 mpv</button>
+    <button onclick="runAction(this, '/api/setup/create-folders', null, 'settings-log')" style="margin-top:.5rem">建立音樂資料夾</button>
+    <button onclick="runAction(this, '/api/setup/install-service', null, 'settings-log')" style="margin-top:.5rem">重新載入 systemd</button>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>最近同步紀錄</h2>
+    <div id="sync-history"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>操作紀錄</h2>
+  <pre class="log-output" id="settings-log">等待操作…</pre>
+</div>
+
 <script>
 async function loadDevice() {
   const s = await apiGet('/api/settings/device');
@@ -35,7 +103,7 @@ async function saveDevice(e) {
   e.preventDefault();
   const fd = new FormData(e.target);
   const res = await apiPost('/api/settings/device', fd);
-  showToast(res.ok ? '已儲存。修改 Store ID 後請重新啟動 MQTT 服務以生效。' : '失敗', res.ok ? 'success' : 'error');
+  showToast(res.ok ? '已儲存店家資訊。修改 Store ID 後請重新啟動 MQTT 服務以生效。' : '失敗', res.ok ? 'success' : 'error');
   if (res.ok) await loadDevice();
 }
 async function changePassword(e) {
@@ -43,8 +111,61 @@ async function changePassword(e) {
   const fd = new FormData(e.target);
   const res = await apiPost('/api/change-password', fd);
   document.getElementById('pwd-msg').textContent = res.ok ? '密碼已修改，請重新登入。' : '修改失敗';
+  showToast(res.ok ? '密碼已修改' : '修改失敗', res.ok ? 'success' : 'error');
   if (res.ok) e.target.reset();
 }
+
+async function loadWebDAV() {
+  const s = await apiGet('/api/webdav/settings');
+  document.getElementById('remote_name').value = s.remote_name || '';
+  document.getElementById('url').value = s.url || '';
+  document.getElementById('vendor').value = s.vendor || '';
+  document.getElementById('username').value = s.username || '';
+  document.getElementById('remote_path').value = s.remote_path || '';
+  document.getElementById('local_path').value = s.local_path || '';
+  document.getElementById('webdav-config-status').textContent = s.configured ? '✅ 已設定 WebDAV' : '⚠️ 尚未設定 WebDAV';
+
+  document.getElementById('sync_mode').value = s.sync_mode || 'sync';
+  document.getElementById('daily_sync_enabled').checked = s.daily_sync_enabled;
+  document.getElementById('sync_time').value = s.sync_time || '';
+  document.getElementById('boot_delay_min').value = s.boot_delay_min || '';
+  document.getElementById('auto_restart_player').checked = s.auto_restart_player;
+}
+
+async function saveWebDAV(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]');
+  const fd = new FormData(e.target);
+  setBusy(btn, true);
+  const res = await apiPost('/api/webdav/settings', fd);
+  showToast(res.ok ? '已儲存 WebDAV 設定' : '失敗', res.ok ? 'success' : 'error');
+  if (res.ok) await loadWebDAV();
+  setBusy(btn, false);
+}
+
+async function saveSyncSettings(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]');
+  const fd = new FormData(e.target);
+  if (!document.getElementById('daily_sync_enabled').checked) fd.set('daily_sync_enabled', '0');
+  if (!document.getElementById('auto_restart_player').checked) fd.set('auto_restart_player', '0');
+  setBusy(btn, true);
+  const res = await apiPost('/api/webdav/sync-settings', fd);
+  showToast(res.ok ? '已儲存同步設定' : '失敗', res.ok ? 'success' : 'error');
+  if (res.ok) await loadWebDAV();
+  setBusy(btn, false);
+}
+
+async function loadHistory() {
+  const data = await apiGet('/api/webdav/sync-logs');
+  const el = document.getElementById('sync-history');
+  if (!data.logs.length) { el.innerHTML = '<p style="color:var(--muted)">尚無紀錄</p>'; return; }
+  el.innerHTML = '<table style="width:100%;font-size:.85rem"><tr><th>時間</th><th>狀態</th><th>訊息</th></tr>' +
+    data.logs.map(l => `<tr><td>${l.finished_at || l.started_at}</td><td>${l.status}</td><td>${l.message}</td></tr>`).join('') + '</table>';
+}
+
 loadDevice();
+loadWebDAV();
+loadHistory();
 </script>
 {% endblock %}

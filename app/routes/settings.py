@@ -12,6 +12,12 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
+@router.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    get_current_user_or_local(request)
+    return templates.TemplateResponse("settings.html", {"request": request})
+
+
 @router.get("/api/settings/device")
 async def get_device_settings(request: Request):
     get_current_user_or_local(request)

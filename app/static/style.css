@@ -58,6 +58,28 @@ a { color: var(--accent); text-decoration: none; }
   overflow-y: auto;
 }
 
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--panel-2);
+  border-radius: 0.6rem;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.topbar-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-weight: 600;
+}
+
+.text-muted { color: var(--muted); font-weight: normal; font-size: 0.85rem; }
+
+.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+
 .card {
   background: var(--panel);
   border-radius: 0.6rem;

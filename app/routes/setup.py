@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import (
@@ -26,10 +26,10 @@ def _log(action: str, result: dict, user: str):
     audit(user, action, {"ok": result.get("ok"), "returncode": result.get("returncode")})
 
 
-@router.get("/setup", response_class=HTMLResponse)
+@router.get("/setup")
 async def setup_page(request: Request):
     get_current_user_or_local(request)
-    return templates.TemplateResponse("setup.html", {"request": request})
+    return RedirectResponse(url="/settings", status_code=303)
 
 
 @router.post("/api/setup/apt-update")
