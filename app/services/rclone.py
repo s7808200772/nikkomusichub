@@ -87,7 +87,12 @@ def test_remote(remote_name: str) -> dict:
         return {"ok": False, "stderr": "rclone not installed"}
     remote_name = re.sub(r"[^a-zA-Z0-9_-]", "", remote_name) or RCLONE_REMOTE_NAME_DEFAULT
     return run(
-        ["rclone", "lsd", f"{remote_name}:", "--config", str(RCLONE_CONFIG_PATH)],
+        [
+            "rclone", "lsd", f"{remote_name}:",
+            "--config", str(RCLONE_CONFIG_PATH),
+            "--contimeout", "10s",
+            "--timeout", "30s",
+        ],
         timeout=60,
     )
 
@@ -104,6 +109,8 @@ def list_remote_music(remote_name: str, remote_path: str) -> dict:
             "--config", str(RCLONE_CONFIG_PATH),
             "--include", "*.mp3",
             "--include", "*.MP3",
+            "--contimeout", "10s",
+            "--timeout", "30s",
         ],
         timeout=60,
     )
@@ -139,6 +146,10 @@ def sync_music(remote_path: str, local_path: str, dry_run: bool = False) -> dict
         "--exclude",
         "*",
         "--delete-excluded",
+        "--contimeout",
+        "30s",
+        "--timeout",
+        "60s",
         "-v",
     ]
     if dry_run:

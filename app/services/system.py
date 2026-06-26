@@ -19,23 +19,37 @@ from app.db import get_setting
 
 
 def run(cmd: list[str], shell: bool = False, timeout: int = 120, check: bool = False) -> dict:
-    """Run a whitelisted command safely. cmd must be a list of args."""
+    """Run a whitelisted command safely. cmd must be a list of args.
+
+    Uses a new process group so that child processes (e.g. rclone) are
+    killed together if the timeout expires.
+    """
+    import signal
+
     try:
-        proc = subprocess.run(
+        proc = subprocess.Popen(
             cmd,
             shell=shell,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout,
+            start_new_session=True,
         )
-        return {
-            "returncode": proc.returncode,
-            "stdout": proc.stdout,
-            "stderr": proc.stderr,
-            "ok": proc.returncode == 0 if not check else True,
-        }
-    except subprocess.TimeoutExpired:
-        return {"returncode": -1, "stdout": "", "stderr": "Timeout", "ok": False}
+        try:
+            stdout, stderr = proc.communicate(timeout=timeout)
+            return {
+                "returncode": proc.returncode,
+                "stdout": stdout,
+                "stderr": stderr,
+                "ok": proc.returncode == 0 if not check else True,
+            }
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            proc.wait()
+            return {"returncode": -1, "stdout": "", "stderr": "Timeout", "ok": False}
     except Exception as e:
         return {"returncode": -1, "stdout": "", "stderr": str(e), "ok": False}
 
