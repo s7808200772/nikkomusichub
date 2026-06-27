@@ -1,32 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Dashboard - NikkoMusicHub{% endblock %}
+{% block title %}首頁儀表板 - NikkoMusicHub{% endblock %}
+{% block page_title %}首頁儀表板{% endblock %}
 {% block content %}
-<h1 class="page-title">🎛️ 播放控制台</h1>
 
 <div class="grid grid-2">
   <div class="card">
-    <h2><span class="icon">🎧</span>目前播放</h2>
+    <h2><span class="icon">🎛️</span>播放控制台</h2>
     <div class="now-playing">
       <div class="cover">🎵</div>
       <div class="track-info">
+        <div class="track-meta">目前播放</div>
         <div class="track-title" id="p-track">-</div>
         <div class="track-meta" id="p-state">stopped</div>
-        <div class="track-meta" id="p-time">0:00 / 0:00</div>
       </div>
     </div>
-    <div class="progress-bar"><div class="progress-fill" id="p-progress"></div></div>
     <div class="volume-row">
-      <span>🔊</span>
+      <span id="volume-val">100</span>
       <input type="range" min="0" max="150" id="volume-slider" onchange="setVolume(this.value)">
-      <span id="volume-val">-</span>
     </div>
-    <div class="player-controls" style="justify-content:center; margin-top:1rem;">
+    <div class="progress-bar"><div class="progress-fill" id="p-progress"></div></div>
+    <div style="display:flex; justify-content:space-between; font-size:.75rem; color:var(--muted); margin-bottom:.75rem;">
+      <span id="p-curtime">0:00</span>
+      <span id="p-duration">0:00</span>
+    </div>
+    <div class="player-controls" style="justify-content:center;">
+      <button class="round" onclick="toggleShuffle()" id="btn-shuffle" title="隨機播放">🔀</button>
       <button class="round" onclick="runAction(this, '/api/player/prev', null, 'dash-player-log')" title="上一首">⏮</button>
-      <button class="round success" onclick="runAction(this, '/api/player/play', null, 'dash-player-log')" title="播放" id="btn-play">▶</button>
+      <button class="round play success" onclick="runAction(this, '/api/player/play', null, 'dash-player-log')" title="播放 / 繼續" id="btn-play">▶</button>
       <button class="round" onclick="runAction(this, '/api/player/pause', null, 'dash-player-log')" title="暫停" id="btn-pause">⏸</button>
       <button class="round danger" onclick="runAction(this, '/api/player/stop', null, 'dash-player-log')" title="停止">⏹</button>
       <button class="round" onclick="runAction(this, '/api/player/next', null, 'dash-player-log')" title="下一首">⏭</button>
-      <button class="round" onclick="runAction(this, '/api/player/reload', null, 'dash-player-log')" title="重新載入">🔄</button>
+      <button class="round" onclick="runAction(this, '/api/player/reload', null, 'dash-player-log')" title="重新載入播放清單">🔄</button>
+      <button class="round" onclick="toggleLoop()" id="btn-loop" title="循環播放">🔁</button>
     </div>
   </div>
 
@@ -49,9 +54,10 @@
         <span class="switch"><input type="checkbox" id="autoload-toggle" checked disabled><span class="slider"></span></span>
         重新載入播放清單
       </label>
+      <div class="hint">同步後自動重新載入播放清單，不需要關閉。</div>
     </div>
     <div class="metric-row"><span class="label">開機自動播放</span><span class="value" id="service-enabled">-</span></div>
-    <div class="player-controls">
+    <div class="player-controls" style="margin-top:.75rem;">
       <button onclick="runAction(this, '/api/player/enable-service', null, 'dash-player-log')">啟用開機播放</button>
       <button onclick="runAction(this, '/api/player/disable-service', null, 'dash-player-log')">停用開機播放</button>
     </div>
@@ -60,16 +66,23 @@
 
 <div class="grid grid-2">
   <div class="card">
-    <h2><span class="icon">🎶</span>音樂庫 <span id="lib-count" style="font-size:.85rem; color:var(--muted);">0 首</span></h2>
+    <div class="card-header">
+      <h2><span class="icon">🎶</span>音樂庫 <span id="lib-count" style="font-size:.85rem; color:var(--muted);">0 首</span></h2>
+    </div>
     <div class="form-group"><input type="text" placeholder="搜尋音樂檔案…" onkeyup="filterLibrary(this.value)"></div>
-    <div id="file-list" style="max-height: 45vh; overflow-y: auto; font-size: .9rem;">
+    <div id="file-list" style="max-height: 40vh; overflow-y: auto; font-size: .88rem;">
       <div class="empty-state">載入中…</div>
     </div>
   </div>
 
   <div class="card">
-    <h2><span class="icon">📃</span>播放清單</h2>
-    <div id="playlist-output" style="max-height: 45vh; overflow-y: auto;">
+    <div class="card-header">
+      <h2><span class="icon">📃</span>播放清單 <span id="pl-count" style="font-size:.85rem; color:var(--muted);">0 首</span></h2>
+      <div class="player-controls">
+        <button class="btn-sm" onclick="runAction(this, '/api/player/reload', null, 'dash-player-log')">載入</button>
+      </div>
+    </div>
+    <div id="playlist-output" style="max-height: 40vh; overflow-y: auto;">
       <div class="empty-state">載入中…</div>
     </div>
   </div>
@@ -78,28 +91,37 @@
 <div class="card">
   <h2><span class="icon">🛠️</span>維護操作</h2>
   <div class="player-controls">
-    <button onclick="runAction(this, '/api/system/start-player', null, 'dash-log')">▶ 啟動播放服務</button>
-    <button onclick="runAction(this, '/api/system/stop-player', null, 'dash-log')">⏹ 停止播放服務</button>
-    <button onclick="runAction(this, '/api/system/restart-player', null, 'dash-log')">🔄 重啟播放服務</button>
-    <button onclick="runAction(this, '/api/system/rescan', null, 'dash-log')">🔍 重新掃描音樂</button>
-    <button onclick="runAction(this, '/api/system/test-audio', null, 'dash-log')">🔊 測試音訊輸出</button>
-    <button onclick="document.getElementById('reboot-modal').classList.add('active')" class="danger">🔴 重開機 Raspberry Pi</button>
+    <button onclick="runAction(this, '/api/system/start-player', null, 'dash-log')" title="啟動 systemd 播放器服務（開機自動播放用）">▶ 啟動播放服務</button>
+    <button onclick="runAction(this, '/api/system/stop-player', null, 'dash-log')" title="停止 systemd 播放器服務">⏹ 停止播放服務</button>
+    <button onclick="runAction(this, '/api/system/restart-player', null, 'dash-log')" title="重啟 systemd 播放器服務">🔄 重啟播放服務</button>
+    <button onclick="runAction(this, '/api/system/rescan', null, 'dash-log')" title="重新掃描音樂庫目錄">🔍 重新掃描音樂</button>
+    <button onclick="runAction(this, '/api/system/test-audio', null, 'dash-log')" title="播放測試音訊確認喇叭有聲">🔊 測試音訊輸出</button>
+    <button onclick="document.getElementById('reboot-modal').classList.add('active')" class="danger" title="重新啟動 Raspberry Pi">🔴 重開機 Raspberry Pi</button>
   </div>
 </div>
 
 <div class="grid grid-2">
   <div class="card">
-    <h2><span class="icon">📋</span>最近錯誤 / 系統 Log</h2>
+    <div class="card-header">
+      <h2><span class="icon">📋</span>最近錯誤 / 系統 Log</h2>
+      <button class="btn-sm ghost" onclick="loadRecentErrors()">更多</button>
+    </div>
     <pre class="log-output" id="recent-errors">-</pre>
   </div>
   <div class="card">
-    <h2><span class="icon">📝</span>操作紀錄</h2>
+    <div class="card-header">
+      <h2><span class="icon">📝</span>操作紀錄</h2>
+      <button class="btn-sm ghost" onclick="loadRecentErrors()">更多</button>
+    </div>
     <pre class="log-output" id="dash-log">等待操作…</pre>
   </div>
 </div>
 
 <div class="card">
-  <h2><span class="icon">🎛️</span>播放器操作紀錄</h2>
+  <div class="card-header">
+    <h2><span class="icon">🎛️</span>播放器操作紀錄</h2>
+    <button class="btn-sm ghost" onclick="refreshPlayer()">更多</button>
+  </div>
   <pre class="log-output" id="dash-player-log">等待操作…</pre>
 </div>
 
@@ -119,9 +141,10 @@ let libraryFiles = [];
 async function refreshPlayer() {
   const s = await apiGet('/api/player/status');
   currentState = s;
-  document.getElementById('p-state').textContent = s.state;
+  document.getElementById('p-state').textContent = s.state === 'playing' ? '播放中' : (s.state === 'paused' ? '已暫停' : '已停止');
   document.getElementById('p-track').textContent = s.current || '無曲目';
-  document.getElementById('p-time').textContent = `${formatTime(s.position)} / ${formatTime(s.duration)}`;
+  document.getElementById('p-curtime').textContent = formatTime(s.position);
+  document.getElementById('p-duration').textContent = formatTime(s.duration);
   document.getElementById('volume-val').textContent = s.volume;
   document.getElementById('volume-slider').value = s.volume;
   const pct = s.duration ? (s.position / s.duration * 100) : 0;
@@ -129,14 +152,18 @@ async function refreshPlayer() {
 
   document.getElementById('shuffle-toggle').checked = s.shuffle;
   document.getElementById('loop-toggle').checked = s.loop;
+  document.getElementById('btn-shuffle').classList.toggle('active', s.shuffle);
+  document.getElementById('btn-loop').classList.toggle('active', s.loop);
 
   const pl = await apiGet('/api/player/playlist');
   const po = document.getElementById('playlist-output');
-  if (!pl.playlist || !pl.playlist.length) {
-    po.innerHTML = '<div class="empty-state">播放清單為空<br><span style="font-size:.8rem">從音樂庫中加入歌曲</span></div>';
+  const plList = pl.playlist || [];
+  document.getElementById('pl-count').textContent = `${plList.length} 首`;
+  if (!plList.length) {
+    po.innerHTML = '<div class="empty-state">播放清單為空<br><span style="font-size:.75rem">從音樂庫中加入歌曲</span></div>';
   } else {
     po.innerHTML = '<table class="table"><tr><th>#</th><th>曲目</th></tr>' +
-      pl.playlist.map((t,i) => `<tr><td>${i+1}</td><td>${t}</td></tr>`).join('') + '</table>';
+      plList.map((t,i) => `<tr><td>${i+1}</td><td>${t}</td></tr>`).join('') + '</table>';
   }
 
   const lib = await apiGet('/api/player/library');
@@ -151,14 +178,14 @@ function renderLibrary(files) {
   const list = document.getElementById('file-list');
   document.getElementById('lib-count').textContent = `${files.length} 首`;
   if (!files.length) {
-    list.innerHTML = '<div class="empty-state">無音樂檔案<br><span style="font-size:.8rem">請將 MP3 檔案上傳至音樂目錄</span></div>';
+    list.innerHTML = '<div class="empty-state">無音樂檔案<br><span style="font-size:.75rem">請將 MP3 檔案上傳至音樂目錄</span><br><button onclick="runAction(this,\'/api/system/rescan\',null,\'dash-log\')" style="margin-top:.5rem">重新掃描音樂</button></div>';
     return;
   }
   list.innerHTML = '<table class="table"><tr><th>檔案名稱</th><th>時間</th><th>大小</th></tr>' +
     files.map(f => {
       const size = (f.size/1024/1024).toFixed(2);
       const mtime = new Date(f.mtime*1000).toLocaleString('zh-TW');
-      return `<tr><td>${f.path}</td><td style="color:var(--muted);font-size:.75rem">${mtime}</td><td style="color:var(--muted);font-size:.75rem">${size} MB</td></tr>`;
+      return `<tr><td>${f.path}</td><td style="color:var(--muted);font-size:.75rem; white-space:nowrap;">${mtime}</td><td style="color:var(--muted);font-size:.75rem; white-space:nowrap;">${size} MB</td></tr>`;
     }).join('') + '</table>';
 }
 
@@ -168,14 +195,10 @@ function filterLibrary(q) {
 }
 
 async function setVolume(v) { await apiPost('/api/player/volume', new URLSearchParams({volume:v})); refreshPlayer(); }
+async function toggleShuffle() { await apiPost('/api/player/shuffle', new URLSearchParams({enabled: currentState.shuffle ? 0 : 1})); refreshPlayer(); }
+async function toggleLoop() { await apiPost('/api/player/loop', new URLSearchParams({enabled: currentState.loop ? 0 : 1})); refreshPlayer(); }
 async function toggleShuffleFromCheckbox() { await apiPost('/api/player/shuffle', new URLSearchParams({enabled: document.getElementById('shuffle-toggle').checked ? 1 : 0})); refreshPlayer(); }
 async function toggleLoopFromCheckbox() { await apiPost('/api/player/loop', new URLSearchParams({enabled: document.getElementById('loop-toggle').checked ? 1 : 0})); refreshPlayer(); }
-function formatTime(sec) {
-  if (!sec || isNaN(sec)) return '0:00';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
-}
 
 async function loadRecentErrors() {
   const data = await apiGet('/api/dashboard');

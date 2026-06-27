@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Settings - NikkoMusicHub{% endblock %}
+{% block title %}系統設定 - NikkoMusicHub{% endblock %}
+{% block page_title %}系統設定{% endblock %}
 {% block content %}
-<h1 class="page-title">⚙️ 系統設定</h1>
 
-<div class="grid grid-2">
+<div class="grid grid-4">
   <div class="card">
     <h2><span class="icon">🏪</span>店家資訊</h2>
     <form id="device-form" onsubmit="saveDevice(event)">
@@ -14,8 +14,8 @@
       <div class="form-group">
         <label>MQTT Store ID *</label>
         <input name="store_id" id="store_id" value="{{ settings.store_id }}" required placeholder="store-001">
+        <div class="hint">Store ID 必須與 Cloud 平台新增的店點 Store ID 完全一致。</div>
       </div>
-      <p style="color: var(--muted); font-size: .8rem; margin-bottom: 1rem;">Store ID 必須與 Cloud 平台新增的店點 Store ID 完全一致。</p>
       <button type="submit" class="primary block">💾 儲存店家資訊</button>
     </form>
   </div>
@@ -33,8 +33,72 @@
       </div>
       <button type="submit" class="primary block">🔒 修改密碼</button>
     </form>
-    <p id="pwd-msg" style="color: var(--muted); font-size: .85rem; margin-top: .75rem;"></p>
+    <p id="pwd-msg" style="color: var(--muted); font-size: .8rem; margin-top: .75rem;"></p>
   </div>
+
+  <div class="card">
+    <h2><span class="icon">🔄</span>同步設定</h2>
+    <form id="sync-form" onsubmit="saveSyncSettings(event)">
+      <div class="form-group">
+        <label>同步模式</label>
+        <select name="sync_mode" id="sync_mode">
+          <option value="sync" {% if settings.sync_mode == 'sync' %}selected{% endif %}>sync（NAS 為主，本地同步）</option>
+        </select>
+        <div class="hint">讓本地音樂資料夾與 NAS 完全一致，NAS 刪除的檔案本地也會刪除。</div>
+      </div>
+      <div class="form-group">
+        <label class="switch-label">
+          <span class="switch"><input type="checkbox" name="daily_sync_enabled" id="daily_sync_enabled" value="1" {% if settings.daily_sync_enabled %}checked{% endif %}><span class="slider"></span></span>
+          啟用每日同步
+        </label>
+        <div class="hint">開啟後會按照「每日同步時間」自動從 NAS 下載音樂。</div>
+      </div>
+      <div class="form-group">
+        <label>每日同步時間</label>
+        <input name="sync_time" id="sync_time" value="{{ settings.sync_time }}" required placeholder="HH:MM">
+      </div>
+      <div class="form-group">
+        <label>開機延遲同步（分鐘）</label>
+        <input name="boot_delay_min" id="boot_delay_min" type="number" value="{{ settings.boot_delay_min }}" required>
+        <div class="hint">Raspberry Pi 開機後等待幾分鐘再執行第一次同步，讓網路穩定。</div>
+      </div>
+      <div class="form-group">
+        <label class="switch-label">
+          <span class="switch"><input type="checkbox" name="auto_restart_player" id="auto_restart_player" value="1" {% if settings.auto_restart_player %}checked{% endif %}><span class="slider"></span></span>
+          同步完成後自動重啟播放器
+        </label>
+        <div class="hint">同步完成後自動重新載入播放清單，讓新音樂開始播放。</div>
+      </div>
+      <button type="submit" class="primary block">💾 儲存同步設定</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2><span class="icon">🖐️</span>手動操作</h2>
+    <div style="display:flex; flex-direction:column; gap:.6rem;">
+      <button class="primary block" onclick="startSync(this, true)" id="btn-dryrun">📡 Dry-run 測試同步</button>
+      <div class="hint">只會「模擬」同步，不會真的下載或刪除任何檔案，用來預覽會發生什麼事。</div>
+      <button class="success block" onclick="startSync(this, false)" id="btn-sync">▶ 立即同步</button>
+      <div class="hint">真正從 NAS 下載音樂到本地。同步時下方會顯示進度。</div>
+      <button class="danger block" onclick="if(confirm('確定要清空本地音樂嗎？這會刪除 /srv/nikko-music/music 內所有 MP3。')) runAction(this, '/api/webdav/clear-local', null, 'settings-log')">🗑️ 清空本地音樂</button>
+    </div>
+  </div>
+</div>
+
+<div class="card progress-card" id="sync-progress-card" style="display:none;">
+  <h2><span class="icon">📊</span>同步進度</h2>
+  <div class="progress-header">
+    <span id="sync-progress-message">準備中…</span>
+    <span id="sync-progress-percent">0%</span>
+  </div>
+  <div class="progress-track"><div class="progress-bar-fill" id="sync-progress-bar"></div></div>
+  <div class="progress-stats">
+    <span>已傳輸：<b id="sync-transferred">-</b></span>
+    <span>總計：<b id="sync-total">-</b></span>
+    <span>速度：<b id="sync-speed">-</b></span>
+    <span>ETA：<b id="sync-eta">-</b></span>
+  </div>
+  <pre class="log-output" id="sync-progress-log" style="margin-top:.75rem; max-height:160px;"></pre>
 </div>
 
 <div class="card">
@@ -43,15 +107,16 @@
     <div class="grid grid-3">
       <div class="form-group">
         <label>Remote Name</label>
-        <input name="remote_name" id="remote_name" value="{{ settings.remote_name }}" required placeholder="請輸入 Remote Name">
+        <input name="remote_name" id="remote_name" value="{{ settings.remote_name }}" required placeholder="qnapmusic">
       </div>
       <div class="form-group">
         <label>WebDAV URL</label>
-        <input name="url" id="url" value="{{ settings.url }}" required placeholder="https://example.com/webdav">
+        <input name="url" id="url" value="{{ settings.url }}" required placeholder="https://nas.example.com/webdav">
       </div>
       <div class="form-group">
         <label>Vendor</label>
-        <input name="vendor" id="vendor" value="{{ settings.vendor }}" required placeholder="請輸入 Vendor">
+        <input name="vendor" id="vendor" value="{{ settings.vendor }}" required placeholder="other">
+        <div class="hint">QNAP 通常填 other。</div>
       </div>
       <div class="form-group">
         <label>Username</label>
@@ -63,11 +128,11 @@
       </div>
       <div class="form-group">
         <label>Remote Music Path</label>
-        <input name="remote_path" id="remote_path" value="{{ settings.remote_path }}" required placeholder="/music">
+        <input name="remote_path" id="remote_path" value="{{ settings.remote_path }}" required placeholder="qnapmusic:NikkoMusic">
       </div>
       <div class="form-group">
         <label>Local Music Path</label>
-        <input name="local_path" id="local_path" value="{{ settings.local_path }}" required placeholder="/volume1/music">
+        <input name="local_path" id="local_path" value="{{ settings.local_path }}" required placeholder="/srv/nikko-music/music">
       </div>
     </div>
     <p id="webdav-config-status" style="color:var(--accent-2); font-size:.85rem; margin-bottom:.75rem;">
@@ -81,67 +146,30 @@
   </form>
 </div>
 
-<div class="grid grid-2">
-  <div class="card">
-    <h2><span class="icon">🔄</span>同步設定</h2>
-    <form id="sync-form" onsubmit="saveSyncSettings(event)">
-      <div class="form-group">
-        <label>同步模式</label>
-        <select name="sync_mode" id="sync_mode">
-          <option value="sync" {% if settings.sync_mode == 'sync' %}selected{% endif %}>sync（NAS 為主，本地同步）</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="switch-label">
-          <span class="switch"><input type="checkbox" name="daily_sync_enabled" id="daily_sync_enabled" value="1" {% if settings.daily_sync_enabled %}checked{% endif %}><span class="slider"></span></span>
-          啟用每日同步
-        </label>
-      </div>
-      <div class="form-group">
-        <label>每日同步時間</label>
-        <input name="sync_time" id="sync_time" value="{{ settings.sync_time }}" required>
-      </div>
-      <div class="form-group">
-        <label>開機延遲同步（分鐘）</label>
-        <input name="boot_delay_min" id="boot_delay_min" type="number" value="{{ settings.boot_delay_min }}" required>
-      </div>
-      <div class="form-group">
-        <label class="switch-label">
-          <span class="switch"><input type="checkbox" name="auto_restart_player" id="auto_restart_player" value="1" {% if settings.auto_restart_player %}checked{% endif %}><span class="slider"></span></span>
-          同步完成後自動重啟播放器
-        </label>
-      </div>
-      <button type="submit" class="primary block">💾 儲存同步設定</button>
-    </form>
-  </div>
-
-  <div class="card">
-    <h2><span class="icon">🛠️</span>手動操作</h2>
-    <div style="display:flex; flex-direction:column; gap:.6rem;">
-      <button class="primary block" onclick="runAction(this, '/api/webdav/dry-run', null, 'settings-log')">📡 Dry-run 測試同步</button>
-      <button class="success block" onclick="runAction(this, '/api/webdav/sync', null, 'settings-log')">▶ 立即同步</button>
-      <button class="danger block" onclick="if(confirm('確定要清空本地音樂並重新同步嗎？')) runAction(this, '/api/webdav/clear-local', null, 'settings-log')">🗑️ 清空本地音樂</button>
-    </div>
-
-    <h2 style="margin-top:1.5rem;"><span class="icon">🔧</span>系統初始化</h2>
-    <p style="color: var(--muted); font-size: .8rem;">新安裝或更新依賴時使用。</p>
-    <div class="grid grid-2" style="gap:.5rem; margin-top:.5rem;">
-      <button onclick="runAction(this, '/api/setup/apt-update', null, 'settings-log')">系統更新</button>
-      <button onclick="runAction(this, '/api/setup/install-rclone', null, 'settings-log')">安裝 rclone</button>
-      <button onclick="runAction(this, '/api/setup/install-mpv', null, 'settings-log')">安裝 mpv</button>
-      <button onclick="runAction(this, '/api/setup/create-folders', null, 'settings-log')">建立資料夾</button>
-    </div>
-    <button class="block outline" style="margin-top:.5rem;" onclick="runAction(this, '/api/setup/install-service', null, 'settings-log')">重新載入 systemd</button>
+<div class="card">
+  <h2><span class="icon">🔧</span>系統初始化</h2>
+  <p style="color: var(--muted); font-size: .82rem; margin-bottom: .75rem;">新安裝或系統更新後使用這些按鈕安裝必要套件。</p>
+  <div class="player-controls">
+    <button onclick="runAction(this, '/api/setup/apt-update', null, 'settings-log')" title="執行 apt update + upgrade">🔄 系統更新</button>
+    <button onclick="runAction(this, '/api/setup/install-rclone', null, 'settings-log')" title="安裝 rclone 同步工具">📦 安裝 rclone</button>
+    <button onclick="runAction(this, '/api/setup/install-mpv', null, 'settings-log')" title="安裝 mpv 音樂播放器">🎵 安裝 mpv</button>
+    <button onclick="runAction(this, '/api/setup/create-folders', null, 'settings-log')" title="建立音樂與 log 資料夾">📁 建立音樂資料夾</button>
+    <button onclick="runAction(this, '/api/setup/install-service', null, 'settings-log')" title="重新載入 systemd 設定">⚙️ 重新載入 systemd</button>
   </div>
 </div>
 
 <div class="grid grid-2">
   <div class="card">
-    <h2><span class="icon">📜</span>最近同步紀錄</h2>
+    <div class="card-header">
+      <h2><span class="icon">🕐</span>最近同步紀錄</h2>
+      <button class="btn-sm ghost" onclick="loadHistory()">重新整理</button>
+    </div>
     <div id="sync-history"></div>
   </div>
   <div class="card">
-    <h2><span class="icon">📝</span>操作紀錄</h2>
+    <div class="card-header">
+      <h2><span class="icon">📝</span>操作紀錄</h2>
+    </div>
     <pre class="log-output" id="settings-log">等待操作…</pre>
   </div>
 </div>
@@ -211,12 +239,58 @@ async function saveSyncSettings(e) {
   setBusy(btn, false);
 }
 
+let progressTimer = null;
+async function startSync(btn, dryRun) {
+  if (progressTimer) clearInterval(progressTimer);
+  const res = await apiPost(dryRun ? '/api/webdav/dry-run' : '/api/webdav/sync', null);
+  if (!res || !res.ok) {
+    showToast(res ? (res.stderr || '同步啟動失敗') : '未登入', 'error');
+    return;
+  }
+  document.getElementById('sync-progress-card').style.display = 'block';
+  document.getElementById('sync-progress-message').textContent = dryRun ? 'Dry-run 進行中…' : '同步進行中…';
+  document.getElementById('btn-dryrun').disabled = true;
+  document.getElementById('btn-sync').disabled = true;
+  progressTimer = setInterval(async () => {
+    const p = await apiGet('/api/webdav/sync-progress');
+    if (!p) return;
+    document.getElementById('sync-progress-bar').style.width = (p.progress || 0) + '%';
+    document.getElementById('sync-progress-percent').textContent = (p.progress || 0) + '%';
+    document.getElementById('sync-progress-message').textContent = p.message || '處理中…';
+    document.getElementById('sync-transferred').textContent = p.transferred || '-';
+    document.getElementById('sync-total').textContent = p.total || '-';
+    document.getElementById('sync-speed').textContent = p.speed || '-';
+    document.getElementById('sync-eta').textContent = p.eta || '-';
+    document.getElementById('sync-progress-log').textContent = (p.stdout || '') + '\n' + (p.stderr || '');
+    if (!p.running) {
+      clearInterval(progressTimer);
+      progressTimer = null;
+      document.getElementById('btn-dryrun').disabled = false;
+      document.getElementById('btn-sync').disabled = false;
+      showToast(p.message, p.status === 'success' ? 'success' : 'error');
+      loadHistory();
+    }
+  }, 1000);
+}
+
 async function loadHistory() {
   const data = await apiGet('/api/webdav/sync-logs');
   const el = document.getElementById('sync-history');
-  if (!data.logs.length) { el.innerHTML = '<div class="empty-state">尚無同步紀錄</div>'; return; }
-  el.innerHTML = '<table class="table"><tr><th>時間</th><th>狀態</th><th>訊息</th></tr>' +
-    data.logs.map(l => `<tr><td>${l.finished_at || l.started_at}</td><td>${l.status}</td><td>${l.message}</td></tr>`).join('') + '</table>';
+  if (!data || !data.logs || !data.logs.length) {
+    el.innerHTML = '<div class="empty-state">尚無同步紀錄</div>';
+    return;
+  }
+  el.innerHTML = '<table class="table"><tr><th>時間</th><th>模式</th><th>狀態</th><th>同步項目</th><th>耗時</th><th>詳細資訊</th></tr>' +
+    data.logs.map(l => {
+      const isDry = (l.stdout || l.stderr || '').includes('--dry-run') || l.message.includes('Dry-run');
+      const mode = isDry ? 'Dry-run' : 'Sync';
+      const statusBadge = l.status === 'success' ? '<span class="badge badge-success">成功</span>' : '<span class="badge badge-danger">失敗</span>';
+      const items = (l.stderr || '').match(/Transferred:\s+([\d\.\s\wB]+)\s*\/\s*([\d\.\s\wB]+)/);
+      const itemText = items ? `${items[1]} / ${items[2]}` : '-';
+      const started = l.started_at ? l.started_at.replace('T',' ').substring(0,19) : '-';
+      const duration = l.started_at && l.finished_at ? '完成' : '-';
+      return `<tr><td>${started}</td><td>${mode}</td><td>${statusBadge}</td><td>${itemText}</td><td>${duration}</td><td style="color:var(--muted); font-size:.75rem; max-width:200px; overflow:hidden; text-overflow:ellipsis;">${l.message}</td></tr>`;
+    }).join('') + '</table>';
 }
 
 loadHistory();

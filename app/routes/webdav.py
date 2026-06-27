@@ -15,7 +15,7 @@ from app.config import (
 )
 from app.db import audit, get_recent_sync_logs, get_setting, set_setting
 from app.routes.auth import get_current_user_or_local
-from app.services import rclone
+from app.services import rclone, sync_manager
 from app.services.system import run, safe_path_validate
 
 router = APIRouter()
@@ -180,7 +180,7 @@ async def dry_run_sync(request: Request):
     user = get_current_user_or_local(request)
     remote_path = get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT)
     local = get_setting("local_music_path", str(MUSIC_DIR))
-    res = rclone.sync_music(remote_path, local, dry_run=True)
+    res = sync_manager.start_sync(remote_path, local, dry_run=True)
     audit(user, "dry_run_webdav_sync", {"ok": res["ok"]})
     return res
 
@@ -190,16 +190,15 @@ async def webdav_sync(request: Request):
     user = get_current_user_or_local(request)
     remote_path = get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT)
     local = get_setting("local_music_path", str(MUSIC_DIR))
-    res = rclone.sync_music(remote_path, local)
+    res = sync_manager.start_sync(remote_path, local)
     audit(user, "webdav_sync", {"ok": res["ok"]})
-
-    if res["ok"] and bool(int(get_setting("auto_restart_player", "1"))):
-        from app.services import mpv
-        if mpv.mpv_is_running():
-            mpv.reload_playlist()
-        else:
-            mpv.start_player()
     return res
+
+
+@router.get("/api/webdav/sync-progress")
+async def sync_progress(request: Request):
+    get_current_user_or_local(request)
+    return sync_manager.get_progress()
 
 
 @router.post("/api/webdav/clear-local")

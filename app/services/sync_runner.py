@@ -4,20 +4,32 @@ import sys
 
 from app.config import MUSIC_DIR, RCLONE_REMOTE_PATH_DEFAULT
 from app.db import init_db
-from app.services import mpv, rclone
+from app.services import mpv, sync_manager
 
 
 def main():
     init_db()
-    remote_path = os.environ.get("NIKKO_WEBDAV_REMOTE_PATH", RCLONE_REMOTE_PATH_DEFAULT)
-    local = os.environ.get("NIKKO_LOCAL_PATH", str(MUSIC_DIR))
+    from app.db import get_setting
 
-    result = rclone.sync_music(remote_path, local)
+    remote_path = get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT)
+    local = get_setting("local_music_path", str(MUSIC_DIR))
 
-    if result["ok"]:
+    result = sync_manager.start_sync(remote_path, local)
+    if not result["ok"]:
+        return 1
+
+    # Wait for the background sync to finish
+    import time
+    for _ in range(720):  # wait up to 60 minutes
+        progress = sync_manager.get_progress()
+        if not progress["running"]:
+            break
+        time.sleep(5)
+
+    progress = sync_manager.get_progress()
+    if progress["status"] == "success":
         auto_restart = os.environ.get("NIKKO_AUTO_RESTART_PLAYER", "1") == "1"
         if auto_restart:
-            # Reload playlist if running, otherwise start player
             if mpv.mpv_is_running():
                 mpv.reload_playlist()
             else:

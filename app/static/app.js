@@ -31,13 +31,26 @@ function formatDuration(seconds) {
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  return `${d}d ${h}h ${m}m ${s}s`;
+  const s = Math.floor(seconds % 60);
+  const parts = [];
+  if (d) parts.push(`${d}天`);
+  if (h) parts.push(`${h}時`);
+  if (m) parts.push(`${m}分`);
+  parts.push(`${s}秒`);
+  return parts.join(' ');
+}
+
+function formatTime(sec) {
+  if (!sec || isNaN(sec)) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
 }
 
 function showToast(message, type='info') {
   const t = document.getElementById('toast');
-  t.textContent = message;
+  if (!t) return;
+  t.innerHTML = message;
   t.style.display = 'block';
   t.style.borderLeftColor = type === 'success' ? 'var(--success)' : (type === 'error' ? 'var(--danger)' : 'var(--accent)');
   setTimeout(() => t.style.display = 'none', 4000);
@@ -45,8 +58,8 @@ function showToast(message, type='info') {
 
 function setBusy(btn, busy) {
   btn.disabled = busy;
-  btn.dataset.original = btn.dataset.original || btn.textContent;
-  btn.textContent = busy ? '執行中…' : btn.dataset.original;
+  if (!btn.dataset.original) btn.dataset.original = btn.innerHTML;
+  btn.innerHTML = busy ? '執行中…' : btn.dataset.original;
 }
 
 async function checkDefaultPassword() {
@@ -55,13 +68,14 @@ async function checkDefaultPassword() {
     const me = await apiGet('/api/me');
     if (me && me.is_default) {
       const t = document.getElementById('toast');
-      t.innerHTML = '⚠️ 您正在使用預設密碼，請到 <a href="/settings" style="color:#fff;text-decoration:underline">Settings</a> 修改密碼。';
-      t.style.display = 'block';
-      t.style.borderLeftColor = 'var(--warning)';
+      if (t) {
+        t.innerHTML = '⚠️ 您正在使用預設密碼，請到 <a href="/settings" style="color:#fff;text-decoration:underline">系統設定</a> 修改密碼。';
+        t.style.display = 'block';
+        t.style.borderLeftColor = 'var(--warning)';
+      }
     }
   } catch (e) {}
 }
-
 checkDefaultPassword();
 
 async function runAction(btn, url, body, outputId) {
@@ -94,25 +108,25 @@ async function runAction(btn, url, body, outputId) {
 }
 
 function gaugeSvg(percent, color) {
-  const r = 20;
+  const r = 18;
   const c = 2 * Math.PI * r;
   const offset = c - (percent / 100) * c;
-  return `<svg width="64" height="64" viewBox="0 0 64 64"><circle class="gauge-bg" cx="32" cy="32" r="${r}"/><circle class="gauge-fill" style="stroke:${color};stroke-dasharray:${c};stroke-dashoffset:${offset}" cx="32" cy="32" r="${r}"/></svg>`;
+  return `<svg width="56" height="56" viewBox="0 0 56 56"><circle class="gauge-bg" cx="28" cy="28" r="${r}"/><circle class="gauge-fill" style="stroke:${color};stroke-dasharray:${c};stroke-dashoffset:${offset}" cx="28" cy="28" r="${r}"/></svg>`;
 }
 
 function renderRightPanel(data) {
   const panel = document.getElementById('right-panel');
-  if (!panel) return;
+  if (!panel || !data) return;
 
-  const cpuColor = data.cpu_percent > 80 ? 'var(--warning)' : (data.cpu_percent > 95 ? 'var(--danger)' : 'var(--success)');
-  const ramColor = data.ram.percent > 80 ? 'var(--warning)' : (data.ram.percent > 95 ? 'var(--danger)' : 'var(--success)');
-  const diskColor = data.disk.percent > 85 ? 'var(--danger)' : 'var(--success)';
+  const cpuColor = data.cpu_percent > 90 ? 'var(--danger)' : (data.cpu_percent > 75 ? 'var(--warning)' : 'var(--success)');
+  const ramColor = data.ram.percent > 90 ? 'var(--danger)' : (data.ram.percent > 75 ? 'var(--warning)' : 'var(--success)');
+  const diskColor = data.disk.percent > 90 ? 'var(--danger)' : 'var(--success)';
 
-  const sysStatus = document.getElementById('nav-system-status');
-  if (sysStatus) {
+  const navStatus = document.getElementById('nav-system-status');
+  if (navStatus) {
     const ok = data.web_service_status === 'active';
-    sysStatus.innerHTML = `${statusDot(ok ? 'green' : 'red')}系統狀態：${ok ? '正常' : '異常'}`;
-    sysStatus.className = 'status-pill ' + (ok ? '' : 'error');
+    navStatus.innerHTML = `${statusDot(ok ? 'green' : 'red')}系統狀態：${ok ? '正常' : '異常'}`;
+    navStatus.className = 'status-pill ' + (ok ? '' : 'error');
   }
 
   const navStore = document.getElementById('nav-store-name');
@@ -121,11 +135,6 @@ function renderRightPanel(data) {
   if (navStore) navStore.textContent = data.store_name;
   if (navTs) navTs.textContent = 'Tailscale ' + (data.tailscale_ip || '未偵測');
   if (navLan) navLan.textContent = 'LAN ' + (data.lan_ip || '未偵測');
-
-  const sbDevice = document.getElementById('sb-device');
-  const sbUptime = document.getElementById('sb-uptime');
-  if (sbDevice) sbDevice.textContent = data.pi_model;
-  if (sbUptime) sbUptime.textContent = '已運行 ' + formatDuration(data.uptime_seconds);
 
   panel.innerHTML = `
     <div class="card">
@@ -143,9 +152,9 @@ function renderRightPanel(data) {
         <div class="gauge">${gaugeSvg(data.ram.percent, ramColor)}<div class="gauge-label" style="color:${ramColor}">${data.ram.percent}%</div><div class="gauge-name">RAM</div></div>
         <div class="gauge">${gaugeSvg(data.disk.percent, diskColor)}<div class="gauge-label" style="color:${diskColor}">${data.disk.percent}%</div><div class="gauge-name">磁碟</div></div>
       </div>
-      <div class="metric-row"><span class="label">RAM</span><span class="value small">${data.ram.used_mb}/${data.ram.total_mb} MB</span></div>
+      <div class="metric-row"><span class="label">RAM 使用</span><span class="value small">${data.ram.used_mb}/${data.ram.total_mb} MB</span></div>
       <div class="metric-row"><span class="label">磁碟空閒</span><span class="value small">${data.disk.free_gb} GB</span></div>
-      <div class="metric-row"><span class="label">Uptime</span><span class="value small">${formatDuration(data.uptime_seconds)}</span></div>
+      <div class="metric-row"><span class="label">已運行</span><span class="value small">${formatDuration(data.uptime_seconds)}</span></div>
     </div>
 
     <div class="card">
@@ -165,7 +174,7 @@ function renderRightPanel(data) {
 
     <div class="card">
       <h3><span class="icon">☁️</span>NAS WebDAV 同步</h3>
-      <div class="metric-row"><span class="label">狀態</span><span class="value">${statusDot(data.webdav_connected ? 'green' : 'gray')}${data.webdav_connected ? '已設定' : '未設定'}</span></div>
+      <div class="metric-row"><span class="label">WebDAV 狀態</span><span class="value">${statusDot(data.webdav_connected ? 'green' : 'gray')}${data.webdav_connected ? '可連線' : '未設定'}</span></div>
       <div class="metric-row"><span class="label">Remote</span><span class="value small">${data.webdav_remote}</span></div>
       <div class="metric-row"><span class="label">URL</span><span class="value small">${data.webdav_url}</span></div>
       <div class="metric-row"><span class="label">Remote Path</span><span class="value small">${data.webdav_remote_path}</span></div>
@@ -189,7 +198,7 @@ function renderRightPanel(data) {
     </div>
 
     <div class="card">
-      <h3><span class="icon">📦</span>軟體版本</h3>
+      <h3><span class="icon">📦</span>軟體版本資訊</h3>
       <div class="metric-row"><span class="label">rclone</span><span class="value small">${data.rclone_version}</span></div>
       <div class="metric-row"><span class="label">mpv</span><span class="value small">${data.mpv_version}</span></div>
     </div>
