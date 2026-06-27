@@ -1,5 +1,6 @@
 """mpv IPC control helpers."""
 import json
+import os
 import socket
 import subprocess
 import time
