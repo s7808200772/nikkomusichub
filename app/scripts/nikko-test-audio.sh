@@ -2,11 +2,16 @@
 # Quick audio test for NikkoMusicHub
 set -e
 
-SPEAKER_TEST=${SPEAKER_TEST:-/usr/bin/speaker-test}
-if [ ! -x "$SPEAKER_TEST" ]; then
-  echo "speaker-test not found. Installing alsa-utils..."
-  apt-get install -y alsa-utils
+if ! command -v mpv >/dev/null 2>&1; then
+  echo "mpv not found. Installing mpv..."
+  apt-get install -y mpv
 fi
 
-echo "Playing 3-second pink noise test on default ALSA device..."
-speaker-test -t pink -c 2 -s 1 -l 1
+# Ensure XDG_RUNTIME_DIR is set for PipeWire/PulseAudio
+if [ -z "$XDG_RUNTIME_DIR" ]; then
+  export XDG_RUNTIME_DIR="/run/user/$(id - u)"
+fi
+
+echo "Playing 3-second 1kHz test tone through mpv..."
+mpv --no-video --length=3 "lavfi://sine=frequency=1000:duration=3"
+echo "Audio test finished."

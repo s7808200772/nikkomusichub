@@ -1,126 +1,83 @@
 {% extends "base.html" %}
-{% block title %}日誌記錄 - NikkoMusicHub{% endblock %}
+{% block title %}日誌紀錄 - NikkoMusicHub{% endblock %}
+{% block topbar_left %}<span class="page-title"><span class="icon">📋</span>日誌紀錄</span>{% endblock %}
+{% block sidebar_status %}{% endblock %}
 {% block content %}
 
-<div id="default-pwd-banner" class="top-banner" style="display:none;">
-  <span>⚠️</span>
-  <span>您正在使用預設密碼，請到 <a href="/settings">Settings</a> 修改密碼。</span>
+<div class="dash-grid" style="margin-bottom:1rem;">
+  <div class="stat-box dash-col">
+    <div class="stat-label">總日誌數</div>
+    <div class="stat-value" id="stat-total">-</div>
+  </div>
+  <div class="stat-box dash-col">
+    <div class="stat-label">今日日誌數</div>
+    <div class="stat-value" id="stat-today">-</div>
+  </div>
+  <div class="stat-box dash-col">
+    <div class="stat-label">錯誤 / 失敗</div>
+    <div class="stat-value" id="stat-errors">-</div>
+  </div>
+  <div class="stat-box dash-col">
+    <div class="stat-label">Player 事件</div>
+    <div class="stat-value" id="stat-player">-</div>
+  </div>
+  <div class="stat-box dash-col">
+    <div class="stat-label">操作紀錄</div>
+    <div class="stat-value" id="stat-audit">-</div>
+  </div>
+  <div class="stat-box dash-col">
+    <div class="stat-label">同步紀錄</div>
+    <div class="stat-value" id="stat-sync">-</div>
+  </div>
 </div>
 
-<h2 style="margin:0 0 1rem; font-size:1.2rem; display:flex; align-items:center; gap:.5rem;">
-  <span>📋</span>日誌記錄
-</h2>
-
-<div class="log-tabs">
-  <button class="log-tab active" onclick="setTab('all')">全部</button>
-  <button class="log-tab" onclick="setTab('audit')">Audit</button>
-  <button class="log-tab" onclick="setTab('sync')">Sync</button>
-  <button class="log-tab" onclick="setTab('player')">Player</button>
-</div>
-
-<div class="log-filter-bar">
-  <div class="filter-col">
-    <label>搜尋訊息</label>
-    <input type="text" placeholder="搜尋訊息…" onkeyup="setSearch(this.value)">
-  </div>
-  <div class="filter-col">
-    <label>日誌等級</label>
-    <select onchange="setLevel(this.value)">
-      <option value="all">全部</option>
-      <option value="info">INFO</option>
-      <option value="error">ERROR</option>
-    </select>
-  </div>
-  <div class="filter-col">
-    <label>模組</label>
-    <select onchange="setModule(this.value)">
-      <option value="all">全部</option>
-      <option value="player">player</option>
-      <option value="webdav">webdav</option>
-      <option value="system">system</option>
-      <option value="settings">settings</option>
-    </select>
-  </div>
-  <div class="filter-col">
-    <label>時間範圍</label>
-    <select onchange="setTimeRange(this.value)">
-      <option value="all">全部</option>
-      <option value="hour">最近 1 小時</option>
-      <option value="day">最近 24 小時</option>
-      <option value="week">最近 7 天</option>
-    </select>
-  </div>
-  <div class="filter-col">
-    <label>排序</label>
-    <select onchange="setSort(this.value)">
-      <option value="desc">最新在前</option>
-      <option value="asc">最舊在前</option>
-    </select>
-  </div>
-  <button class="outline" onclick="loadLogs()">🔄 重新整理</button>
-</div>
-
-<div class="log-layout">
-  <div class="card log-table-wrap">
-    <table class="log-table" id="log-table">
-      <thead>
-        <tr>
-          <th class="dot-cell"></th>
-          <th class="type-cell">類型</th>
-          <th class="time-cell">時間</th>
-          <th>訊息</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td colspan="4" style="color:var(--muted); text-align:center; padding:2rem;">載入中…</td></tr>
-      </tbody>
-    </table>
-    <div class="log-footer">
-      <span id="log-summary">共 0 筆</span>
-      <div style="display:flex; align-items:center; gap:.75rem;">
-        <label style="font-size:.75rem; color:var(--muted);">每頁</label>
-        <select onchange="setPageSize(this.value)" style="width:auto; min-width:70px; padding:.35rem .5rem;">
-          <option value="50" selected>50 筆</option>
-          <option value="100">100 筆</option>
-          <option value="200">200 筆</option>
-        </select>
-        <div id="log-pagination" class="log-pagination"></div>
-      </div>
+<div class="card" style="margin-bottom:1rem;">
+  <div class="log-toolbar">
+    <div class="log-tabs">
+      <button class="log-tab active" onclick="setTab('all')">全部</button>
+      <button class="log-tab" onclick="setTab('audit')">操作紀錄</button>
+      <button class="log-tab" onclick="setTab('sync')">同步</button>
+      <button class="log-tab" onclick="setTab('player')">Player</button>
+    </div>
+    <div class="log-filters">
+      <input type="text" placeholder="搜尋訊息…" onkeyup="setSearch(this.value)">
+      <select onchange="setLevel(this.value)">
+        <option value="all">全部等級</option>
+        <option value="error">ERROR / 失敗</option>
+      </select>
+      <button class="outline icon-left" onclick="exportCsv()" title="將目前日誌匯出為 CSV"><span>📥</span> 輸出 CSV</button>
+      <button class="outline" onclick="loadLogs()" title="重新整理日誌">🔄</button>
     </div>
   </div>
+</div>
 
-  <div class="detail-panel" id="log-detail">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-      <h3 style="margin:0;">事件詳情</h3>
-      <button class="btn-sm ghost" onclick="closeDetail()">✕</button>
-    </div>
-    <div class="empty-state" style="padding:3rem 1rem;">點選左側紀錄查看詳情</div>
+<div class="card log-table-wrap">
+  <table class="log-table" id="log-table">
+    <thead>
+      <tr>
+        <th class="dot-cell"></th>
+        <th class="type-cell">類型</th>
+        <th class="time-cell">時間</th>
+        <th>訊息</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td colspan="4" style="color:var(--muted); text-align:center; padding:2rem;">載入中…</td></tr>
+    </tbody>
+  </table>
+  <div class="log-footer">
+    <span id="log-summary">共 0 筆</span>
+    <div class="log-pagination" id="log-pagination"></div>
   </div>
 </div>
 
-{% endblock %}
-
-{% block scripts %}
 <script>
-async function checkDefaultPasswordBanner() {
-  try {
-    const me = await apiGet('/api/me');
-    const banner = document.getElementById('default-pwd-banner');
-    if (banner && me && me.is_default) banner.style.display = 'flex';
-  } catch(e){}
-}
-checkDefaultPasswordBanner();
-
 let allEntries = [];
 let currentTab = 'all';
 let searchTerm = '';
 let levelFilter = 'all';
-let moduleFilter = 'all';
-let timeRange = 'all';
-let sortOrder = 'desc';
 let currentPage = 1;
 let pageSize = 50;
-let selectedId = null;
 
 function typeBadge(type) {
   const map = { audit: 'blue', sync: 'warning', player: 'info' };
@@ -132,96 +89,22 @@ function typeDot(type) {
   return `<span class="dot" style="background:${color}; box-shadow:0 0 6px ${color};"></span>`;
 }
 
-function inferType(entry) {
-  const action = (entry.action || entry.message || '').toLowerCase();
-  if (entry.message && (entry.stdout || entry.stderr)) return 'sync';
-  if (action.includes('sync') || action.includes('webdav')) return 'sync';
-  if (action.includes('player') || action.includes('play') || action.includes('pause') || action.includes('stop') || action.includes('volume')) return 'player';
-  return 'audit';
-}
-
-function inferModule(entry) {
-  const action = (entry.action || entry.message || '').toLowerCase();
-  if (action.includes('sync') || action.includes('webdav') || action.includes('list-music') || action.includes('test-remote')) return 'webdav';
-  if (action.includes('player')) return 'player';
-  if (action.includes('system') || action.includes('reboot') || action.includes('rescan')) return 'system';
-  if (action.includes('settings') || action.includes('save_') || action.includes('change-password')) return 'settings';
-  return 'audit';
-}
-
-function closeDetail() {
-  selectedId = null;
-  renderLogs();
-  document.getElementById('log-detail').innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-      <h3 style="margin:0;">事件詳情</h3>
-      <button class="btn-sm ghost" onclick="closeDetail()">✕</button>
-    </div>
-    <div class="empty-state" style="padding:3rem 1rem;">點選左側紀錄查看詳情</div>
-  `;
-}
-
-function showDetail(entry) {
-  selectedId = entry.id;
-  renderLogs();
-  const type = inferType(entry);
-  const raw = JSON.stringify(entry, null, 2);
-  document.getElementById('log-detail').innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-      <h3 style="margin:0;">事件詳情</h3>
-      <button class="btn-sm ghost" onclick="closeDetail()">✕</button>
-    </div>
-    <div class="detail-row"><span class="label">時間</span><span>${entry.timestamp || entry.created_at || entry.started_at || '-'}</span></div>
-    <div class="detail-row"><span class="label">類型</span><span>${typeBadge(type)}</span></div>
-    <div class="detail-row"><span class="label">模組</span><span>${inferModule(entry)}</span></div>
-    <div class="detail-row"><span class="label">使用者</span><span>${entry.username || entry.user || '-'}</span></div>
-    <div class="detail-row"><span class="label">主機</span><span>${entry.host || window.location.hostname}</span></div>
-    <div class="detail-row"><span class="label">訊息</span><span>${entry.message || entry.action || '-'}</span></div>
-    <div style="margin-top:1rem;">
-      <div style="font-size:.8rem; color:var(--muted); margin-bottom:.5rem;">原始記錄</div>
-      <pre class="log-output" style="max-height:300px;">${escapeHtml(raw)}</pre>
-      <button class="btn-sm outline" style="margin-top:.5rem;" onclick="copyJson(${JSON.stringify(raw).replace(/"/g,'&quot;')})">📋 複製 JSON</button>
-    </div>
-  `;
-}
-
-function copyJson(text) {
-  navigator.clipboard.writeText(text).then(() => showToast('已複製 JSON', 'success'));
-}
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
 function filterEntries() {
   let filtered = allEntries;
   if (currentTab !== 'all') {
-    filtered = filtered.filter(e => inferType(e) === currentTab);
+    filtered = filtered.filter(e => (e.type || '').toLowerCase() === currentTab);
   }
-  if (moduleFilter !== 'all') {
-    filtered = filtered.filter(e => inferModule(e) === moduleFilter);
-  }
-  if (levelFilter !== 'all') {
-    filtered = filtered.filter(e => (e.level || '').toLowerCase() === levelFilter);
+  if (levelFilter === 'error') {
+    filtered = filtered.filter(e => /error|failed|失敗|異常/i.test(e.message || e.raw || ''));
   }
   if (searchTerm) {
     const q = searchTerm.toLowerCase();
     filtered = filtered.filter(e => JSON.stringify(e).toLowerCase().includes(q));
   }
-  if (timeRange !== 'all') {
-    const now = Date.now();
-    const ms = { hour: 3600000, day: 86400000, week: 604800000 }[timeRange];
-    filtered = filtered.filter(e => {
-      const t = new Date(e.timestamp || e.created_at || e.started_at || 0).getTime();
-      return now - t <= ms;
-    });
-  }
   filtered.sort((a, b) => {
-    const ta = new Date(a.timestamp || a.created_at || a.started_at || 0).getTime();
-    const tb = new Date(b.timestamp || b.created_at || b.started_at || 0).getTime();
-    return sortOrder === 'desc' ? tb - ta : ta - tb;
+    const ta = a.timestamp || '1970';
+    const tb = b.timestamp || '1970';
+    return tb.localeCompare(ta);
   });
   return filtered;
 }
@@ -240,11 +123,10 @@ function renderLogs() {
     tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted); text-align:center; padding:2rem;">尚無紀錄</td></tr>';
   } else {
     tbody.innerHTML = page.map(e => {
-      const type = inferType(e);
-      const time = e.timestamp || e.created_at || e.started_at || '-';
-      const msg = e.message || e.action || '-';
-      const isSelected = selectedId && (e.id === selectedId || e.id == selectedId);
-      return `<tr class="${isSelected ? 'selected' : ''}" onclick='showDetail(${JSON.stringify(e).replace(/"/g,'&quot;')})'>
+      const type = e.type || 'audit';
+      const time = e.timestamp || '-';
+      const msg = e.message || e.raw || '-';
+      return `<tr>
         <td class="dot-cell">${typeDot(type)}</td>
         <td class="type-cell">${typeBadge(type)}</td>
         <td class="time-cell">${time}</td>
@@ -252,7 +134,6 @@ function renderLogs() {
       </tr>`;
     }).join('');
   }
-
   document.getElementById('log-summary').textContent = `共 ${total} 筆`;
   renderPagination(totalPages);
 }
@@ -282,22 +163,32 @@ function setTab(t) {
 }
 function setSearch(v) { searchTerm = v; currentPage = 1; renderLogs(); }
 function setLevel(v) { levelFilter = v; currentPage = 1; renderLogs(); }
-function setModule(v) { moduleFilter = v; currentPage = 1; renderLogs(); }
-function setTimeRange(v) { timeRange = v; currentPage = 1; renderLogs(); }
-function setSort(v) { sortOrder = v; currentPage = 1; renderLogs(); }
-function setPageSize(v) { pageSize = parseInt(v, 10); currentPage = 1; renderLogs(); }
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
 
 async function loadLogs() {
   const data = await apiGet('/api/logs/all');
   allEntries = data.entries || [];
-  const syncData = await apiGet('/api/webdav/sync-logs');
-  if (syncData && syncData.logs) {
-    syncData.logs.forEach(l => {
-      l._type = 'sync';
-      allEntries.push(l);
-    });
-  }
   renderLogs();
+  loadStats();
+}
+
+async function loadStats() {
+  const s = await apiGet('/api/logs/stats');
+  document.getElementById('stat-total').textContent = s.total;
+  document.getElementById('stat-today').textContent = s.today;
+  document.getElementById('stat-errors').textContent = s.errors;
+  document.getElementById('stat-player').textContent = s.player;
+  document.getElementById('stat-audit').textContent = s.audit;
+  document.getElementById('stat-sync').textContent = s.sync;
+}
+
+function exportCsv() {
+  window.open('/api/logs/export', '_blank');
 }
 
 loadLogs();

@@ -1,12 +1,14 @@
 """Logs viewer route."""
-from datetime import datetime
+import csv
+import io
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import AUDIT_LOG_PATH, PLAYER_LOG_PATH, SYNC_LOG_PATH
-from app.db import get_recent_audit_logs
+from app.db import get_db, get_recent_audit_logs
 from app.routes.auth import get_current_user_or_local, user_uses_initial_password
 from app.services.system import tail_log
 
@@ -78,3 +80,46 @@ async def all_logs(request: Request):
 
     entries.sort(key=sort_key, reverse=True)
     return {"entries": entries}
+
+
+@router.get("/api/logs/stats")
+async def logs_stats(request: Request):
+    get_current_user_or_local(request)
+    entries = (await all_logs(request))["entries"]
+    today = datetime.now(timezone.utc).date().isoformat()
+    total = len(entries)
+    today_count = sum(1 for e in entries if (e.get("timestamp") or "").startswith(today))
+    errors = sum(1 for e in entries if "error" in (e.get("message") or "").lower() or "failed" in (e.get("message") or "").lower())
+    player = sum(1 for e in entries if e.get("type") == "player")
+    audit = sum(1 for e in entries if e.get("type") == "audit")
+    sync = sum(1 for e in entries if e.get("type") == "sync")
+    return {
+        "total": total,
+        "today": today_count,
+        "errors": errors,
+        "player": player,
+        "audit": audit,
+        "sync": sync,
+    }
+
+
+@router.get("/api/logs/export")
+async def export_logs(request: Request):
+    get_current_user_or_local(request)
+    entries = (await all_logs(request))["entries"]
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["timestamp", "type", "message", "details"])
+    for e in entries:
+        writer.writerow([
+            e.get("timestamp", ""),
+            e.get("type", ""),
+            e.get("message", ""),
+            e.get("details", e.get("raw", "")),
+        ])
+    output.seek(0)
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode("utf-8-sig")),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename=nikkomusichub-logs-{datetime.now().strftime('%Y%m%d-%H%M%S')}.csv"},
+    )

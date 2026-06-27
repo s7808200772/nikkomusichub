@@ -183,6 +183,22 @@ def set_loop(enabled: bool):
     return _ipc_send({"command": ["set_property", "loop-playlist", val]})
 
 
+def seek(position: float):
+    return _ipc_send({"command": ["seek", position, "absolute"]})
+
+
+def load_file(path: str, mode: str = "replace"):
+    return _ipc_send({"command": ["loadfile", path, mode]})
+
+
+def remove_file(path: str):
+    try:
+        Path(path).unlink()
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 def reload_playlist():
     files = sorted(MUSIC_DIR.rglob("*.mp3")) + sorted(MUSIC_DIR.rglob("*.MP3"))
     playlist = MUSIC_DIR.parent / "playlist.m3u"

@@ -86,6 +86,14 @@ async def player_volume(request: Request, volume: int = Form(...)):
     return res
 
 
+@router.post("/api/player/seek")
+async def player_seek(request: Request, position: float = Form(...)):
+    user = get_current_user_or_local(request)
+    res = mpv.seek(position)
+    audit(user, "player_seek", {"position": position})
+    return res
+
+
 @router.post("/api/player/mute")
 async def player_mute(request: Request, mute: int = Form(...)):
     user = get_current_user_or_local(request)
@@ -128,6 +136,28 @@ def player_playlist(request: Request):
 def player_library(request: Request):
     get_current_user_or_local(request)
     return {"files": list_music_files(MUSIC_DIR)}
+
+
+@router.post("/api/player/play-file")
+async def player_play_file(request: Request, path: str = Form(...)):
+    user = get_current_user_or_local(request)
+    from app.services.system import safe_path_validate
+    if not safe_path_validate(path):
+        return {"ok": False, "stderr": "Invalid path"}
+    res = mpv.load_file(path, "replace")
+    audit(user, "player_play_file", {"path": path, "ok": res["ok"]})
+    return res
+
+
+@router.post("/api/player/delete-file")
+async def player_delete_file(request: Request, path: str = Form(...)):
+    user = get_current_user_or_local(request)
+    from app.services.system import safe_path_validate
+    if not safe_path_validate(path):
+        return {"ok": False, "stderr": "Invalid path"}
+    res = mpv.remove_file(path)
+    audit(user, "player_delete_file", {"path": path, "ok": res["ok"]})
+    return res
 
 
 @router.get("/api/player/service-status")
