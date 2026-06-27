@@ -115,12 +115,7 @@ function gaugeSvg(percent, color) {
 }
 
 function renderRightPanel(data) {
-  const panel = document.getElementById('left-panel');
-  if (!panel || !data) return;
-
-  const cpuColor = data.cpu_percent > 90 ? 'var(--danger)' : (data.cpu_percent > 75 ? 'var(--warning)' : 'var(--success)');
-  const ramColor = data.ram.percent > 90 ? 'var(--danger)' : (data.ram.percent > 75 ? 'var(--warning)' : 'var(--success)');
-  const diskColor = data.disk.percent > 90 ? 'var(--danger)' : 'var(--success)';
+  if (!data) return;
 
   const navStatus = document.getElementById('nav-system-status');
   if (navStatus) {
@@ -132,7 +127,7 @@ function renderRightPanel(data) {
   const navStore = document.getElementById('nav-store-name');
   const navTs = document.getElementById('nav-tailscale-ip');
   const navLan = document.getElementById('nav-lan-ip');
-  if (navStore) navStore.textContent = data.store_name;
+  if (navStore) navStore.textContent = data.store_name || '-';
   if (navTs) navTs.textContent = 'Tailscale ' + (data.tailscale_ip || '未偵測');
   if (navLan) navLan.textContent = 'LAN ' + (data.lan_ip || '未偵測');
 
@@ -147,6 +142,13 @@ function renderRightPanel(data) {
     sbStatusDot.className = 'dot ' + (ok ? 'green' : 'red');
     sbStatusText.textContent = ok ? '正常運行' : '異常';
   }
+
+  const panel = document.getElementById('left-panel');
+  if (!panel) return;
+
+  const cpuColor = data.cpu_percent > 90 ? 'var(--danger)' : (data.cpu_percent > 75 ? 'var(--warning)' : 'var(--success)');
+  const ramColor = data.ram.percent > 90 ? 'var(--danger)' : (data.ram.percent > 75 ? 'var(--warning)' : 'var(--success)');
+  const diskColor = data.disk.percent > 90 ? 'var(--danger)' : 'var(--success)';
 
   panel.innerHTML = `
     <div class="card">
@@ -165,7 +167,7 @@ function renderRightPanel(data) {
         <div class="gauge">${gaugeSvg(data.disk.percent, diskColor)}<div class="gauge-label" style="color:${diskColor}">${data.disk.percent}%</div><div class="gauge-name">磁碟</div></div>
       </div>
       <div class="metric-row"><span class="label">RAM 使用</span><span class="value small">${data.ram.used_mb}/${data.ram.total_mb} MB</span></div>
-      <div class="metric-row"><span class="label">磁碟空閒</span><span class="value small">${data.disk.free_gb} GB</span></div>
+      <div class="metric-row"><span class="label">磁碟空間</span><span class="value small">${data.disk.total_gb} GB</span></div>
       <div class="metric-row"><span class="label">已運行</span><span class="value small">${formatDuration(data.uptime_seconds)}</span></div>
     </div>
 

@@ -10,11 +10,13 @@
 <body>
   <header class="topbar">
     <div class="topbar-left">
-      <a href="/" class="brand" hx-get="/" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
-        <span class="brand-logo">🎵</span>
-        <span class="brand-name">NikkoMusicHub</span>
-      </a>
-      {% block page_title %}{% endblock %}
+      {% block topbar_left %}
+      <div class="store-info">
+        <span id="nav-store-name">-</span>
+        <span class="ip-tag" id="nav-tailscale-ip">Tailscale -</span>
+        <span class="ip-tag" id="nav-lan-ip">LAN -</span>
+      </div>
+      {% endblock %}
     </div>
     <div class="topbar-right">
       <span class="status-pill" id="nav-system-status"><span class="dot green"></span>系統狀態：正常</span>
@@ -24,10 +26,14 @@
 
   <div class="layout">
     <aside class="sidebar">
+      <a href="/" class="brand" hx-get="/" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
+        <span class="brand-logo">🎵</span>
+        <span class="brand-name">NikkoMusicHub</span>
+      </a>
       <nav>
         <a href="/" class="{% if request.url.path == '/' %}active{% endif %}" hx-get="/" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
           <span class="nav-icon">🏠</span>
-          <span>首頁儀表</span>
+          <span>首頁儀表板</span>
         </a>
         <a href="/settings" class="{% if request.url.path == '/settings' %}active{% endif %}" hx-get="/settings" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
           <span class="nav-icon">⚙️</span>
@@ -39,18 +45,21 @@
         </a>
       </nav>
 
-      {% block sidebar_status %}
-      <div class="sidebar-status" id="left-panel">
-        <div class="spinner" style="padding:1rem 0;">載入中…</div>
-      </div>
-      {% endblock %}
+      {% block sidebar_status %}{% endblock %}
 
       <div class="sidebar-footer">
-        <a href="/logout" class="logout-link">
-          <span class="nav-icon">⏏️</span>
-          <span>Logout</span>
-        </a>
-        <div class="sidebar-version">NikkoMusicHub v1.0.0</div>
+        <div class="device-status">
+          <div class="device-icon">🥧</div>
+          <div>
+            <div id="sidebar-pi-model">Raspberry Pi</div>
+            <div class="uptime">系統已運行 <span id="sidebar-uptime">-</span></div>
+          </div>
+        </div>
+        <div class="status-line">
+          <span class="dot green" id="sidebar-status-dot"></span>
+          <span id="sidebar-status-text">正常運行</span>
+        </div>
+        <div class="sidebar-clock" id="sidebar-clock">-</div>
       </div>
     </aside>
 
