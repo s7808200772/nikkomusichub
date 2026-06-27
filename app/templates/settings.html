@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 {% block title %}系統設定 - NikkoMusicHub{% endblock %}
 {% block topbar_left %}<span class="page-title"><span class="icon">⚙️</span>系統設定</span>{% endblock %}
-{% block sidebar_status %}{% endblock %}
-{% block content %}
-
+{% block topbar_center %}
 <div id="default-pwd-banner" class="top-banner" style="display:none;">
   <span>⚠️</span>
   <span>您正在使用預設密碼，請到 <a href="/settings">Settings</a> 修改密碼。</span>
 </div>
+{% endblock %}
+{% block sidebar_status %}{% endblock %}
+{% block content %}
 
 <div class="settings-layout">
   <div class="card settings-col-1">
@@ -84,9 +85,9 @@
   <div class="card settings-col-4">
     <h2><span class="icon">🖐️</span>手動操作</h2>
     <div class="manual-actions">
-      <button class="primary block" onclick="startSync(this, true)" id="btn-dryrun">📡 Dry-run 測試同步</button>
-      <button class="success block" onclick="startSync(this, false)" id="btn-sync">▶ 立即同步</button>
-      <button class="danger block" onclick="if(confirm('確定要清空本地音樂嗎？這會刪除 /srv/nikko-music/music 內所有 MP3。')) runAction(this, '/api/webdav/clear-local', null, 'settings-log')">🗑️ 清空本地音樂</button>
+      <button class="primary block icon-left" onclick="startSync(this, true)" id="btn-dryrun"><span>📡</span> Dry-run 測試同步</button>
+      <button class="success block icon-left" onclick="startSync(this, false)" id="btn-sync"><span>▶</span> 立即同步</button>
+      <button class="danger block icon-left" onclick="if(confirm('確定要清空本地音樂嗎？這會刪除 /srv/nikko-music/music 內所有 MP3。')) runAction(this, '/api/webdav/clear-local', null, 'settings-log')"><span>🗑</span> 清空本地音樂</button>
     </div>
   </div>
 
@@ -116,7 +117,6 @@
         <div class="form-group">
           <label>Vendor</label>
           <input name="vendor" id="vendor" value="{{ settings.vendor }}" required placeholder="請輸入 Vendor">
-          <div class="hint">QNAP 通常填 other。</div>
         </div>
         <div class="form-group">
           <label>Local Music Path</label>
@@ -128,22 +128,22 @@
         </div>
       </div>
       <div class="webdav-actions">
-        <button type="submit" class="primary">💾 儲存 WebDAV 設定</button>
-        <button type="button" class="outline" onclick="runAction(this, '/api/webdav/test-remote', null, 'settings-log')">📡 測試 WebDAV 連線</button>
-        <button type="button" class="outline" onclick="runAction(this, '/api/webdav/list-music', null, 'settings-log')">📂 列出 NAS 音樂檔案</button>
+        <button type="submit" class="primary icon-left"><span>💾</span> 儲存 WebDAV 設定</button>
+        <button type="button" class="outline icon-left" onclick="runAction(this, '/api/webdav/test-remote', null, 'settings-log')"><span>📡</span> 測試 WebDAV 連線</button>
+        <button type="button" class="outline icon-left" onclick="runAction(this, '/api/webdav/list-music', null, 'settings-log')"><span>📂</span> 列出 NAS 音樂檔案</button>
       </div>
     </form>
   </div>
 
   <div class="card settings-init">
     <h2><span class="icon">🔧</span>系統初始化</h2>
-    <p class="hint" style="margin-bottom: .75rem;">新安裝或系統更新後使用這些按鈕安裝必要套件。</p>
+    <p class="hint" style="margin-bottom: .75rem;">新安裝或系統更新後使用，執行紀錄顯示於下方。</p>
     <div class="init-grid">
-      <button class="block" onclick="runAction(this, '/api/setup/apt-update', null, 'settings-log')">🔄 系統更新（apt update + upgrade）</button>
-      <button class="block" onclick="runAction(this, '/api/setup/install-rclone', null, 'settings-log')">📦 安裝 rclone</button>
-      <button class="block" onclick="runAction(this, '/api/setup/install-mpv', null, 'settings-log')">🎵 安裝 mpv</button>
-      <button class="block" onclick="runAction(this, '/api/setup/create-folders', null, 'settings-log')">📁 建立音樂資料夾</button>
-      <button class="block" onclick="runAction(this, '/api/setup/install-service', null, 'settings-log')">⚙️ 重新載入 systemd</button>
+      <button class="block icon-left" onclick="runAction(this, '/api/setup/apt-update', null, 'settings-log')"><span>🔄</span> 系統更新（apt update + upgrade）</button>
+      <button class="block icon-left" onclick="runAction(this, '/api/setup/install-rclone', null, 'settings-log')"><span>📦</span> 安裝 rclone</button>
+      <button class="block icon-left" onclick="runAction(this, '/api/setup/install-mpv', null, 'settings-log')"><span>🎵</span> 安裝 mpv</button>
+      <button class="block icon-left" onclick="runAction(this, '/api/setup/create-folders', null, 'settings-log')"><span>📁</span> 建立音樂資料夾</button>
+      <button class="block icon-left" onclick="runAction(this, '/api/setup/install-service', null, 'settings-log')"><span>⚙️</span> 重新載入 systemd</button>
     </div>
   </div>
 </div>
@@ -164,19 +164,20 @@
   <pre class="log-output" id="sync-progress-log" style="margin-top:.75rem; max-height:160px;"></pre>
 </div>
 
-<div class="dashboard-grid two-col">
-  <div class="card">
+<div class="dash-grid" style="margin-top:1rem;">
+  <div class="card dash-col-6">
     <div class="card-header">
       <h2><span class="icon">🕐</span>最近同步紀錄</h2>
       <button class="btn-sm ghost" onclick="loadHistory()">重新整理</button>
     </div>
     <div id="sync-history"><div class="empty-state"><div class="big-icon">📭</div><div>尚無同步紀錄</div></div></div>
   </div>
-  <div class="card">
+  <div class="card dash-col-6">
     <div class="card-header">
       <h2><span class="icon">📝</span>操作紀錄</h2>
+      <button class="btn-sm ghost" onclick="loadAuditLogs()">重新整理</button>
     </div>
-    <pre class="log-output" id="settings-log">等待操作…</pre>
+    <div id="audit-history"><div class="empty-state"><div class="big-icon">📭</div><div>尚無操作紀錄</div></div></div>
   </div>
 </div>
 
@@ -313,6 +314,26 @@ async function loadHistory() {
     }).join('') + '</table>';
 }
 
+async function loadAuditLogs() {
+  const data = await apiGet('/api/logs/all');
+  const el = document.getElementById('audit-history');
+  const entries = data.entries || [];
+  if (!entries.length) {
+    el.innerHTML = '<div class="empty-state"><div class="big-icon">📭</div><div>尚無操作紀錄</div></div>';
+    return;
+  }
+  el.innerHTML = '<table class="table"><tr><th>時間</th><th>使用者</th><th>操作</th><th>結果</th><th>詳細資訊</th></tr>' +
+    entries.slice(0,10).map(e => {
+      const time = e.timestamp || e.created_at || '-';
+      const user = e.username || e.user || '-';
+      const action = e.action || e.message || '-';
+      const ok = e.ok !== false && e.status !== 'failed';
+      const result = ok ? '<span class="badge badge-success">成功</span>' : '<span class="badge badge-danger">失敗</span>';
+      return `<tr><td>${time}</td><td>${user}</td><td>${action}</td><td>${result}</td><td style="color:var(--muted); font-size:.75rem;">${e.message || '-'}</td></tr>`;
+    }).join('') + '</table>';
+}
+
 loadHistory();
+loadAuditLogs();
 </script>
 {% endblock %}
