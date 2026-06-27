@@ -19,9 +19,9 @@ fi
 
 rclone sync "${REMOTE_PATH}" "${LOCAL_PATH}" \
   --config /srv/nikko-music/data/rclone.conf \
-  --include "*.mp3" \
-  --include "*.MP3" \
-  --exclude "*" \
+  --filter "+ *.mp3" \
+  --filter "+ *.MP3" \
+  --filter "- *" \
   --log-file "${LOG_FILE}" \
   --log-level INFO \
   -v
