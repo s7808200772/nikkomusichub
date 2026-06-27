@@ -40,7 +40,7 @@
 
 <div class="dash-grid">
   <!-- Player console -->
-  <div class="card player-console dash-col-8">
+  <div class="card player-console dash-player">
     <h2><span class="icon">🎛️</span>播放控制台</h2>
     <div class="waveform" id="waveform" aria-hidden="true">
       <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
@@ -59,9 +59,9 @@
             <div class="volume-row">
               <span>音量</span>
               <span id="volume-val">100</span>
-              <input type="range" min="0" max="150" id="volume-slider" onchange="setVolume(this.value)" title="調整音量">
+              <input type="range" min="0" max="150" id="volume-slider" class="player-slider" onchange="setVolume(this.value)" title="調整音量">
             </div>
-            <input type="range" id="seek-slider" min="0" max="0" value="0" step="1" class="seek-slider" oninput="seekSlider(this.value)" title="拖曳調整播放進度">
+            <input type="range" id="seek-slider" min="0" max="0" value="0" step="1" class="player-slider" oninput="seekSlider(this.value)" title="拖曳調整播放進度">
             <div class="time-row">
               <span id="p-curtime">0:00</span>
               <span id="p-duration">0:00</span>
@@ -93,7 +93,7 @@
   </div>
 
   <!-- Status cards (server-side rendered to avoid layout shift) -->
-  <div class="dash-col-4">
+  <div class="dash-status">
     <div class="status-grid" id="status-grid">
       <div class="status-card">
         <h3><span class="icon">🏪</span>店家資訊</h3>
@@ -163,7 +163,7 @@
   </div>
 
   <!-- Music library + playlist -->
-  <div class="card dash-col-8 music-card">
+  <div class="card dash-col-8 music-card dash-music">
     <div class="card-header">
       <h2><span class="icon">🎶</span>音樂庫 / 播放清單</h2>
       <div class="tab-bar">
@@ -181,7 +181,7 @@
   </div>
 
   <!-- Maintenance -->
-  <div class="card dash-col-4">
+  <div class="card dash-col-4 dash-maintenance">
     <h2><span class="icon">🛠️</span>維護操作</h2>
     <div class="maintenance-col">
       <button onclick="runAction(this, '/api/system/start-player', null, 'global-log')" title="啟動 systemd 播放器服務（開機自動播放用）"><span>▶</span> 啟動播放服務</button>
