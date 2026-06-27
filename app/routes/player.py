@@ -28,6 +28,11 @@ async def player_status(request: Request):
 @router.post("/api/player/play")
 async def player_play(request: Request):
     user = get_current_user_or_local(request)
+    status = mpv.get_status()
+    if status["state"] == "paused":
+        res = mpv.resume()
+        audit(user, "player_resume", {"ok": res["ok"]})
+        return res
     res = mpv.start_player()
     audit(user, "player_play", {"ok": res["ok"]})
     return res
