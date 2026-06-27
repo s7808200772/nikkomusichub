@@ -182,3 +182,16 @@ def start_sync(remote_path: str, local_path: str, dry_run: bool = False) -> dict
     )
     thread.start()
     return {"ok": True, "message": "Dry-run 已啟動" if dry_run else "同步已啟動"}
+
+
+def run_sync_sync(remote_path: str, local_path: str, dry_run: bool = False) -> dict:
+    """Synchronous wrapper used by the systemd timer."""
+    start_sync(remote_path, local_path, dry_run)
+    # Wait for completion
+    import time
+    for _ in range(720):
+        progress = get_progress()
+        if not progress["running"]:
+            break
+        time.sleep(5)
+    return get_progress()
