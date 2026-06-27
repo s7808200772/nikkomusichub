@@ -24,7 +24,7 @@ async function apiPost(url, body) {
 }
 
 function statusDot(color) {
-  return `<span class="status-dot status-${color}"></span>`;
+  return `<span class="dot ${color}"></span>`;
 }
 
 function formatDuration(seconds) {
@@ -92,3 +92,118 @@ async function runAction(btn, url, body, outputId) {
     setBusy(btn, false);
   }
 }
+
+function gaugeSvg(percent, color) {
+  const r = 20;
+  const c = 2 * Math.PI * r;
+  const offset = c - (percent / 100) * c;
+  return `<svg width="64" height="64" viewBox="0 0 64 64"><circle class="gauge-bg" cx="32" cy="32" r="${r}"/><circle class="gauge-fill" style="stroke:${color};stroke-dasharray:${c};stroke-dashoffset:${offset}" cx="32" cy="32" r="${r}"/></svg>`;
+}
+
+function renderRightPanel(data) {
+  const panel = document.getElementById('right-panel');
+  if (!panel) return;
+
+  const cpuColor = data.cpu_percent > 80 ? 'var(--warning)' : (data.cpu_percent > 95 ? 'var(--danger)' : 'var(--success)');
+  const ramColor = data.ram.percent > 80 ? 'var(--warning)' : (data.ram.percent > 95 ? 'var(--danger)' : 'var(--success)');
+  const diskColor = data.disk.percent > 85 ? 'var(--danger)' : 'var(--success)';
+
+  const sysStatus = document.getElementById('nav-system-status');
+  if (sysStatus) {
+    const ok = data.web_service_status === 'active';
+    sysStatus.innerHTML = `${statusDot(ok ? 'green' : 'red')}系統狀態：${ok ? '正常' : '異常'}`;
+    sysStatus.className = 'status-pill ' + (ok ? '' : 'error');
+  }
+
+  const navStore = document.getElementById('nav-store-name');
+  const navTs = document.getElementById('nav-tailscale-ip');
+  const navLan = document.getElementById('nav-lan-ip');
+  if (navStore) navStore.textContent = data.store_name;
+  if (navTs) navTs.textContent = 'Tailscale ' + (data.tailscale_ip || '未偵測');
+  if (navLan) navLan.textContent = 'LAN ' + (data.lan_ip || '未偵測');
+
+  const sbDevice = document.getElementById('sb-device');
+  const sbUptime = document.getElementById('sb-uptime');
+  if (sbDevice) sbDevice.textContent = data.pi_model;
+  if (sbUptime) sbUptime.textContent = '已運行 ' + formatDuration(data.uptime_seconds);
+
+  panel.innerHTML = `
+    <div class="card">
+      <h3><span class="icon">🏪</span>店家資訊</h3>
+      <div class="metric-row"><span class="label">店名</span><span class="value">${data.store_name}</span></div>
+      <div class="metric-row"><span class="label">Hostname</span><span class="value">${data.hostname}</span></div>
+      <div class="metric-row"><span class="label">Tailscale IP</span><span class="value">${data.tailscale_ip || '未偵測'}</span></div>
+      <div class="metric-row"><span class="label">LAN IP</span><span class="value">${data.lan_ip || '未偵測'}</span></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="icon">📊</span>系統資源</h3>
+      <div class="gauge-grid">
+        <div class="gauge">${gaugeSvg(data.cpu_percent, cpuColor)}<div class="gauge-label" style="color:${cpuColor}">${data.cpu_percent}%</div><div class="gauge-name">CPU</div></div>
+        <div class="gauge">${gaugeSvg(data.ram.percent, ramColor)}<div class="gauge-label" style="color:${ramColor}">${data.ram.percent}%</div><div class="gauge-name">RAM</div></div>
+        <div class="gauge">${gaugeSvg(data.disk.percent, diskColor)}<div class="gauge-label" style="color:${diskColor}">${data.disk.percent}%</div><div class="gauge-name">磁碟</div></div>
+      </div>
+      <div class="metric-row"><span class="label">RAM</span><span class="value small">${data.ram.used_mb}/${data.ram.total_mb} MB</span></div>
+      <div class="metric-row"><span class="label">磁碟空閒</span><span class="value small">${data.disk.free_gb} GB</span></div>
+      <div class="metric-row"><span class="label">Uptime</span><span class="value small">${formatDuration(data.uptime_seconds)}</span></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="icon">🧩</span>元件狀態</h3>
+      <div class="metric-row"><span class="label">rclone</span><span class="value">${statusDot(data.rclone_installed ? 'green' : 'gray')}${data.rclone_installed ? '已安裝' : '未安裝'}</span></div>
+      <div class="metric-row"><span class="label">mpv</span><span class="value">${statusDot(data.mpv_installed ? 'green' : 'gray')}${data.mpv_installed ? '已安裝' : '未安裝'}</span></div>
+      <div class="metric-row"><span class="label">音樂服務</span><span class="value">${statusDot(data.player_active === 'active' ? 'green' : 'gray')}${data.player_active}</span></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="icon">🌐</span>服務狀態</h3>
+      <div class="metric-row"><span class="label">Web</span><span class="value">${statusDot(data.web_service_status === 'active' ? 'green' : 'gray')}${data.web_service_status}</span></div>
+      <div class="metric-row"><span class="label">Player</span><span class="value">${statusDot(data.player_service_status === 'active' ? 'green' : 'gray')}${data.player_service_status}</span></div>
+      <div class="metric-row"><span class="label">Sync Timer</span><span class="value">${statusDot(data.sync_timer_status === 'active' ? 'green' : 'gray')}${data.sync_timer_status}</span></div>
+      <div class="metric-row"><span class="label">MQTT</span><span class="value">${statusDot(data.mqtt_service_status === 'active' ? 'green' : 'gray')}${data.mqtt_service_status}</span></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="icon">☁️</span>NAS WebDAV 同步</h3>
+      <div class="metric-row"><span class="label">狀態</span><span class="value">${statusDot(data.webdav_connected ? 'green' : 'gray')}${data.webdav_connected ? '已設定' : '未設定'}</span></div>
+      <div class="metric-row"><span class="label">Remote</span><span class="value small">${data.webdav_remote}</span></div>
+      <div class="metric-row"><span class="label">URL</span><span class="value small">${data.webdav_url}</span></div>
+      <div class="metric-row"><span class="label">Remote Path</span><span class="value small">${data.webdav_remote_path}</span></div>
+      <div class="metric-row"><span class="label">本地路徑</span><span class="value small">${data.local_music_path}</span></div>
+      <div class="metric-row"><span class="label">MP3 數量</span><span class="value">${data.mp3_count}</span></div>
+      <div class="metric-row"><span class="label">最近同步</span><span class="value small">${data.last_sync_at || '從未'} ${data.last_sync_status || ''}</span></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="icon">🎵</span>播放器狀態</h3>
+      <div class="metric-row"><span class="label">播放狀態</span><span class="value">${statusDot(data.player_status === 'playing' ? 'green' : (data.player_status === 'paused' ? 'yellow' : 'gray'))}${data.player_status}</span></div>
+      <div class="metric-row"><span class="label">目前曲目</span><span class="value small">${data.current_track || '-'}</span></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="icon">🖥️</span>系統詳細資訊</h3>
+      <div class="metric-row"><span class="label">Pi 型號</span><span class="value small">${data.pi_model}</span></div>
+      <div class="metric-row"><span class="label">作業系統</span><span class="value small">${data.os_version}</span></div>
+      <div class="metric-row"><span class="label">Python</span><span class="value small">${data.python_version}</span></div>
+      <div class="metric-row"><span class="label">CPU 溫度</span><span class="value">${data.cpu_temp_c !== null ? data.cpu_temp_c + ' °C' : 'N/A'}</span></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="icon">📦</span>軟體版本</h3>
+      <div class="metric-row"><span class="label">rclone</span><span class="value small">${data.rclone_version}</span></div>
+      <div class="metric-row"><span class="label">mpv</span><span class="value small">${data.mpv_version}</span></div>
+    </div>
+  `;
+}
+
+async function loadRightPanel() {
+  try {
+    const data = await apiGet('/api/dashboard');
+    if (data) renderRightPanel(data);
+  } catch (e) {
+    console.error('loadRightPanel failed', e);
+  }
+}
+
+loadRightPanel();
+setInterval(loadRightPanel, 5000);

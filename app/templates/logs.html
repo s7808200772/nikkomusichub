@@ -1,27 +1,27 @@
 {% extends "base.html" %}
 {% block title %}Logs - NikkoMusicHub{% endblock %}
 {% block content %}
-<h1>Logs</h1>
+<h1 class="page-title">📋 日誌記錄</h1>
 
 <div class="card">
   <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1rem;">
-    <button class="badge badge-blue" onclick="filterLogs('all')">全部</button>
-    <button class="badge badge-green" onclick="filterLogs('audit')">Audit</button>
-    <button class="badge badge-yellow" onclick="filterLogs('sync')">Sync</button>
-    <button class="badge badge-purple" onclick="filterLogs('player')">Player</button>
+    <button class="btn primary" onclick="filterLogs('all')">全部</button>
+    <button class="btn outline" onclick="filterLogs('audit')">Audit</button>
+    <button class="btn outline" onclick="filterLogs('sync')">Sync</button>
+    <button class="btn outline" onclick="filterLogs('player')">Player</button>
   </div>
 
   <div style="overflow-x:auto;">
-    <table style="width:100%; font-size:.85rem; border-collapse:collapse;">
+    <table class="table">
       <thead>
-        <tr style="text-align:left; border-bottom:1px solid var(--border);">
-          <th style="padding:.5rem; width:90px;">類型</th>
-          <th style="padding:.5rem; width:160px;">時間</th>
-          <th style="padding:.5rem;">訊息</th>
+        <tr>
+          <th style="width:90px;">類型</th>
+          <th style="width:160px;">時間</th>
+          <th>訊息</th>
         </tr>
       </thead>
       <tbody id="log-table">
-        <tr><td colspan="3" style="padding:.5rem; color:var(--muted)">載入中…</td></tr>
+        <tr><td colspan="3" style="color:var(--muted)">載入中…</td></tr>
       </tbody>
     </table>
   </div>
@@ -33,12 +33,12 @@ let currentFilter = 'all';
 
 function typeBadge(type) {
   const map = {
-    audit: 'badge-green',
-    'audit-file': 'badge-green',
-    sync: 'badge-yellow',
-    player: 'badge-purple',
+    audit: 'success',
+    'audit-file': 'success',
+    sync: 'warning',
+    player: 'info',
   };
-  return `<span class="badge ${map[type] || 'badge-blue'}">${type}</span>`;
+  return `<span class="badge badge-${map[type] || 'blue'}">${type}</span>`;
 }
 
 function renderLogs() {
@@ -47,14 +47,14 @@ function renderLogs() {
     ? allEntries
     : allEntries.filter(e => e.type === currentFilter || (currentFilter === 'audit' && e.type === 'audit-file'));
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="3" style="padding:.5rem; color:var(--muted)">無紀錄</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">無紀錄</td></tr>';
     return;
   }
   tbody.innerHTML = filtered.map(e => `
-    <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:.5rem; vertical-align:top;">${typeBadge(e.type)}</td>
-      <td style="padding:.5rem; color:var(--muted); vertical-align:top; white-space:nowrap;">${e.timestamp || '-'}</td>
-      <td style="padding:.5rem; vertical-align:top;">${escapeHtml(e.message)}</td>
+    <tr>
+      <td style="vertical-align:top;">${typeBadge(e.type)}</td>
+      <td style="color:var(--muted); vertical-align:top; white-space:nowrap;">${e.timestamp || '-'}</td>
+      <td style="vertical-align:top;">${escapeHtml(e.message)}</td>
     </tr>
   `).join('');
 }

@@ -7,26 +7,55 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="logo">🎵</span>
+      <span class="brand-name">NikkoMusicHub</span>
+    </div>
+    <div class="topbar-center">
+      <span class="chip" id="nav-store-name">-</span>
+      <span class="chip muted" id="nav-tailscale-ip">-</span>
+      <span class="chip muted" id="nav-lan-ip">-</span>
+    </div>
+    <div class="topbar-actions">
+      <span class="status-pill" id="nav-system-status"><span class="dot green"></span>系統狀態：正常</span>
+      <a href="/logout" class="btn btn-sm">Logout</a>
+    </div>
+  </header>
+
   <div class="layout">
     <aside class="sidebar">
-      <h1>🎵 NikkoMusicHub</h1>
       <nav>
-        <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Dashboard</a>
-        <a href="/settings" class="{% if request.url.path == '/settings' %}active{% endif %}">Settings</a>
-        <a href="/logs" class="{% if request.url.path == '/logs' %}active{% endif %}">Logs</a>
+        <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
+          <span class="nav-icon">🏠</span> Dashboard
+        </a>
+        <a href="/settings" class="{% if request.url.path == '/settings' %}active{% endif %}">
+          <span class="nav-icon">⚙️</span> Settings
+        </a>
+        <a href="/logs" class="{% if request.url.path == '/logs' %}active{% endif %}">
+          <span class="nav-icon">📋</span> Logs
+        </a>
       </nav>
-    </aside>
-    <main class="main">
-      <header class="topbar">
-        <div class="topbar-info">
-          <span id="nav-store-name">-</span>
-          <span class="text-muted" id="nav-tailscale-ip">-</span>
+      <div class="sidebar-footer">
+        <a href="/logout" class="logout-link"><span class="nav-icon">⏏️</span> Logout</a>
+        <div class="device-info">
+          <div id="sb-device">-</div>
+          <div id="sb-uptime">-</div>
         </div>
-        <a href="/logout" class="btn btn-sm">Logout</a>
-      </header>
+      </div>
+    </aside>
+
+    <main class="main">
       {% block content %}{% endblock %}
     </main>
+
+    <aside class="rightbar">
+      <div class="rightbar-inner" id="right-panel">
+        <div class="spinner">載入中…</div>
+      </div>
+    </aside>
   </div>
+
   <div id="toast" class="toast" style="display:none;"></div>
   <script src="/static/app.js"></script>
   {% block scripts %}{% endblock %}

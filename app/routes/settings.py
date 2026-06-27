@@ -3,9 +3,17 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from app.config import MUSIC_DIR
+from app.config import (
+    MUSIC_DIR,
+    RCLONE_REMOTE_NAME_DEFAULT,
+    RCLONE_REMOTE_PATH_DEFAULT,
+    RCLONE_WEBDAV_URL_DEFAULT,
+    RCLONE_WEBDAV_VENDOR_DEFAULT,
+    SYNC_TIME_DEFAULT,
+)
 from app.db import audit, get_setting, set_setting
 from app.routes.auth import get_current_user_or_local
+from app.services import rclone
 from app.services.system import get_hostname, get_ip_addresses, run
 
 router = APIRouter()
@@ -15,7 +23,23 @@ templates = Jinja2Templates(directory="app/templates")
 @router.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     get_current_user_or_local(request)
-    return templates.TemplateResponse("settings.html", {"request": request})
+    settings = {
+        "store_name": get_setting("store_name", "未命名店鋪"),
+        "store_id": get_setting("store_id", ""),
+        "remote_name": get_setting("webdav_remote", RCLONE_REMOTE_NAME_DEFAULT),
+        "url": get_setting("webdav_url", RCLONE_WEBDAV_URL_DEFAULT),
+        "vendor": get_setting("webdav_vendor", RCLONE_WEBDAV_VENDOR_DEFAULT),
+        "username": get_setting("webdav_username", ""),
+        "remote_path": get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT),
+        "local_path": get_setting("local_music_path", str(MUSIC_DIR)),
+        "sync_mode": get_setting("sync_mode", "sync"),
+        "daily_sync_enabled": bool(int(get_setting("daily_sync_enabled", "1"))),
+        "sync_time": get_setting("sync_time", SYNC_TIME_DEFAULT),
+        "boot_delay_min": int(get_setting("sync_boot_delay_min", "2")),
+        "auto_restart_player": bool(int(get_setting("auto_restart_player", "1"))),
+        "configured": rclone.get_rclone_config_exists(),
+    }
+    return templates.TemplateResponse("settings.html", {"request": request, "settings": settings})
 
 
 @router.get("/api/settings/device")

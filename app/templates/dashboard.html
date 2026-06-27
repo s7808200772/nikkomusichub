@@ -1,135 +1,105 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - NikkoMusicHub{% endblock %}
 {% block content %}
-<h1>Dashboard</h1>
+<h1 class="page-title">🎛️ 播放控制台</h1>
 
-<div class="grid">
+<div class="grid grid-2">
   <div class="card">
-    <h2>店家資訊</h2>
-    <div class="metric"><span class="label">店名</span><span class="value" id="store-name">-</span></div>
-    <div class="metric"><span class="label">Hostname</span><span class="value" id="hostname">-</span></div>
-    <div class="metric"><span class="label">Tailscale IP</span><span class="value" id="tailscale-ip">-</span></div>
-    <div class="metric"><span class="label">LAN IP</span><span class="value" id="lan-ip">-</span></div>
-  </div>
-
-  <div class="card">
-    <h2>系統資源</h2>
-    <div class="metric"><span class="label">CPU</span><span class="value" id="cpu">-</span></div>
-    <div class="metric"><span class="label">RAM</span><span class="value" id="ram">-</span></div>
-    <div class="metric"><span class="label">磁碟</span><span class="value" id="disk">-</span></div>
-    <div class="metric"><span class="label">Uptime</span><span class="value" id="uptime">-</span></div>
-  </div>
-
-  <div class="card">
-    <h2>元件狀態</h2>
-    <div class="metric"><span class="label">rclone</span><span class="value" id="rclone-status">-</span></div>
-    <div class="metric"><span class="label">mpv</span><span class="value" id="mpv-status">-</span></div>
-    <div class="metric"><span class="label">音樂服務</span><span class="value" id="player-service">-</span></div>
-  </div>
-
-  <div class="card">
-    <h2>NAS WebDAV 同步</h2>
-    <div class="metric"><span class="label">WebDAV 狀態</span><span class="value" id="webdav-status">-</span></div>
-    <div class="metric"><span class="label">Remote</span><span class="value" id="webdav-remote" style="font-size:.8rem">-</span></div>
-    <div class="metric"><span class="label">URL</span><span class="value" id="webdav-url" style="font-size:.75rem">-</span></div>
-    <div class="metric"><span class="label">Remote Path</span><span class="value" id="webdav-remote-path" style="font-size:.8rem">-</span></div>
-    <div class="metric"><span class="label">本地路徑</span><span class="value" id="local-music-path" style="font-size:.8rem">-</span></div>
-    <div class="metric"><span class="label">MP3 數量</span><span class="value" id="mp3-count">-</span></div>
-    <div class="metric"><span class="label">最近同步</span><span class="value" id="last-sync">-</span></div>
-  </div>
-
-  <div class="card">
-    <h2>播放器</h2>
-    <div class="metric"><span class="label">播放狀態</span><span class="value" id="player-state">-</span></div>
-    <div class="metric"><span class="label">目前曲目</span><span class="value" id="current-track" style="font-size:.85rem">-</span></div>
-  </div>
-
-  <div class="card">
-    <h2>系統詳情</h2>
-    <div class="metric"><span class="label">Pi 型號</span><span class="value" id="pi-model">-</span></div>
-    <div class="metric"><span class="label">OS</span><span class="value" id="os-version">-</span></div>
-    <div class="metric"><span class="label">Python</span><span class="value" id="python-version">-</span></div>
-    <div class="metric"><span class="label">CPU 溫度</span><span class="value" id="cpu-temp">-</span></div>
-  </div>
-
-  <div class="card">
-    <h2>軟體版本</h2>
-    <div class="metric"><span class="label">rclone</span><span class="value" id="rclone-version">-</span></div>
-    <div class="metric"><span class="label">mpv</span><span class="value" id="mpv-version">-</span></div>
-  </div>
-
-  <div class="card">
-    <h2>服務狀態</h2>
-    <div class="metric"><span class="label">Web</span><span class="value" id="web-status">-</span></div>
-    <div class="metric"><span class="label">Player</span><span class="value" id="player-status">-</span></div>
-    <div class="metric"><span class="label">Sync Timer</span><span class="value" id="sync-status">-</span></div>
-    <div class="metric"><span class="label">MQTT</span><span class="value" id="mqtt-status">-</span></div>
-  </div>
-</div>
-
-<div class="card">
-  <h2>播放器控制</h2>
-  <div class="player-controls" style="justify-content:center;">
-    <button onclick="runAction(this, '/api/player/prev', null, 'dash-player-log')" title="上一首">⏮</button>
-    <button onclick="runAction(this, '/api/player/play', null, 'dash-player-log')" class="success" title="播放" id="btn-play">▶</button>
-    <button onclick="runAction(this, '/api/player/pause', null, 'dash-player-log')" title="暫停" id="btn-pause">⏸</button>
-    <button onclick="runAction(this, '/api/player/stop', null, 'dash-player-log')" class="danger" title="停止">⏹</button>
-    <button onclick="runAction(this, '/api/player/next', null, 'dash-player-log')" title="下一首">⏭</button>
-  </div>
-  <div class="form-group" style="margin-top:1rem;">
-    <label>音量 <span id="volume-val">-</span></label>
-    <input type="range" min="0" max="150" id="volume-slider" onchange="setVolume(this.value)">
-  </div>
-  <div class="player-controls">
-    <button onclick="toggleShuffle()" id="btn-shuffle" class="toggle">🔀 隨機</button>
-    <button onclick="toggleLoop()" id="btn-loop" class="toggle">🔁 循環</button>
-    <button onclick="runAction(this, '/api/player/reload', null, 'dash-player-log')">🔄 重新載入</button>
-  </div>
-  <div class="player-controls">
-    <button onclick="runAction(this, '/api/player/enable-service', null, 'dash-player-log')">啟用開機播放</button>
-    <button onclick="runAction(this, '/api/player/disable-service', null, 'dash-player-log')">停用開機播放</button>
-  </div>
-</div>
-
-<div class="grid">
-  <div class="card">
-    <h2>音樂庫 <span id="lib-count" style="font-size:.85rem; color:var(--muted);">0 首</span></h2>
-    <div id="file-list" style="max-height: 40vh; overflow-y: auto; font-size: .9rem;">
-      <p style="color:var(--muted)">載入中…</p>
+    <h2><span class="icon">🎧</span>目前播放</h2>
+    <div class="now-playing">
+      <div class="cover">🎵</div>
+      <div class="track-info">
+        <div class="track-title" id="p-track">-</div>
+        <div class="track-meta" id="p-state">stopped</div>
+        <div class="track-meta" id="p-time">0:00 / 0:00</div>
+      </div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="p-progress"></div></div>
+    <div class="volume-row">
+      <span>🔊</span>
+      <input type="range" min="0" max="150" id="volume-slider" onchange="setVolume(this.value)">
+      <span id="volume-val">-</span>
+    </div>
+    <div class="player-controls" style="justify-content:center; margin-top:1rem;">
+      <button class="round" onclick="runAction(this, '/api/player/prev', null, 'dash-player-log')" title="上一首">⏮</button>
+      <button class="round success" onclick="runAction(this, '/api/player/play', null, 'dash-player-log')" title="播放" id="btn-play">▶</button>
+      <button class="round" onclick="runAction(this, '/api/player/pause', null, 'dash-player-log')" title="暫停" id="btn-pause">⏸</button>
+      <button class="round danger" onclick="runAction(this, '/api/player/stop', null, 'dash-player-log')" title="停止">⏹</button>
+      <button class="round" onclick="runAction(this, '/api/player/next', null, 'dash-player-log')" title="下一首">⏭</button>
+      <button class="round" onclick="runAction(this, '/api/player/reload', null, 'dash-player-log')" title="重新載入">🔄</button>
     </div>
   </div>
+
   <div class="card">
-    <h2>播放清單</h2>
-    <pre class="log-output" id="playlist-output" style="max-height: 40vh;">載入中…</pre>
+    <h2><span class="icon">⚙️</span>播放設定</h2>
+    <div class="form-group">
+      <label class="switch-label">
+        <span class="switch"><input type="checkbox" id="shuffle-toggle" onchange="toggleShuffleFromCheckbox()"><span class="slider"></span></span>
+        隨機播放
+      </label>
+    </div>
+    <div class="form-group">
+      <label class="switch-label">
+        <span class="switch"><input type="checkbox" id="loop-toggle" onchange="toggleLoopFromCheckbox()"><span class="slider"></span></span>
+        循環播放
+      </label>
+    </div>
+    <div class="form-group">
+      <label class="switch-label">
+        <span class="switch"><input type="checkbox" id="autoload-toggle" checked disabled><span class="slider"></span></span>
+        重新載入播放清單
+      </label>
+    </div>
+    <div class="metric-row"><span class="label">開機自動播放</span><span class="value" id="service-enabled">-</span></div>
+    <div class="player-controls">
+      <button onclick="runAction(this, '/api/player/enable-service', null, 'dash-player-log')">啟用開機播放</button>
+      <button onclick="runAction(this, '/api/player/disable-service', null, 'dash-player-log')">停用開機播放</button>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2><span class="icon">🎶</span>音樂庫 <span id="lib-count" style="font-size:.85rem; color:var(--muted);">0 首</span></h2>
+    <div class="form-group"><input type="text" placeholder="搜尋音樂檔案…" onkeyup="filterLibrary(this.value)"></div>
+    <div id="file-list" style="max-height: 45vh; overflow-y: auto; font-size: .9rem;">
+      <div class="empty-state">載入中…</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="icon">📃</span>播放清單</h2>
+    <div id="playlist-output" style="max-height: 45vh; overflow-y: auto;">
+      <div class="empty-state">載入中…</div>
+    </div>
   </div>
 </div>
 
 <div class="card">
-  <h2>維護操作</h2>
+  <h2><span class="icon">🛠️</span>維護操作</h2>
   <div class="player-controls">
-    <button onclick="runAction(this, '/api/system/start-player', null, 'dash-log')">啟動播放服務</button>
-    <button onclick="runAction(this, '/api/system/stop-player', null, 'dash-log')">停止播放服務</button>
-    <button onclick="runAction(this, '/api/system/restart-player', null, 'dash-log')">重啟播放服務</button>
-    <button onclick="runAction(this, '/api/system/rescan', null, 'dash-log')">重新掃描音樂</button>
-    <button onclick="runAction(this, '/api/system/test-audio', null, 'dash-log')">測試音訊輸出</button>
-  </div>
-  <div class="player-controls">
-    <button onclick="document.getElementById('reboot-modal').classList.add('active')" class="danger">重開機 Raspberry Pi</button>
+    <button onclick="runAction(this, '/api/system/start-player', null, 'dash-log')">▶ 啟動播放服務</button>
+    <button onclick="runAction(this, '/api/system/stop-player', null, 'dash-log')">⏹ 停止播放服務</button>
+    <button onclick="runAction(this, '/api/system/restart-player', null, 'dash-log')">🔄 重啟播放服務</button>
+    <button onclick="runAction(this, '/api/system/rescan', null, 'dash-log')">🔍 重新掃描音樂</button>
+    <button onclick="runAction(this, '/api/system/test-audio', null, 'dash-log')">🔊 測試音訊輸出</button>
+    <button onclick="document.getElementById('reboot-modal').classList.add('active')" class="danger">🔴 重開機 Raspberry Pi</button>
   </div>
 </div>
 
-<div class="card">
-  <h2>最近錯誤 / 系統 Log</h2>
-  <pre class="log-output" id="recent-errors">-</pre>
+<div class="grid grid-2">
+  <div class="card">
+    <h2><span class="icon">📋</span>最近錯誤 / 系統 Log</h2>
+    <pre class="log-output" id="recent-errors">-</pre>
+  </div>
+  <div class="card">
+    <h2><span class="icon">📝</span>操作紀錄</h2>
+    <pre class="log-output" id="dash-log">等待操作…</pre>
+  </div>
 </div>
 
 <div class="card">
-  <h2>操作紀錄</h2>
-  <pre class="log-output" id="dash-log">等待操作…</pre>
-</div>
-
-<div class="card">
-  <h2>播放器操作紀錄</h2>
+  <h2><span class="icon">🎛️</span>播放器操作紀錄</h2>
   <pre class="log-output" id="dash-player-log">等待操作…</pre>
 </div>
 
@@ -144,72 +114,62 @@
 
 <script>
 let currentState = {};
-
-async function loadDashboard() {
-  const data = await apiGet('/api/dashboard');
-  document.getElementById('store-name').textContent = data.store_name;
-  document.getElementById('hostname').textContent = data.hostname;
-  document.getElementById('tailscale-ip').textContent = data.tailscale_ip || '未偵測';
-  document.getElementById('lan-ip').textContent = data.lan_ip || '未偵測';
-  document.getElementById('cpu').innerHTML = statusDot(data.cpu_percent > 80 ? 'yellow' : 'green') + data.cpu_percent + '%';
-  const ram = data.ram;
-  document.getElementById('ram').innerHTML = statusDot(ram.percent > 80 ? 'yellow' : 'green') + `${ram.percent}% (${ram.used_mb}/${ram.total_mb} MB)`;
-  document.getElementById('disk').innerHTML = statusDot(data.disk.percent > 85 ? 'red' : 'green') + `${data.disk.percent}% free ${data.disk.free_gb} GB`;
-  document.getElementById('uptime').textContent = formatDuration(data.uptime_seconds);
-  document.getElementById('rclone-status').innerHTML = statusDot(data.rclone_installed ? 'green' : 'gray') + (data.rclone_installed ? '已安裝' : '未安裝');
-  document.getElementById('mpv-status').innerHTML = statusDot(data.mpv_installed ? 'green' : 'gray') + (data.mpv_installed ? '已安裝' : '未安裝');
-  document.getElementById('player-service').innerHTML = statusDot(data.player_active === 'active' ? 'green' : (data.player_active === 'activating' ? 'blue' : 'gray')) + data.player_active;
-  document.getElementById('webdav-status').innerHTML = statusDot(data.webdav_connected ? 'green' : 'gray') + (data.webdav_connected ? '可連線' : '未連線');
-  document.getElementById('webdav-remote').textContent = data.webdav_remote;
-  document.getElementById('webdav-url').textContent = data.webdav_url;
-  document.getElementById('webdav-remote-path').textContent = data.webdav_remote_path;
-  document.getElementById('local-music-path').textContent = data.local_music_path;
-  document.getElementById('mp3-count').textContent = data.mp3_count;
-  document.getElementById('last-sync').innerHTML = (data.last_sync_at || '從未') + ' ' + (data.last_sync_status || '');
-  document.getElementById('player-state').innerHTML = statusDot(data.player_status === 'playing' ? 'green' : (data.player_status === 'paused' ? 'yellow' : 'gray')) + data.player_status;
-  document.getElementById('current-track').textContent = data.current_track || '-';
-  document.getElementById('recent-errors').textContent = data.recent_errors || '無';
-
-  document.getElementById('pi-model').textContent = data.pi_model;
-  document.getElementById('os-version').textContent = data.os_version;
-  document.getElementById('python-version').textContent = data.python_version;
-  document.getElementById('cpu-temp').textContent = data.cpu_temp_c !== null ? data.cpu_temp_c + ' °C' : 'N/A';
-  document.getElementById('rclone-version').textContent = data.rclone_version;
-  document.getElementById('mpv-version').textContent = data.mpv_version;
-  document.getElementById('web-status').innerHTML = statusDot(data.web_service_status === 'active' ? 'green' : 'gray') + data.web_service_status;
-  document.getElementById('player-status').innerHTML = statusDot(data.player_service_status === 'active' ? 'green' : 'gray') + data.player_service_status;
-  document.getElementById('sync-status').innerHTML = statusDot(data.sync_timer_status === 'active' ? 'green' : 'gray') + data.sync_timer_status;
-  document.getElementById('mqtt-status').innerHTML = statusDot(data.mqtt_service_status === 'active' ? 'green' : 'gray') + data.mqtt_service_status;
-
-  document.getElementById('nav-tailscale-ip').textContent = data.tailscale_ip || data.lan_ip || '-';
-  document.getElementById('nav-store-name').textContent = data.store_name;
-}
+let libraryFiles = [];
 
 async function refreshPlayer() {
   const s = await apiGet('/api/player/status');
   currentState = s;
-  document.getElementById('player-state').innerHTML = statusDot(s.state === 'playing' ? 'green' : (s.state === 'paused' ? 'yellow' : 'gray')) + s.state;
-  document.getElementById('current-track').textContent = s.current || '-';
+  document.getElementById('p-state').textContent = s.state;
+  document.getElementById('p-track').textContent = s.current || '無曲目';
+  document.getElementById('p-time').textContent = `${formatTime(s.position)} / ${formatTime(s.duration)}`;
   document.getElementById('volume-val').textContent = s.volume;
   document.getElementById('volume-slider').value = s.volume;
-  document.getElementById('btn-shuffle').classList.toggle('active', s.shuffle);
-  document.getElementById('btn-loop').classList.toggle('active', s.loop);
+  const pct = s.duration ? (s.position / s.duration * 100) : 0;
+  document.getElementById('p-progress').style.width = pct + '%';
+
+  document.getElementById('shuffle-toggle').checked = s.shuffle;
+  document.getElementById('loop-toggle').checked = s.loop;
 
   const pl = await apiGet('/api/player/playlist');
-  document.getElementById('playlist-output').textContent = JSON.stringify(pl.playlist, null, 2);
+  const po = document.getElementById('playlist-output');
+  if (!pl.playlist || !pl.playlist.length) {
+    po.innerHTML = '<div class="empty-state">播放清單為空<br><span style="font-size:.8rem">從音樂庫中加入歌曲</span></div>';
+  } else {
+    po.innerHTML = '<table class="table"><tr><th>#</th><th>曲目</th></tr>' +
+      pl.playlist.map((t,i) => `<tr><td>${i+1}</td><td>${t}</td></tr>`).join('') + '</table>';
+  }
 
   const lib = await apiGet('/api/player/library');
-  document.getElementById('lib-count').textContent = `${lib.files.length} 首`;
+  libraryFiles = lib.files || [];
+  renderLibrary(libraryFiles);
+
+  const svc = await apiGet('/api/player/service-status');
+  document.getElementById('service-enabled').innerHTML = statusDot(svc.enabled ? 'green' : 'gray') + (svc.enabled ? '已啟用' : '已停用');
+}
+
+function renderLibrary(files) {
   const list = document.getElementById('file-list');
-  if (!lib.files.length) { list.innerHTML = '<p style="color:var(--muted)">無音樂檔案</p>'; }
-  else {
-    list.innerHTML = '<ul>' + lib.files.map(f => `<li>${f.path} <span style="color:var(--muted)">(${(f.size/1024/1024).toFixed(2)} MB)</span></li>`).join('') + '</ul>';
+  document.getElementById('lib-count').textContent = `${files.length} 首`;
+  if (!files.length) {
+    list.innerHTML = '<div class="empty-state">無音樂檔案<br><span style="font-size:.8rem">請將 MP3 檔案上傳至音樂目錄</span></div>';
+    return;
   }
+  list.innerHTML = '<table class="table"><tr><th>檔案名稱</th><th>時間</th><th>大小</th></tr>' +
+    files.map(f => {
+      const size = (f.size/1024/1024).toFixed(2);
+      const mtime = new Date(f.mtime*1000).toLocaleString('zh-TW');
+      return `<tr><td>${f.path}</td><td style="color:var(--muted);font-size:.75rem">${mtime}</td><td style="color:var(--muted);font-size:.75rem">${size} MB</td></tr>`;
+    }).join('') + '</table>';
+}
+
+function filterLibrary(q) {
+  const term = q.toLowerCase();
+  renderLibrary(libraryFiles.filter(f => f.path.toLowerCase().includes(term)));
 }
 
 async function setVolume(v) { await apiPost('/api/player/volume', new URLSearchParams({volume:v})); refreshPlayer(); }
-async function toggleShuffle() { await apiPost('/api/player/shuffle', new URLSearchParams({enabled: currentState.shuffle ? 0 : 1})); refreshPlayer(); }
-async function toggleLoop() { await apiPost('/api/player/loop', new URLSearchParams({enabled: currentState.loop ? 0 : 1})); refreshPlayer(); }
+async function toggleShuffleFromCheckbox() { await apiPost('/api/player/shuffle', new URLSearchParams({enabled: document.getElementById('shuffle-toggle').checked ? 1 : 0})); refreshPlayer(); }
+async function toggleLoopFromCheckbox() { await apiPost('/api/player/loop', new URLSearchParams({enabled: document.getElementById('loop-toggle').checked ? 1 : 0})); refreshPlayer(); }
 function formatTime(sec) {
   if (!sec || isNaN(sec)) return '0:00';
   const m = Math.floor(sec / 60);
@@ -217,9 +177,14 @@ function formatTime(sec) {
   return `${m}:${s}`;
 }
 
-loadDashboard();
+async function loadRecentErrors() {
+  const data = await apiGet('/api/dashboard');
+  document.getElementById('recent-errors').textContent = data.recent_errors || '無';
+}
+
 refreshPlayer();
-setInterval(loadDashboard, 5000);
+loadRecentErrors();
 setInterval(refreshPlayer, 3000);
+setInterval(loadRecentErrors, 10000);
 </script>
 {% endblock %}
