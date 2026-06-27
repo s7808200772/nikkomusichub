@@ -44,7 +44,7 @@ npx vercel --prod
 - `NIKKO_CLOUD_SECRET`：JWT 簽章金鑰
 - `NIKKO_MQTT_COMMAND_SECRET`：與 Pi 相同的 HMAC 密鑰
 - `NIKKO_MQTT_TOPIC_PREFIX`：與 Pi 相同的私有 topic prefix
-- `SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`：正式資料庫
+- `SUPABASE_URL`、`NIKKO_SUPABASE_PROXY_SECRET`：透過受保護 Edge Function 存取正式資料庫
 
 ## 新增店點
 

@@ -39,7 +39,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON stores, settings TO service_role;
 | 名稱 | 值 | 環境 |
 |------|-----|------|
 | `SUPABASE_URL` | `https://<project>.supabase.co` | Production |
-| `SUPABASE_SERVICE_ROLE_KEY` | `<service-role-key>` | Production |
+| `NIKKO_SUPABASE_PROXY_SECRET` | Supabase Edge Function 與 Vercel 共用的隨機密鑰 | Production |
 | `NIKKO_CLOUD_SECRET` | 至少 32 字元的隨機值 | Production |
 | `NIKKO_ADMIN_USER` | 管理員帳號 | Production |
 | `NIKKO_ADMIN_PASS` | 至少 12 字元的強密碼 | Production |
@@ -58,4 +58,5 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON stores, settings TO service_role;
 
 - 備份：Supabase Dashboard → Database → Backups，或使用 `pg_dump` 匯出 `stores`、`settings`。
 - 還原：先還原 schema/migration，再匯入資料；完成後以 Cloud 新增、修改、刪除測試確認。
-- `SUPABASE_SERVICE_ROLE_KEY` 只能放在 Vercel server-side env，禁止使用 `NEXT_PUBLIC_` 前綴。
+- `NIKKO_SUPABASE_PROXY_SECRET` 只能放在 Vercel server-side env，禁止使用 `NEXT_PUBLIC_` 前綴。
+- Supabase Edge Function `nikko-cloud-db` 代替 Vercel 直接持有 service-role key；資料表仍只允許 service role 存取。

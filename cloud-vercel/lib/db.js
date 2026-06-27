@@ -1,8 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
-
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const USE_SUPABASE = SUPABASE_URL && SUPABASE_KEY;
+const PROXY_SECRET = process.env.NIKKO_SUPABASE_PROXY_SECRET;
+const USE_SUPABASE = SUPABASE_URL && PROXY_SECRET;
+const DATABASE_ENDPOINT = `${SUPABASE_URL}/functions/v1/nikko-cloud-db`;
 
 export function isSupabaseConfigured() {
   return !!USE_SUPABASE;
@@ -13,67 +12,45 @@ export function redactStore(store) {
   return { ...safe, mqttPassword: store.mqttPassword ? '***' : '' };
 }
 
-let supabaseClient = null;
-
-function getSupabase() {
-  if (!USE_SUPABASE) return null;
-  if (!supabaseClient) {
-    supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+async function databaseRequest(action, payload = {}) {
+  if (!USE_SUPABASE) {
+    throw new Error('Supabase database proxy is not configured');
   }
-  return supabaseClient;
+  const response = await fetch(DATABASE_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-nikko-secret': PROXY_SECRET,
+    },
+    body: JSON.stringify({ action, ...payload }),
+    cache: 'no-store',
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || `Supabase request failed (${response.status})`);
+  return result.data;
 }
 
 async function readStores() {
-  const supabase = getSupabase();
-  if (!supabase) return [];
-  const { data, error } = await supabase.from('stores').select('data');
-  if (error) throw error;
-  return (data || []).map((row) => row.data);
+  if (!USE_SUPABASE) return [];
+  return (await databaseRequest('listStores')) || [];
 }
 
 async function writeStore(store) {
-  const supabase = getSupabase();
-  if (!supabase) {
-    throw new Error('Supabase is required for server-side store persistence');
-  }
-  const { error } = await supabase
-    .from('stores')
-    .upsert({ id: store.storeId, data: store, updated_at: new Date().toISOString() }, { onConflict: 'id' });
-  if (error) throw error;
+  await databaseRequest('saveStore', { store });
   return store;
 }
 
 async function removeStore(storeId) {
-  const supabase = getSupabase();
-  if (!supabase) {
-    throw new Error('Supabase is required for server-side store persistence');
-  }
-  const { error } = await supabase.from('stores').delete().eq('id', storeId);
-  if (error) throw error;
+  await databaseRequest('deleteStore', { storeId });
 }
 
 async function readSettings() {
-  const supabase = getSupabase();
-  if (!supabase) return {};
-  const { data, error } = await supabase.from('settings').select('data').eq('id', 'global').single();
-  if (error) {
-    if (error.code === 'PGRST116') return {};
-    throw error;
-  }
-  return data?.data || {};
+  if (!USE_SUPABASE) return {};
+  return (await databaseRequest('getSettings')) || {};
 }
 
 async function writeSettings(settings) {
-  const supabase = getSupabase();
-  if (!supabase) {
-    throw new Error('Supabase is required for server-side settings persistence');
-  }
-  const { error } = await supabase
-    .from('settings')
-    .upsert({ id: 'global', data: settings, updated_at: new Date().toISOString() }, { onConflict: 'id' });
-  if (error) throw error;
+  await databaseRequest('saveSettings', { settings });
   return settings;
 }
 
@@ -82,8 +59,8 @@ export async function listStores() {
 }
 
 export async function getStore(storeId) {
-  const stores = await readStores();
-  return stores.find((s) => s.storeId === storeId) || null;
+  if (!USE_SUPABASE) return null;
+  return await databaseRequest('getStore', { storeId });
 }
 
 export async function saveStore(store) {

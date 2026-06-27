@@ -10,7 +10,6 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.108.2",
     "jose": "5.4.1",
     "lucide-react": "^1.21.0",
     "mqtt": "^5.15.1",
