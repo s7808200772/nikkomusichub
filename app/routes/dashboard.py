@@ -43,7 +43,9 @@ async def dashboard_page(request: Request):
     user = get_current_user_or_local(request)
     if user != "local" and user_uses_initial_password(user):
         return RedirectResponse(url="/settings?force_password=1", status_code=303)
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    # Render status cards server-side to avoid the empty-then-pop layout shift.
+    data = dashboard_data(request)
+    return templates.TemplateResponse("dashboard.html", {"request": request, "data": data})
 
 
 @router.get("/api/dashboard")

@@ -83,13 +83,15 @@ checkDefaultPassword();
 
 async function runAction(btn, url, body, outputId) {
   setBusy(btn, true);
+  const out = document.getElementById(outputId);
+  if (out) out.textContent = '執行中…';
   try {
     const res = await apiPost(url, body);
     if (!res) {
+      if (out) out.textContent = '未登入或網路中斷';
       showToast('未登入或網路中斷', 'error');
       return { ok: false };
     }
-    const out = document.getElementById(outputId);
     if (out) {
       let text = '';
       if (typeof res.stdout === 'string') text += res.stdout;
