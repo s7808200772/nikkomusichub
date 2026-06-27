@@ -112,8 +112,14 @@ def start_player() -> dict:
 
     PLAYER_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+    env = os.environ.copy()
+    if "XDG_RUNTIME_DIR" not in env:
+        import pwd
+        uid = pwd.getpwuid(os.getuid()).pw_uid
+        env["XDG_RUNTIME_DIR"] = f"/run/user/{uid}"
+        env["PULSE_RUNTIME_PATH"] = f"/run/user/{uid}/pulse"
+
     cmd = [
-        "nohup",
         "mpv",
         "--no-video",
         "--shuffle",
@@ -129,6 +135,7 @@ def start_player() -> dict:
             stdout=log,
             stderr=subprocess.STDOUT,
             start_new_session=True,
+            env=env,
         )
     # Give mpv a moment to start
     time.sleep(1.5)

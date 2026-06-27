@@ -72,6 +72,9 @@ for unit in nikko-music-hub-web.service nikko-music-player.service nikko-music-s
   sed -i "s/^User=.*/User=${USER_NAME}/" "/etc/systemd/system/${unit}"
   sed -i "s/^Group=.*/Group=${USER_NAME}/" "/etc/systemd/system/${unit}"
   sed -i "s|/home/pi|/home/${USER_NAME}|g" "/etc/systemd/system/${unit}"
+  # Ensure XDG_RUNTIME_DIR points to the correct user's runtime directory
+  USER_UID=$(id -u "${USER_NAME}")
+  sed -i "s|/run/user/1000|/run/user/${USER_UID}|g" "/etc/systemd/system/${unit}"
   # Ensure runtime user is known to Python for file ownership
   if ! grep -q "^Environment=\"NIKKO_USER=" "/etc/systemd/system/${unit}"; then
     sed -i "/^\[Service\]/a Environment=\"NIKKO_USER=${USER_NAME}\"" "/etc/systemd/system/${unit}"
