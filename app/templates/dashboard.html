@@ -8,9 +8,10 @@
   <span>您正在使用預設密碼，請到 <a href="/settings">系統設定</a> 修改。</span>
 </div>
 
-<div class="dash-grid">
+<div class="dashboard-shell">
+<div class="dash-grid dashboard-main">
   <!-- Player console -->
-  <div class="card player-console dash-col-8">
+  <div class="card player-console dash-col-12">
     <h2><span class="icon">🎛️</span>播放控制台</h2>
     <div class="waveform" aria-hidden="true">
       <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
@@ -60,13 +61,6 @@
           <button class="outline" onclick="runAction(this, '/api/player/disable-service', null, 'dash-player-log')">停用</button>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- Status cards -->
-  <div class="dash-col-4">
-    <div class="status-grid" id="status-grid">
-      <!-- rendered by JS -->
     </div>
   </div>
 
@@ -133,6 +127,14 @@
   </div>
 </div>
 
+<!-- Status cards stay in the right workspace column without stretching the player card. -->
+<aside class="dashboard-status-column">
+  <div class="status-grid" id="status-grid">
+    <!-- rendered by JS -->
+  </div>
+</aside>
+</div>
+
 <div class="modal-overlay" id="reboot-modal">
   <div class="modal">
     <h2>確認重開機？</h2>
@@ -142,6 +144,9 @@
   </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
 let currentState = {};
 let libraryFiles = [];

@@ -45,7 +45,7 @@ async def system_page(request: Request):
 
 
 @router.get("/api/system/info")
-async def system_info(request: Request):
+def system_info(request: Request):
     get_current_user_or_local(request)
     ips = get_ip_addresses()
     return {
@@ -72,7 +72,7 @@ async def system_info(request: Request):
 
 
 @router.get("/api/system/logs")
-async def system_logs(request: Request):
+def system_logs(request: Request):
     get_current_user_or_local(request)
     return {
         "system_log": tail_journal("nikko-music-hub-web.service", 100),

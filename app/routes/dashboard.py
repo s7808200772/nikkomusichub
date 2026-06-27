@@ -45,7 +45,7 @@ async def dashboard_page(request: Request):
 
 
 @router.get("/api/dashboard")
-async def dashboard_data(request: Request):
+def dashboard_data(request: Request):
     get_current_user_or_local(request)
     ips = get_ip_addresses()
     mpv_status = mpv.get_status()

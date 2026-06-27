@@ -20,7 +20,7 @@ async def player_page(request: Request):
 
 
 @router.get("/api/player/status")
-async def player_status(request: Request):
+def player_status(request: Request):
     get_current_user_or_local(request)
     return mpv.get_status()
 
@@ -119,19 +119,19 @@ async def player_reload(request: Request):
 
 
 @router.get("/api/player/playlist")
-async def player_playlist(request: Request):
+def player_playlist(request: Request):
     get_current_user_or_local(request)
     return {"playlist": mpv.get_playlist()}
 
 
 @router.get("/api/player/library")
-async def player_library(request: Request):
+def player_library(request: Request):
     get_current_user_or_local(request)
     return {"files": list_music_files(MUSIC_DIR)}
 
 
 @router.get("/api/player/service-status")
-async def player_service_status(request: Request):
+def player_service_status(request: Request):
     get_current_user_or_local(request)
     return {"enabled": service_enabled("nikko-music-player.service")}
 

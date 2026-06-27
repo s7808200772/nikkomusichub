@@ -64,6 +64,9 @@ function setBusy(btn, busy) {
 
 async function checkDefaultPassword() {
   if (window.location.pathname === '/login') return;
+  // Dashboard, Settings, and Logs render their own non-overlapping warning.
+  // Avoid showing the global toast on top of those page-level banners.
+  if (document.getElementById('default-pwd-banner') || document.getElementById('dash-warning')) return;
   try {
     const me = await apiGet('/api/me');
     if (me && me.is_default) {
@@ -228,8 +231,13 @@ async function loadRightPanel() {
   }
 }
 
+// The dashboard template owns its status-card refresh cycle.  Do not start the
+// legacy right-panel poll here: the right panel no longer exists, and the
+// duplicate /api/dashboard requests can starve static assets on a single-core
+// Raspberry Pi.
+// Keep one initial request so shared headers (for example on Logs) still show
+// the store name and IP addresses.
 loadRightPanel();
-setInterval(loadRightPanel, 5000);
 
 // Sidebar clock
 function updateSidebarClock() {
