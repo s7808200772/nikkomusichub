@@ -6,7 +6,7 @@ import { loadLocalStores, saveLocalStores } from '@/lib/localStorage';
 
 export default function StoresClient({ initialStores, supabaseOk }) {
   const [stores, setStores] = useState(initialStores || []);
-  const [form, setForm] = useState({ mqttBroker: 'broker.hivemq.com', mqttPort: 1883 });
+  const [form, setForm] = useState({ mqttBroker: 'broker.hivemq.com', mqttPort: 8883, mqttTls: true });
   const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState('');
   const [busy, setBusy] = useState(false);
@@ -36,12 +36,13 @@ export default function StoresClient({ initialStores, supabaseOk }) {
     setMsg('');
     setBusy(true);
     if (!supabaseOk) {
-      const newStore = { ...form, storeId: form.storeId.trim(), storeName: form.storeName.trim() };
+      const { mqttPassword: _mqttPassword, mqttUsername: _mqttUsername, ...safeForm } = form;
+      const newStore = { ...safeForm, storeId: form.storeId.trim(), storeName: form.storeName.trim() };
       const next = [...stores, newStore];
       saveLocalStores(next);
       setStores(next);
-      setForm({ mqttBroker: 'broker.hivemq.com', mqttPort: 1883 });
-      setMsg('店點已儲存至瀏覽器（未偵測到 Supabase，資料不會同步到雲端）');
+      setForm({ mqttBroker: 'broker.hivemq.com', mqttPort: 8883, mqttTls: true });
+      setMsg('店點已儲存至瀏覽器；遠端 MQTT 功能需先設定 Supabase');
       setMsgType('success');
       setBusy(false);
       return;
@@ -53,7 +54,7 @@ export default function StoresClient({ initialStores, supabaseOk }) {
     });
     const data = await res.json();
     if (res.ok) {
-      setForm({ mqttBroker: 'broker.hivemq.com', mqttPort: 1883 });
+      setForm({ mqttBroker: 'broker.hivemq.com', mqttPort: 8883, mqttTls: true });
       setMsg('店點新增成功');
       setMsgType('success');
       load();
@@ -109,6 +110,13 @@ export default function StoresClient({ initialStores, supabaseOk }) {
   }
 
   async function testConnection(storeId) {
+    if (!supabaseOk) {
+      setTestStatus((prev) => ({
+        ...prev,
+        [storeId]: { ok: false, error: '需先設定 Supabase 才能測試連線', loading: false },
+      }));
+      return;
+    }
     setTestStatus((prev) => ({ ...prev, [storeId]: { loading: true } }));
     const res = await fetch('/api/test-connection', {
       method: 'POST',
@@ -155,9 +163,18 @@ export default function StoresClient({ initialStores, supabaseOk }) {
             </div>
             <div className="form-group">
               <label>MQTT Port</label>
-              <input type="number" value={form.mqttPort || 1883} onChange={(e) => setForm({ ...form, mqttPort: e.target.value })} />
+              <input type="number" value={form.mqttPort || 8883} onChange={(e) => setForm({ ...form, mqttPort: e.target.value })} />
             </div>
           </div>
+
+          <label className="switch-row" style={{ marginBottom: '1rem' }}>
+            <input
+              type="checkbox"
+              checked={form.mqttTls !== false}
+              onChange={(e) => setForm({ ...form, mqttTls: e.target.checked })}
+            />
+            使用 TLS 加密連線（建議，預設 Port 8883）
+          </label>
 
           <div className="form-row">
             <div className="form-group">
@@ -220,6 +237,14 @@ export default function StoresClient({ initialStores, supabaseOk }) {
                       <input type="number" value={editing.mqttPort} onChange={(e) => setEditing({ ...editing, mqttPort: e.target.value })} required />
                     </div>
                   </div>
+                  <label className="switch-row" style={{ marginBottom: '1rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={editing.mqttTls !== false}
+                      onChange={(e) => setEditing({ ...editing, mqttTls: e.target.checked })}
+                    />
+                    使用 TLS 加密連線
+                  </label>
                   <div className="form-row">
                     <div className="form-group">
                       <label>MQTT 使用者</label>
@@ -260,7 +285,7 @@ export default function StoresClient({ initialStores, supabaseOk }) {
                   </div>
                   <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-2)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Server size={16} color="var(--muted)" /> {s.mqttBroker}:{s.mqttPort}
+                      <Server size={16} color="var(--muted)" /> {s.mqttTls !== false ? 'TLS · ' : ''}{s.mqttBroker}:{s.mqttPort}
                     </div>
                     {s.mqttUsername && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

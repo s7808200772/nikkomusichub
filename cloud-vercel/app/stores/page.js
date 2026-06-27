@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
-import { listStores, isSupabaseConfigured } from '@/lib/db';
+import { listStores, isSupabaseConfigured, redactStore } from '@/lib/db';
 import Navbar from '@/components/Navbar';
 import SupabaseWarning from '@/components/SupabaseWarning';
 import StoresClient from './StoresClient';
@@ -12,7 +12,7 @@ export default async function StoresPage() {
   if (!token || !(await verifyToken(token))) {
     redirect('/login');
   }
-  const stores = await listStores();
+  const stores = (await listStores()).map(redactStore);
   const supabaseOk = isSupabaseConfigured();
   return (
     <>

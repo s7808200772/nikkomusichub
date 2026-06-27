@@ -1,14 +1,19 @@
 """Authentication routes and helpers."""
+from collections import defaultdict, deque
 from datetime import datetime, timedelta
+import hmac
+import re
+import time
 
 import bcrypt
-from fastapi import APIRouter, Form, HTTPException, Request, Response
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
+    COOKIE_SECURE,
     DEFAULT_PASSWORD,
     DEFAULT_USERNAME,
     SECRET_KEY,
@@ -18,6 +23,22 @@ from app.db import audit, get_db, get_setting, set_setting
 templates = Jinja2Templates(directory="app/templates")
 
 router = APIRouter()
+_failed_logins: dict[str, deque[float]] = defaultdict(deque)
+_LOGIN_WINDOW_SECONDS = 15 * 60
+_LOGIN_MAX_FAILURES = 5
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    return forwarded.split(",", 1)[0].strip() or (request.client.host if request.client else "unknown")
+
+
+def _prune_failures(ip: str) -> deque[float]:
+    failures = _failed_logins[ip]
+    cutoff = time.monotonic() - _LOGIN_WINDOW_SECONDS
+    while failures and failures[0] < cutoff:
+        failures.popleft()
+    return failures
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -51,7 +72,27 @@ def get_current_user(request: Request):
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
-    return payload.get("sub")
+    username = payload.get("sub")
+    password_version = payload.get("pwdv")
+    if not username or not password_version:
+        raise HTTPException(status_code=401, detail="Session expired")
+    conn = get_db()
+    row = conn.execute(
+        "SELECT username, updated_at, is_default FROM users WHERE username = ?", (username,)
+    ).fetchone()
+    conn.close()
+    if not row or not hmac.compare_digest(str(row["updated_at"]), str(password_version)):
+        raise HTTPException(status_code=401, detail="Session expired")
+    if row["is_default"] and request.method != "GET" and request.url.path != "/api/change-password":
+        raise HTTPException(status_code=403, detail="Password change required")
+    return username
+
+
+def user_uses_initial_password(username: str) -> bool:
+    conn = get_db()
+    row = conn.execute("SELECT is_default FROM users WHERE username = ?", (username,)).fetchone()
+    conn.close()
+    return bool(row and row["is_default"])
 
 
 def is_local_api_request(request: Request) -> bool:
@@ -94,15 +135,30 @@ async def login_page(request: Request):
 
 
 @router.post("/login")
-async def login_post(response: Response, username: str = Form(...), password: str = Form(...)):
+async def login_post(request: Request, username: str = Form(...), password: str = Form(...)):
+    ip = _client_ip(request)
+    failures = _prune_failures(ip)
+    if len(failures) >= _LOGIN_MAX_FAILURES:
+        raise HTTPException(status_code=429, detail="Too many login attempts")
+
     conn = get_db()
     row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
     conn.close()
     if not row or not verify_password(password, row["hashed_password"]):
+        failures.append(time.monotonic())
         return RedirectResponse(url="/login?error=invalid", status_code=303)
-    token = create_access_token({"sub": username})
-    resp = RedirectResponse(url="/", status_code=303)
-    resp.set_cookie("nikko_token", token, httponly=True, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+    _failed_logins.pop(ip, None)
+    token = create_access_token({"sub": username, "pwdv": row["updated_at"]})
+    destination = "/settings?force_password=1" if row["is_default"] else "/"
+    resp = RedirectResponse(url=destination, status_code=303)
+    resp.set_cookie(
+        "nikko_token",
+        token,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="strict",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
     return resp
 
 
@@ -121,14 +177,36 @@ async def change_password(request: Request, current: str = Form(...), new_passwo
     if not row or not verify_password(current, row["hashed_password"]):
         conn.close()
         raise HTTPException(status_code=400, detail="Current password incorrect")
+    if (
+        len(new_password) < 12
+        or not re.search(r"[A-Z]", new_password)
+        or not re.search(r"[a-z]", new_password)
+        or not re.search(r"\d", new_password)
+    ):
+        conn.close()
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 12 characters and include upper/lowercase letters and a number",
+        )
+    updated_at = datetime.utcnow().isoformat()
     conn.execute(
         "UPDATE users SET hashed_password = ?, is_default = 0, updated_at = ? WHERE username = ?",
-        (hash_password(new_password), datetime.utcnow().isoformat(), user),
+        (hash_password(new_password), updated_at, user),
     )
     conn.commit()
     conn.close()
     audit(user, "change_password", {})
-    return {"ok": True}
+    token = create_access_token({"sub": user, "pwdv": updated_at})
+    resp = JSONResponse({"ok": True})
+    resp.set_cookie(
+        "nikko_token",
+        token,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="strict",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return resp
 
 
 @router.get("/api/me")

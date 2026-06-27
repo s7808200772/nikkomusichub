@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { getStore } from '@/lib/db';
+import { getStore, isSupabaseConfigured } from '@/lib/db';
 import { testMQTT } from '@/lib/mqtt';
 
 export async function POST(request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ error: 'Supabase is required for connection tests' }, { status: 503 });
+  }
 
   const data = await request.json();
   const store = await getStore(data.storeId);
@@ -16,6 +19,7 @@ export async function POST(request) {
     port: store.mqttPort,
     username: store.mqttUsername,
     password: store.mqttPassword,
+    tls: store.mqttTls !== false,
     storeId: store.storeId,
     timeout: 10000,
   });

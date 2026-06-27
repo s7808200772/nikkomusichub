@@ -1,5 +1,6 @@
 """Global configuration for NikkoMusicHub."""
 import os
+import secrets
 from pathlib import Path
 
 PROJECT_NAME = "NikkoMusicHub"
@@ -24,13 +25,27 @@ for d in (BASE_DIR, MUSIC_DIR, LOGS_DIR, SCRIPTS_DIR, DATA_DIR):
 DATABASE_PATH = DATA_DIR / "nikkomusichub.db"
 
 # Security
-SECRET_KEY = os.environ.get("NIKKO_SECRET_KEY", "change-me-on-first-login-via-web-ui")
+def _load_or_create_secret(filename: str, length: int = 48) -> str:
+    path = DATA_DIR / filename
+    if path.exists():
+        return path.read_text(encoding="utf-8").strip()
+    value = secrets.token_urlsafe(length)
+    path.write_text(value, encoding="utf-8")
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
+    return value
+
+
+SECRET_KEY = os.environ.get("NIKKO_SECRET_KEY") or _load_or_create_secret("jwt-secret")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # one week
+COOKIE_SECURE = os.environ.get("NIKKO_COOKIE_SECURE", "0").strip().lower() in ("1", "true", "yes")
 
-# Default credentials (changed on first-run wizard)
+# Initial credentials are generated per device when not explicitly provided.
 DEFAULT_USERNAME = "nikkolh"
-DEFAULT_PASSWORD = "topup30%off"
+DEFAULT_PASSWORD = os.environ.get("NIKKO_DEFAULT_PASSWORD") or _load_or_create_secret("initial-admin-password", 18)
 
 # mpv IPC
 MPV_SOCKET = "/tmp/nikko-mpv.sock"
@@ -56,11 +71,14 @@ MQTT_SERVICE = "nikko-music-mqtt.service"
 
 # MQTT settings for central cloud management
 MQTT_BROKER = os.environ.get("NIKKO_MQTT_BROKER", "broker.hivemq.com")
-MQTT_PORT = int(os.environ.get("NIKKO_MQTT_PORT", "1883"))
+MQTT_PORT = int(os.environ.get("NIKKO_MQTT_PORT", "8883"))
 MQTT_USERNAME = os.environ.get("NIKKO_MQTT_USERNAME", "")
 MQTT_PASSWORD = os.environ.get("NIKKO_MQTT_PASSWORD", "")
 MQTT_STORE_ID = os.environ.get("NIKKO_MQTT_STORE_ID", "")
 MQTT_TOPIC_PREFIX = os.environ.get("NIKKO_MQTT_TOPIC_PREFIX", "nikko")
+MQTT_TLS = os.environ.get("NIKKO_MQTT_TLS", "1").strip().lower() not in ("0", "false", "no")
+MQTT_COMMAND_SECRET = os.environ.get("NIKKO_MQTT_COMMAND_SECRET", "")
+MQTT_COMMAND_MAX_AGE_SECONDS = int(os.environ.get("NIKKO_MQTT_COMMAND_MAX_AGE_SECONDS", "60"))
 
 # Sync schedule defaults
 SYNC_TIME_DEFAULT = "03:00"

@@ -1,5 +1,9 @@
 import mqtt from 'mqtt';
 import { randomUUID } from 'crypto';
+import { signCommand, verifyResponse } from './mqttAuth.js';
+
+const COMMAND_SECRET = process.env.NIKKO_MQTT_COMMAND_SECRET || '';
+const TOPIC_PREFIX = process.env.NIKKO_MQTT_TOPIC_PREFIX || 'nikko';
 
 const COMMANDS = [
   { key: 'player_play', label: '播放' },
@@ -20,7 +24,7 @@ export function listCommands() {
 }
 
 export function getTopics(storeId) {
-  const prefix = `nikko/${storeId}`;
+  const prefix = `${TOPIC_PREFIX}/${storeId}`;
   return {
     cmd: `${prefix}/cmd`,
     resp: `${prefix}/resp`,
@@ -28,8 +32,8 @@ export function getTopics(storeId) {
   };
 }
 
-function buildClient({ broker, port, username, password }) {
-  const url = `mqtt://${broker}:${port || 1883}`;
+function buildClient({ broker, port, username, password, tls = true }) {
+  const url = `${tls ? 'mqtts' : 'mqtt'}://${broker}:${port || (tls ? 8883 : 1883)}`;
   const options = {
     clean: true,
     connectTimeout: 10000,
@@ -42,11 +46,15 @@ function buildClient({ broker, port, username, password }) {
   return mqtt.connect(url, options);
 }
 
-export function publishCommand({ broker, port, username, password, storeId, commandKey, timeout = 15000 }) {
+export function publishCommand({ broker, port, username, password, tls = true, storeId, commandKey, timeout = 15000 }) {
   return new Promise((resolve) => {
+    if (!COMMAND_SECRET) {
+      resolve({ ok: false, error: 'MQTT command authentication is not configured' });
+      return;
+    }
     const requestId = randomUUID();
     const topics = getTopics(storeId);
-    const client = buildClient({ broker, port, username, password });
+    const client = buildClient({ broker, port, username, password, tls });
     let finished = false;
     let response = null;
 
@@ -72,7 +80,9 @@ export function publishCommand({ broker, port, username, password, storeId, comm
           try { client.end(); } catch {}
           return resolve({ ok: false, error: `Subscribe error: ${err.message}`, requestId });
         }
-        const payload = JSON.stringify({ requestId, commandKey, timestamp: Date.now() });
+        const command = { requestId, commandKey, timestamp: Date.now(), nonce: randomUUID() };
+        command.signature = signCommand(command, storeId, COMMAND_SECRET);
+        const payload = JSON.stringify(command);
         client.publish(topics.cmd, payload, { qos: 1 }, (err) => {
           if (err) {
             clearTimeout(timer);
@@ -89,6 +99,9 @@ export function publishCommand({ broker, port, username, password, storeId, comm
       try {
         const data = JSON.parse(message.toString());
         if (data.requestId === requestId) {
+          if (!verifyResponse(data, COMMAND_SECRET)) {
+            return;
+          }
           clearTimeout(timer);
           if (!finished) {
             finished = true;
@@ -120,12 +133,13 @@ export function publishCommand({ broker, port, username, password, storeId, comm
   });
 }
 
-export function testMQTT({ broker, port, username, password, storeId, timeout = 10000 }) {
+export function testMQTT({ broker, port, username, password, tls = true, storeId, timeout = 10000 }) {
   return publishCommand({
     broker,
     port,
     username,
     password,
+    tls,
     storeId,
     commandKey: 'status_dashboard',
     timeout,

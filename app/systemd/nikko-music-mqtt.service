@@ -7,6 +7,7 @@ Type=simple
 User=pi
 Group=pi
 WorkingDirectory=/srv/nikko-music/app
+EnvironmentFile=-/srv/nikko-music/data/nikko.env
 Environment="PATH=/srv/nikko-music/venv/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONUNBUFFERED=1"
 ExecStart=/srv/nikko-music/venv/bin/python -m app.mqtt_client

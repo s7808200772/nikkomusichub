@@ -1,6 +1,6 @@
 """Dashboard page and API."""
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import (
@@ -10,7 +10,7 @@ from app.config import (
     SYNC_LOG_PATH,
 )
 from app.db import get_recent_sync_logs, get_setting
-from app.routes.auth import get_current_user_or_local
+from app.routes.auth import get_current_user_or_local, user_uses_initial_password
 from app.services import mpv
 from app.services.system import (
     command_exists,
@@ -40,7 +40,9 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
-    get_current_user_or_local(request)
+    user = get_current_user_or_local(request)
+    if user != "local" and user_uses_initial_password(user):
+        return RedirectResponse(url="/settings?force_password=1", status_code=303)
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 

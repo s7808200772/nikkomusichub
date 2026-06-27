@@ -66,7 +66,7 @@ export default function SettingsClient({ initialSettings, supabaseOk }) {
               type="number"
               value={settings.defaultMqttPort || ''}
               onChange={(e) => setSettings({ ...settings, defaultMqttPort: e.target.value })}
-              placeholder="1883"
+              placeholder="8883"
             />
           </div>
 

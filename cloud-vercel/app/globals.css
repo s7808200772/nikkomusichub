@@ -131,6 +131,19 @@ input::placeholder, textarea::placeholder { color: #6b7280; }
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
 }
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--text-2);
+  font-size: 0.9rem;
+}
+.switch-row input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  flex: 0 0 auto;
+}
 
 .badge {
   display: inline-flex;

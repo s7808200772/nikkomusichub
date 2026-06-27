@@ -36,7 +36,7 @@ curl -fsSL https://raw.githubusercontent.com/s7808200772/nikkomusichub/main/inst
 
 1. 部署 `cloud-vercel/` 到 Vercel（或運行 `cloud/` 在 VPS）
 2. 在 Cloud 新增店點，Store ID 必須與 Pi 安裝時顯示的 MQTT Store ID 一致
-3. 填入 MQTT broker（測試可用 `broker.hivemq.com`，生產請用私有 broker）
+3. 填入 MQTT broker；必須使用 TLS，並讓 Cloud/Pi 共用 HMAC secret 與私有 topic prefix
 4. 點測試連線，確認 Pi 有回應
 
 ## MQTT Topic

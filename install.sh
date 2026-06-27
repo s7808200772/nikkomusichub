@@ -49,6 +49,22 @@ python3 -m venv "${INSTALL_DIR}/venv"
 "${INSTALL_DIR}/venv/bin/pip" install --upgrade pip
 "${INSTALL_DIR}/venv/bin/pip" install -r "${APP_DIR}/requirements.txt"
 
+ENV_FILE="${INSTALL_DIR}/data/nikko.env"
+if [ ! -f "${ENV_FILE}" ]; then
+  log "Generating device security secrets..."
+  MQTT_COMMAND_SECRET=$("${INSTALL_DIR}/venv/bin/python" -c "import secrets; print(secrets.token_urlsafe(48))")
+  MQTT_TOPIC_PREFIX="nikko-$("${INSTALL_DIR}/venv/bin/python" -c "import secrets; print(secrets.token_hex(12))")"
+  umask 077
+  cat > "${ENV_FILE}" <<EOF
+NIKKO_MQTT_COMMAND_SECRET=${MQTT_COMMAND_SECRET}
+NIKKO_MQTT_TOPIC_PREFIX=${MQTT_TOPIC_PREFIX}
+NIKKO_MQTT_TLS=1
+NIKKO_MQTT_PORT=8883
+NIKKO_MQTT_BROKER=broker.hivemq.com
+EOF
+  chmod 600 "${ENV_FILE}"
+fi
+
 log "Installing scripts..."
 chmod +x "${APP_DIR}/scripts/"*.sh
 ln -sf "${APP_DIR}/scripts/nikko-test-audio.sh" "${INSTALL_DIR}/scripts/nikko-test-audio.sh"
@@ -109,7 +125,7 @@ cat <<EOF
 
 登入網址：${IP_LINE}
 預設帳號：nikkolh
-預設密碼：topup30%off
+初始密碼：$(cat "${INSTALL_DIR}/data/initial-admin-password" 2>/dev/null || echo "請查看 ${INSTALL_DIR}/data/initial-admin-password")
 
 資料目錄：${INSTALL_DIR}
 MQTT Store ID：${MQTT_STORE_ID}
@@ -124,7 +140,7 @@ MQTT 服務：systemctl status nikko-music-mqtt.service
 3. 進入 NAS WebDAV Sync 設定 QNAP WebDAV 帳號密碼並測試連線。
 4. 同步音樂後即可播放。
 
-為了安全，請登入後立即到 Settings 修改預設密碼。
+為了安全，請登入後立即到 Settings 修改初始密碼。
 
 ====================================================
 EOF

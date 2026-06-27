@@ -9,6 +9,13 @@ export default function DashboardClient({ initialStores, supabaseOk }) {
   const [status, setStatus] = useState({});
 
   async function fetchStatus(store) {
+    if (!supabaseOk) {
+      setStatus((prev) => ({
+        ...prev,
+        [store.storeId]: { ok: false, error: '需先設定 Supabase 才能執行遠端查詢' },
+      }));
+      return;
+    }
     const res = await fetch('/api/command', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -28,12 +35,13 @@ export default function DashboardClient({ initialStores, supabaseOk }) {
   }, [initialStores, supabaseOk]);
 
   useEffect(() => {
+    if (!supabaseOk) return undefined;
     stores.forEach((s) => fetchStatus(s));
     const id = setInterval(() => {
       stores.forEach((s) => fetchStatus(s));
     }, 60000);
     return () => clearInterval(id);
-  }, [stores.length]);
+  }, [stores.length, supabaseOk]);
 
   const online = Object.values(status).filter((s) => s.ok).length;
 

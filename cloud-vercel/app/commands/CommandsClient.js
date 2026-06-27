@@ -51,7 +51,7 @@ const CATEGORIES = [
 
 const ALL_COMMANDS = CATEGORIES.flatMap((c) => c.commands);
 
-export default function CommandsClient({ initialStores }) {
+export default function CommandsClient({ initialStores, supabaseOk }) {
   const [stores, setStores] = useState(initialStores || []);
   const [results, setResults] = useState({});
   const [expanded, setExpanded] = useState({});
@@ -63,6 +63,16 @@ export default function CommandsClient({ initialStores }) {
   }, [initialStores]);
 
   async function runForStore(storeId, commandKey) {
+    if (!supabaseOk) {
+      setResults((prev) => ({
+        ...prev,
+        [storeId]: {
+          ...(prev[storeId] || {}),
+          [commandKey]: { ok: false, error: '需先設定 Supabase 才能執行遠端指令', loading: false },
+        },
+      }));
+      return { ok: false };
+    }
     setResults((prev) => ({
       ...prev,
       [storeId]: { ...(prev[storeId] || {}), [commandKey]: { loading: true } },
@@ -125,7 +135,7 @@ export default function CommandsClient({ initialStores }) {
                   key={c.key}
                   className="primary"
                   onClick={() => runForAll(c.key)}
-                  disabled={runningAll === c.key}
+                  disabled={!supabaseOk || runningAll === c.key}
                   title={c.label}
                   style={{ minWidth: '2.8rem', height: '2.4rem', padding: 0 }}
                 >
@@ -197,7 +207,7 @@ export default function CommandsClient({ initialStores }) {
                             className="ghost icon-btn"
                             title={c.label}
                             onClick={() => runForStore(s.storeId, c.key)}
-                            disabled={loading}
+                            disabled={!supabaseOk || loading}
                             style={{ borderColor: 'rgba(255,255,255,0.06)', color: cat.color }}
                           >
                             {loading ? <Loader2 size={16} className="spin" /> : <Icon size={16} />}

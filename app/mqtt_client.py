@@ -24,8 +24,11 @@ from app.config import (
     DATA_DIR,
     LOGS_DIR,
     MQTT_BROKER,
+    MQTT_COMMAND_MAX_AGE_SECONDS,
+    MQTT_COMMAND_SECRET,
     MQTT_PASSWORD,
     MQTT_PORT,
+    MQTT_TLS,
     MQTT_TOPIC_PREFIX,
     MQTT_USERNAME,
     MUSIC_DIR,
@@ -33,8 +36,9 @@ from app.config import (
     RCLONE_CONFIG_PATH,
     SYNC_LOG_PATH,
 )
-from app.db import get_setting, init_db
+from app.db import audit, get_setting, init_db
 from app.services import mpv, rclone
+from app.services.mqtt_auth import sign_response, verify_command
 from app.services.system import (
     command_exists,
     count_mp3_files,
@@ -89,6 +93,23 @@ logger.info("Resolved MQTT_STORE_ID=%s", MQTT_STORE_ID)
 CMD_TOPIC = f"{MQTT_TOPIC_PREFIX}/{MQTT_STORE_ID}/cmd"
 RESP_TOPIC = f"{MQTT_TOPIC_PREFIX}/{MQTT_STORE_ID}/resp"
 STATUS_TOPIC = f"{MQTT_TOPIC_PREFIX}/{MQTT_STORE_ID}/status"
+
+_seen_requests: dict[str, float] = {}
+_seen_lock = threading.Lock()
+
+
+def _claim_request(request_id: str) -> bool:
+    """Return False when a recently processed request ID is replayed."""
+    now = time.time()
+    cutoff = now - max(MQTT_COMMAND_MAX_AGE_SECONDS * 2, 120)
+    with _seen_lock:
+        stale = [key for key, seen_at in _seen_requests.items() if seen_at < cutoff]
+        for key in stale:
+            _seen_requests.pop(key, None)
+        if request_id in _seen_requests:
+            return False
+        _seen_requests[request_id] = now
+        return True
 
 
 def publish(client, topic, payload, qos=1):
@@ -230,6 +251,18 @@ def on_message(client, userdata, msg):
 
     request_id = payload.get("requestId", str(uuid.uuid4()))
     command_key = payload.get("commandKey")
+    valid, reason = verify_command(
+        payload,
+        store_id=MQTT_STORE_ID,
+        secret=MQTT_COMMAND_SECRET,
+        max_age_seconds=MQTT_COMMAND_MAX_AGE_SECONDS,
+    )
+    if not valid or not _claim_request(request_id):
+        reason = reason or "Replayed requestId"
+        logger.warning("Rejected MQTT command requestId=%s: %s", request_id, reason)
+        audit("mqtt", "reject_command", {"request_id": request_id, "reason": reason})
+        return
+
     logger.info("Received command: %s (requestId=%s) on %s", command_key, request_id, msg.topic)
 
     ok, result = handle_command(command_key)
@@ -241,6 +274,7 @@ def on_message(client, userdata, msg):
         "error": result.get("error") if isinstance(result, dict) else None,
         "timestamp": int(time.time()),
     }
+    response["signature"] = sign_response(response, MQTT_COMMAND_SECRET)
     logger.info("Sending response for %s: ok=%s error=%s", command_key, ok, response.get("error"))
     publish(client, RESP_TOPIC, response)
 
@@ -297,6 +331,8 @@ def main():
 
     if MQTT_USERNAME:
         client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+    if MQTT_TLS:
+        client.tls_set()
 
     client.on_connect = on_connect
     client.on_message = on_message

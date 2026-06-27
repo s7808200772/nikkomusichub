@@ -26,7 +26,10 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 設定 RLS：只允許 service role 存取（已經預設，除非開啟 RLS）
+ALTER TABLE stores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON stores, settings FROM anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON stores, settings TO service_role;
 ```
 
 ## 3. 設定 Vercel 環境變數
@@ -37,11 +40,22 @@ CREATE TABLE IF NOT EXISTS settings (
 |------|-----|------|
 | `SUPABASE_URL` | `https://<project>.supabase.co` | Production |
 | `SUPABASE_SERVICE_ROLE_KEY` | `<service-role-key>` | Production |
+| `NIKKO_CLOUD_SECRET` | 至少 32 字元的隨機值 | Production |
+| `NIKKO_ADMIN_USER` | 管理員帳號 | Production |
+| `NIKKO_ADMIN_PASS` | 至少 12 字元的強密碼 | Production |
+| `NIKKO_MQTT_COMMAND_SECRET` | 與 Pi 完全相同的 HMAC 密鑰 | Production |
+| `NIKKO_MQTT_TOPIC_PREFIX` | 與 Pi 完全相同的私有 topic prefix | Production |
 
 ## 4. 重新部署
 
 在 Vercel 重新部署後，資料就會寫入 Supabase。
 
-## 備援：本機 JSON
+## 備援與限制
 
-若未設定 `SUPABASE_URL` 與 `SUPABASE_SERVICE_ROLE_KEY`，系統會自動把資料存在專案目錄下的 `.nikko-cloud-db.json`（僅供本機開發用，Vercel 每次部署會重置）。
+若未設定 Supabase，店點可暫存在瀏覽器 localStorage，但遠端 MQTT 指令與連線測試會停用，避免出現資料來源不一致。
+
+## 備份與還原
+
+- 備份：Supabase Dashboard → Database → Backups，或使用 `pg_dump` 匯出 `stores`、`settings`。
+- 還原：先還原 schema/migration，再匯入資料；完成後以 Cloud 新增、修改、刪除測試確認。
+- `SUPABASE_SERVICE_ROLE_KEY` 只能放在 Vercel server-side env，禁止使用 `NEXT_PUBLIC_` 前綴。

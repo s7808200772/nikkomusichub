@@ -21,7 +21,7 @@ export default function SupabaseWarning() {
       <AlertTriangle size={18} />
       <span>
         未偵測到 Supabase 環境變數（SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY）。
-        資料只會暫存在記憶體/本機檔案，重新整理頁面後設定會消失。
+        店點資料只會保存在目前瀏覽器，遠端 MQTT 指令與連線測試將停用。
         請參考 SUPABASE_SETUP.md 設定 Vercel 環境變數。
       </span>
     </div>

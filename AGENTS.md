@@ -25,11 +25,11 @@
 - Pi Web UI 使用 HTMX 做 SPA 式導覽，左側邊欄包含選單與系統狀態面板，切換頁面時不會重新載入。
 - Pi 安裝腳本為 `install.sh`，會建立 systemd 服務。
 - `requirements.txt` 必須使用有預編譯 wheel 的版本，避免在 Raspberry Pi 上編譯 Rust/C 套件。
-- `cloud-vercel/` 的 `lib/db.js` 使用 Supabase 作為正式資料庫；若未設定 `SUPABASE_URL` 與 `SUPABASE_SERVICE_ROLE_KEY`，會退回本地 `.nikko-cloud-db.json` 暫存（在 Vercel 上重新整理後資料會消失，頁面會顯示警告橫幅）。
+- `cloud-vercel/` 的 `lib/db.js` 使用 Supabase 作為正式資料庫；若未設定，僅允許瀏覽器 localStorage 預覽，遠端 MQTT 指令與連線測試必須停用。
+- MQTT 正式路徑必須啟用 TLS，並使用 Cloud/Pi 共用的 HMAC command secret、私有 topic prefix、時效檢查與防重放。
 
-## 預設帳號
+## 管理帳號
 
-- Pi Web UI：`nikkolh` / `topup30%off`
-- Cloud Web UI：`nikkolh` / `topup30%off`
-
-首次登入後應立即修改密碼。
+- 帳號預設為 `nikkolh`，密碼不得寫入 Git 或文件。
+- Pi 初始密碼會依裝置隨機產生於 `/srv/nikko-music/data/initial-admin-password`，首次登入後必須修改。
+- Cloud 帳密與 JWT secret 只允許從 Vercel encrypted environment variables 讀取。

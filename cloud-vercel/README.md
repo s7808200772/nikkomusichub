@@ -15,11 +15,11 @@
 
 Cloud 與 Pi 之間透過 MQTT 溝通：
 
-- Cloud 發布指令到 `nikko/<storeId>/cmd`
+- Cloud 發布簽章指令到 `<private-prefix>/<storeId>/cmd`
 - Pi 訂閱指令、執行後回傳結果到 `nikko/<storeId>/resp`
 - Pi 定期發布狀態到 `nikko/<storeId>/status`
 
-不需要 Tailscale、不需要 SSH，只要 Pi 與 Cloud 都能連到同一個 MQTT broker 即可。
+MQTT 使用 TLS、HMAC 簽章、時效檢查與 requestId 防重放；Pi 與 Cloud 必須設定相同的 command secret 與 topic prefix。
 
 ## 本地開發
 
@@ -29,7 +29,7 @@ npm install
 npm run dev
 ```
 
-開啟 http://localhost:3000/login，預設帳號密碼請看專案 `app/config.py`。
+開啟 http://localhost:3000/login。管理帳密只從環境變數讀取，沒有程式碼預設值。
 
 ## 部署到 Vercel
 
@@ -40,10 +40,11 @@ npx vercel --prod
 
 建議設定環境變數：
 
-- `NIKKO_ADMIN_USER`：管理員帳號（預設 nikkolh）
-- `NIKKO_ADMIN_PASSWORD`：管理員密碼
-- `NIKKO_JWT_SECRET`：JWT 簽章金鑰
-- `KV_REST_API_URL`、`KV_REST_API_TOKEN`：Vercel KV（生產環境建議）
+- `NIKKO_ADMIN_USER`、`NIKKO_ADMIN_PASS`：管理員帳密
+- `NIKKO_CLOUD_SECRET`：JWT 簽章金鑰
+- `NIKKO_MQTT_COMMAND_SECRET`：與 Pi 相同的 HMAC 密鑰
+- `NIKKO_MQTT_TOPIC_PREFIX`：與 Pi 相同的私有 topic prefix
+- `SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`：正式資料庫
 
 ## 新增店點
 
@@ -53,14 +54,14 @@ npx vercel --prod
    - Store ID（必須與 Pi 的 Store ID 一致）
    - 店名
    - MQTT Broker（預設 `broker.hivemq.com`，生產環境請換成自己的 broker）
-   - MQTT Port（預設 `1883`）
-   - MQTT 使用者 / 密碼（公開測試 broker 可留空）
+   - MQTT Port（TLS 預設 `8883`）
+   - 私有 broker 使用者 / 密碼（若 broker 提供）
 4. 點「測試連線」確認 Pi 有回應
 
 ## 技術限制
 
-- 未設定 Vercel KV 時，店點與設定存在記憶體 / 本地 JSON 暫存檔，每次重新部署會重置。
-- 公開 MQTT broker 僅供測試，生產環境請使用有認證的私有 broker。
+- 未設定 Supabase 時，遠端指令與連線測試會停用。
+- 共用 broker 仍必須使用 TLS、私有 topic prefix 與 HMAC；正式營運建議再換成帳密隔離的專用 broker。
 - Vercel Serverless Function 每次請求獨立連線 MQTT，指令回應上限約 10~15 秒。
 
 ## 檔案結構

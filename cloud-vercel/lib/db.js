@@ -1,77 +1,62 @@
 import { createClient } from '@supabase/supabase-js';
-import { promises as fs } from 'fs';
-import path from 'path';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const USE_SUPABASE = SUPABASE_URL && SUPABASE_KEY;
 
 export function isSupabaseConfigured() {
   return !!USE_SUPABASE;
 }
 
-const localDbPath = path.join(process.cwd(), '.nikko-cloud-db.json');
-
-let supabase = null;
-if (USE_SUPABASE) {
-  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+export function redactStore(store) {
+  const { mqttPassword: _mqttPassword, ...safe } = store;
+  return { ...safe, mqttPassword: store.mqttPassword ? '***' : '' };
 }
 
-async function readLocalDb() {
-  try {
-    const raw = await fs.readFile(localDbPath, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return { stores: [], settings: {} };
+let supabaseClient = null;
+
+function getSupabase() {
+  if (!USE_SUPABASE) return null;
+  if (!supabaseClient) {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
   }
-}
-
-async function writeLocalDb(data) {
-  await fs.writeFile(localDbPath, JSON.stringify(data, null, 2), 'utf-8');
+  return supabaseClient;
 }
 
 async function readStores() {
-  if (!supabase) {
-    const db = await readLocalDb();
-    return db.stores || [];
-  }
+  const supabase = getSupabase();
+  if (!supabase) return [];
   const { data, error } = await supabase.from('stores').select('data');
   if (error) throw error;
   return (data || []).map((row) => row.data);
 }
 
 async function writeStore(store) {
+  const supabase = getSupabase();
   if (!supabase) {
-    const db = await readLocalDb();
-    const idx = db.stores.findIndex((s) => s.storeId === store.storeId);
-    if (idx >= 0) db.stores[idx] = store;
-    else db.stores.push(store);
-    await writeLocalDb(db);
-    return store;
+    throw new Error('Supabase is required for server-side store persistence');
   }
   const { error } = await supabase
     .from('stores')
-    .upsert({ id: store.storeId, data: store }, { onConflict: 'id' });
+    .upsert({ id: store.storeId, data: store, updated_at: new Date().toISOString() }, { onConflict: 'id' });
   if (error) throw error;
   return store;
 }
 
 async function removeStore(storeId) {
+  const supabase = getSupabase();
   if (!supabase) {
-    const db = await readLocalDb();
-    db.stores = db.stores.filter((s) => s.storeId !== storeId);
-    await writeLocalDb(db);
-    return;
+    throw new Error('Supabase is required for server-side store persistence');
   }
   const { error } = await supabase.from('stores').delete().eq('id', storeId);
   if (error) throw error;
 }
 
 async function readSettings() {
-  if (!supabase) {
-    const db = await readLocalDb();
-    return db.settings || {};
-  }
+  const supabase = getSupabase();
+  if (!supabase) return {};
   const { data, error } = await supabase.from('settings').select('data').eq('id', 'global').single();
   if (error) {
     if (error.code === 'PGRST116') return {};
@@ -81,15 +66,13 @@ async function readSettings() {
 }
 
 async function writeSettings(settings) {
+  const supabase = getSupabase();
   if (!supabase) {
-    const db = await readLocalDb();
-    db.settings = { ...(db.settings || {}), ...settings };
-    await writeLocalDb(db);
-    return db.settings;
+    throw new Error('Supabase is required for server-side settings persistence');
   }
   const { error } = await supabase
     .from('settings')
-    .upsert({ id: 'global', data: settings }, { onConflict: 'id' });
+    .upsert({ id: 'global', data: settings, updated_at: new Date().toISOString() }, { onConflict: 'id' });
   if (error) throw error;
   return settings;
 }

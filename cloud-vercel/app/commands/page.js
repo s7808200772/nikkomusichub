@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
-import { listStores } from '@/lib/db';
+import { listStores, isSupabaseConfigured, redactStore } from '@/lib/db';
 import Navbar from '@/components/Navbar';
+import SupabaseWarning from '@/components/SupabaseWarning';
 import CommandsClient from './CommandsClient';
 
 export default async function CommandsPage() {
@@ -11,7 +12,8 @@ export default async function CommandsPage() {
   if (!token || !(await verifyToken(token))) {
     redirect('/login');
   }
-  const stores = await listStores();
+  const stores = (await listStores()).map(redactStore);
+  const supabaseOk = isSupabaseConfigured();
   return (
     <>
       <Navbar />
@@ -20,7 +22,8 @@ export default async function CommandsPage() {
           <h1>遠端指令</h1>
           <p>對所有店點執行播放控制、同步、重啟等操作</p>
         </div>
-        <CommandsClient initialStores={stores} />
+        {!supabaseOk && <SupabaseWarning />}
+        <CommandsClient initialStores={stores} supabaseOk={supabaseOk} />
       </main>
     </>
   );

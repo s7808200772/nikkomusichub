@@ -1,21 +1,33 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.NIKKO_CLOUD_SECRET || 'nikko-cloud-secret-change-me'
-);
+const CLOUD_SECRET = process.env.NIKKO_CLOUD_SECRET || '';
+const ADMIN_USER = process.env.NIKKO_ADMIN_USER || '';
+const ADMIN_PASS = process.env.NIKKO_ADMIN_PASS || '';
+
+function secretKey() {
+  return CLOUD_SECRET ? new TextEncoder().encode(CLOUD_SECRET) : null;
+}
+
+export function isAuthConfigured() {
+  return CLOUD_SECRET.length >= 32 && !!ADMIN_USER && ADMIN_PASS.length >= 12;
+}
 
 export async function createToken(username) {
+  const key = secretKey();
+  if (!key) throw new Error('Cloud authentication is not configured');
   return await new SignJWT({ username })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
-    .sign(SECRET_KEY);
+    .sign(key);
 }
 
 export async function verifyToken(token) {
   try {
-    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const key = secretKey();
+    if (!key) return null;
+    const { payload } = await jwtVerify(token, key);
     return payload;
   } catch (e) {
     return null;
@@ -31,8 +43,5 @@ export async function getCurrentUser() {
 }
 
 export function checkCredentials(username, password) {
-  return (
-    username === (process.env.NIKKO_ADMIN_USER || 'nikkolh') &&
-    password === (process.env.NIKKO_ADMIN_PASS || 'topup30%off')
-  );
+  return isAuthConfigured() && username === ADMIN_USER && password === ADMIN_PASS;
 }

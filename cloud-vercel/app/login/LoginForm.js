@@ -22,7 +22,14 @@ export default function LoginForm() {
       router.push('/');
       router.refresh();
     } else {
-      setMsg('帳號或密碼錯誤');
+      const data = await res.json().catch(() => ({}));
+      setMsg(
+        res.status === 429
+          ? '登入失敗次數過多，請稍後再試'
+          : res.status === 503
+            ? '管理平台尚未完成安全設定'
+            : data.error || '帳號或密碼錯誤'
+      );
     }
     setBusy(false);
   }
