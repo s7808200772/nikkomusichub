@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
-import { listStores } from '@/lib/db';
+import { listStores, isSupabaseConfigured } from '@/lib/db';
 import Navbar from '@/components/Navbar';
+import SupabaseWarning from '@/components/SupabaseWarning';
 import DashboardClient from './DashboardClient';
 
 export default async function DashboardPage() {
@@ -12,6 +13,7 @@ export default async function DashboardPage() {
     redirect('/login');
   }
   const stores = await listStores();
+  const supabaseOk = isSupabaseConfigured();
   return (
     <>
       <Navbar />
@@ -20,7 +22,8 @@ export default async function DashboardPage() {
           <h1>Dashboard</h1>
           <p>即時掌握所有店點狀態</p>
         </div>
-        <DashboardClient initialStores={stores} />
+        {!supabaseOk && <SupabaseWarning />}
+        <DashboardClient initialStores={stores} supabaseOk={supabaseOk} />
       </main>
     </>
   );

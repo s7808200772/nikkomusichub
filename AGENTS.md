@@ -22,10 +22,10 @@
 
 ## 開發與部署慣例
 
+- Pi Web UI 使用 HTMX 做 SPA 式導覽，左側邊欄包含選單與系統狀態面板，切換頁面時不會重新載入。
 - Pi 安裝腳本為 `install.sh`，會建立 systemd 服務。
 - `requirements.txt` 必須使用有預編譯 wheel 的版本，避免在 Raspberry Pi 上編譯 Rust/C 套件。
-- `cloud-vercel/` 的 `lib/db.js` 同時支援 Vercel KV 與本地 JSON 暫存檔。
-- 修改程式碼後請同步更新相關 README。
+- `cloud-vercel/` 的 `lib/db.js` 使用 Supabase 作為正式資料庫；若未設定 `SUPABASE_URL` 與 `SUPABASE_SERVICE_ROLE_KEY`，會退回本地 `.nikko-cloud-db.json` 暫存（在 Vercel 上重新整理後資料會消失，頁面會顯示警告橫幅）。
 
 ## 預設帳號
 

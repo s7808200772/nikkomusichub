@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { Activity, Music, RefreshCw, Wifi, WifiOff, HelpCircle, Loader2, Store } from 'lucide-react';
+import { loadLocalStores } from '@/lib/localStorage';
 
-export default function DashboardClient({ initialStores }) {
+export default function DashboardClient({ initialStores, supabaseOk }) {
   const [stores, setStores] = useState(initialStores || []);
   const [status, setStatus] = useState({});
 
@@ -18,8 +19,13 @@ export default function DashboardClient({ initialStores }) {
   }
 
   useEffect(() => {
-    setStores(initialStores || []);
-  }, [initialStores]);
+    if (!supabaseOk && typeof window !== 'undefined') {
+      const local = loadLocalStores();
+      setStores(local.length ? local : (initialStores || []));
+    } else {
+      setStores(initialStores || []);
+    }
+  }, [initialStores, supabaseOk]);
 
   useEffect(() => {
     stores.forEach((s) => fetchStatus(s));

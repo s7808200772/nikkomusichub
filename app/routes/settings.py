@@ -66,6 +66,13 @@ async def save_device_settings(
     set_setting("store_id", new_store_id)
     audit(user, "save_device_settings", {"store_name": store_name, "store_id": new_store_id})
     # Restart MQTT agent so the new store ID takes effect immediately
+    restart_result = {"ok": True}
     if old_store_id != new_store_id:
-        run(["sudo", "systemctl", "restart", "nikko-music-mqtt.service"], timeout=30)
+        restart_result = run(["sudo", "-n", "systemctl", "restart", "nikko-music-mqtt.service"], timeout=30)
+        audit(user, "restart_mqtt_for_store_id_change", {"old": old_store_id, "new": new_store_id, "ok": restart_result.get("ok"), "stderr": restart_result.get("stderr")})
+        if not restart_result.get("ok"):
+            return {
+                "ok": True,
+                "warning": f"Store ID 已儲存，但 MQTT 服務重啟失敗：{restart_result.get('stderr', '未知錯誤')}。請手動執行 sudo systemctl restart nikko-music-mqtt.service。",
+            }
     return {"ok": True}

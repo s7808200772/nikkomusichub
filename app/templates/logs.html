@@ -1,59 +1,91 @@
 {% extends "base.html" %}
 {% block title %}日誌記錄 - NikkoMusicHub{% endblock %}
-{% block page_title %}日誌記錄{% endblock %}
 {% block content %}
 
-<div class="tabs">
-  <button class="tab active" onclick="setTab('all')">全部</button>
-  <button class="tab" onclick="setTab('audit')">Audit</button>
-  <button class="tab" onclick="setTab('sync')">Sync</button>
-  <button class="tab" onclick="setTab('player')">Player</button>
+<div id="default-pwd-banner" class="top-banner" style="display:none;">
+  <span>⚠️</span>
+  <span>您正在使用預設密碼，請到 <a href="/settings">Settings</a> 修改密碼。</span>
 </div>
 
-<div class="filter-bar">
-  <input type="text" placeholder="搜尋訊息…" onkeyup="setSearch(this.value)" style="min-width:220px;">
-  <select onchange="setLevel(this.value)">
-    <option value="all">日誌等級：全部</option>
-    <option value="info">INFO</option>
-    <option value="error">ERROR</option>
-  </select>
-  <select onchange="setModule(this.value)">
-    <option value="all">模組：全部</option>
-    <option value="player">player</option>
-    <option value="webdav">webdav</option>
-    <option value="system">system</option>
-    <option value="settings">settings</option>
-  </select>
-  <select onchange="setTimeRange(this.value)">
-    <option value="all">時間範圍：全部</option>
-    <option value="hour">最近 1 小時</option>
-    <option value="day">最近 24 小時</option>
-    <option value="week">最近 7 天</option>
-  </select>
-  <select onchange="setSort(this.value)">
-    <option value="desc">排序：最新在前</option>
-    <option value="asc">排序：最舊在前</option>
-  </select>
+<h2 style="margin:0 0 1rem; font-size:1.2rem; display:flex; align-items:center; gap:.5rem;">
+  <span>📋</span>日誌記錄
+</h2>
+
+<div class="log-tabs">
+  <button class="log-tab active" onclick="setTab('all')">全部</button>
+  <button class="log-tab" onclick="setTab('audit')">Audit</button>
+  <button class="log-tab" onclick="setTab('sync')">Sync</button>
+  <button class="log-tab" onclick="setTab('player')">Player</button>
+</div>
+
+<div class="log-filter-bar">
+  <div class="filter-col">
+    <label>搜尋訊息</label>
+    <input type="text" placeholder="搜尋訊息…" onkeyup="setSearch(this.value)">
+  </div>
+  <div class="filter-col">
+    <label>日誌等級</label>
+    <select onchange="setLevel(this.value)">
+      <option value="all">全部</option>
+      <option value="info">INFO</option>
+      <option value="error">ERROR</option>
+    </select>
+  </div>
+  <div class="filter-col">
+    <label>模組</label>
+    <select onchange="setModule(this.value)">
+      <option value="all">全部</option>
+      <option value="player">player</option>
+      <option value="webdav">webdav</option>
+      <option value="system">system</option>
+      <option value="settings">settings</option>
+    </select>
+  </div>
+  <div class="filter-col">
+    <label>時間範圍</label>
+    <select onchange="setTimeRange(this.value)">
+      <option value="all">全部</option>
+      <option value="hour">最近 1 小時</option>
+      <option value="day">最近 24 小時</option>
+      <option value="week">最近 7 天</option>
+    </select>
+  </div>
+  <div class="filter-col">
+    <label>排序</label>
+    <select onchange="setSort(this.value)">
+      <option value="desc">最新在前</option>
+      <option value="asc">最舊在前</option>
+    </select>
+  </div>
   <button class="outline" onclick="loadLogs()">🔄 重新整理</button>
 </div>
 
-<div class="grid grid-2" style="grid-template-columns: 1.4fr 1fr;">
-  <div class="card">
-    <table class="table" id="log-table">
+<div class="log-layout">
+  <div class="card log-table-wrap">
+    <table class="log-table" id="log-table">
       <thead>
         <tr>
-          <th style="width:80px;">類型</th>
-          <th style="width:160px;">時間</th>
+          <th class="dot-cell"></th>
+          <th class="type-cell">類型</th>
+          <th class="time-cell">時間</th>
           <th>訊息</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td colspan="3" style="color:var(--muted)">載入中…</td></tr>
+        <tr><td colspan="4" style="color:var(--muted); text-align:center; padding:2rem;">載入中…</td></tr>
       </tbody>
     </table>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem; font-size:.8rem; color:var(--muted);">
+    <div class="log-footer">
       <span id="log-summary">共 0 筆</span>
-      <div id="log-pagination" style="display:flex; gap:.4rem;"></div>
+      <div style="display:flex; align-items:center; gap:.75rem;">
+        <label style="font-size:.75rem; color:var(--muted);">每頁</label>
+        <select onchange="setPageSize(this.value)" style="width:auto; min-width:70px; padding:.35rem .5rem;">
+          <option value="50" selected>50 筆</option>
+          <option value="100">100 筆</option>
+          <option value="200">200 筆</option>
+        </select>
+        <div id="log-pagination" class="log-pagination"></div>
+      </div>
     </div>
   </div>
 
@@ -67,6 +99,15 @@
 </div>
 
 <script>
+async function checkDefaultPasswordBanner() {
+  try {
+    const me = await apiGet('/api/me');
+    const banner = document.getElementById('default-pwd-banner');
+    if (banner && me && me.is_default) banner.style.display = 'flex';
+  } catch(e){}
+}
+checkDefaultPasswordBanner();
+
 let allEntries = [];
 let currentTab = 'all';
 let searchTerm = '';
@@ -79,12 +120,13 @@ let pageSize = 50;
 let selectedId = null;
 
 function typeBadge(type) {
-  const map = {
-    audit: 'success',
-    sync: 'warning',
-    player: 'info',
-  };
+  const map = { audit: 'blue', sync: 'warning', player: 'info' };
   return `<span class="badge badge-${map[type] || 'blue'}">${type}</span>`;
+}
+function typeDot(type) {
+  const map = { audit: 'blue', sync: 'warning', player: 'info' };
+  const color = { blue: 'var(--accent)', warning: 'var(--warning)', info: 'var(--info)' }[map[type] || 'blue'];
+  return `<span class="dot" style="background:${color}; box-shadow:0 0 6px ${color};"></span>`;
 }
 
 function inferType(entry) {
@@ -158,6 +200,9 @@ function filterEntries() {
   if (moduleFilter !== 'all') {
     filtered = filtered.filter(e => inferModule(e) === moduleFilter);
   }
+  if (levelFilter !== 'all') {
+    filtered = filtered.filter(e => (e.level || '').toLowerCase() === levelFilter);
+  }
   if (searchTerm) {
     const q = searchTerm.toLowerCase();
     filtered = filtered.filter(e => JSON.stringify(e).toLowerCase().includes(q));
@@ -183,12 +228,13 @@ function renderLogs() {
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
   const start = (currentPage - 1) * pageSize;
   const page = filtered.slice(start, start + pageSize);
 
   const tbody = document.querySelector('#log-table tbody');
   if (!page.length) {
-    tbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted); text-align:center; padding:2rem;">尚無紀錄</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted); text-align:center; padding:2rem;">尚無紀錄</td></tr>';
   } else {
     tbody.innerHTML = page.map(e => {
       const type = inferType(e);
@@ -196,9 +242,10 @@ function renderLogs() {
       const msg = e.message || e.action || '-';
       const isSelected = selectedId && (e.id === selectedId || e.id == selectedId);
       return `<tr class="${isSelected ? 'selected' : ''}" onclick='showDetail(${JSON.stringify(e).replace(/"/g,'&quot;')})'>
-        <td>${typeBadge(type)}</td>
-        <td style="color:var(--muted); white-space:nowrap; font-size:.8rem;">${time}</td>
-        <td style="font-size:.85rem;">${escapeHtml(msg)}</td>
+        <td class="dot-cell">${typeDot(type)}</td>
+        <td class="type-cell">${typeBadge(type)}</td>
+        <td class="time-cell">${time}</td>
+        <td class="msg-cell">${escapeHtml(msg)}</td>
       </tr>`;
     }).join('');
   }
@@ -226,7 +273,7 @@ function goPage(p) { currentPage = p; renderLogs(); }
 function setTab(t) {
   currentTab = t;
   currentPage = 1;
-  document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.log-tab').forEach(btn => btn.classList.remove('active'));
   event.target.classList.add('active');
   renderLogs();
 }
@@ -235,11 +282,11 @@ function setLevel(v) { levelFilter = v; currentPage = 1; renderLogs(); }
 function setModule(v) { moduleFilter = v; currentPage = 1; renderLogs(); }
 function setTimeRange(v) { timeRange = v; currentPage = 1; renderLogs(); }
 function setSort(v) { sortOrder = v; currentPage = 1; renderLogs(); }
+function setPageSize(v) { pageSize = parseInt(v, 10); currentPage = 1; renderLogs(); }
 
 async function loadLogs() {
   const data = await apiGet('/api/logs/all');
   allEntries = data.entries || [];
-  // Also fetch sync logs and merge them
   const syncData = await apiGet('/api/webdav/sync-logs');
   if (syncData && syncData.logs) {
     syncData.logs.forEach(l => {

@@ -115,7 +115,7 @@ function gaugeSvg(percent, color) {
 }
 
 function renderRightPanel(data) {
-  const panel = document.getElementById('right-panel');
+  const panel = document.getElementById('left-panel');
   if (!panel || !data) return;
 
   const cpuColor = data.cpu_percent > 90 ? 'var(--danger)' : (data.cpu_percent > 75 ? 'var(--warning)' : 'var(--success)');
@@ -135,6 +135,18 @@ function renderRightPanel(data) {
   if (navStore) navStore.textContent = data.store_name;
   if (navTs) navTs.textContent = 'Tailscale ' + (data.tailscale_ip || '未偵測');
   if (navLan) navLan.textContent = 'LAN ' + (data.lan_ip || '未偵測');
+
+  const sbModel = document.getElementById('sidebar-pi-model');
+  const sbUptime = document.getElementById('sidebar-uptime');
+  const sbStatusDot = document.getElementById('sidebar-status-dot');
+  const sbStatusText = document.getElementById('sidebar-status-text');
+  if (sbModel) sbModel.textContent = data.pi_model || 'Raspberry Pi';
+  if (sbUptime) sbUptime.textContent = formatDuration(data.uptime_seconds || 0);
+  if (sbStatusDot && sbStatusText) {
+    const ok = data.web_service_status === 'active';
+    sbStatusDot.className = 'dot ' + (ok ? 'green' : 'red');
+    sbStatusText.textContent = ok ? '正常運行' : '異常';
+  }
 
   panel.innerHTML = `
     <div class="card">
@@ -216,3 +228,24 @@ async function loadRightPanel() {
 
 loadRightPanel();
 setInterval(loadRightPanel, 5000);
+
+// Sidebar clock
+function updateSidebarClock() {
+  const el = document.getElementById('sidebar-clock');
+  if (el) el.textContent = new Date().toLocaleString('zh-TW');
+}
+updateSidebarClock();
+setInterval(updateSidebarClock, 1000);
+
+// HTMX SPA: update active nav link after navigation
+document.body.addEventListener('htmx:afterSettle', function(evt) {
+  const path = window.location.pathname;
+  let matched = false;
+  document.querySelectorAll('.sidebar nav a').forEach(a => {
+    const isMatch = !matched && a.getAttribute('href') === path;
+    a.classList.toggle('active', isMatch);
+    if (isMatch) matched = true;
+  });
+  // Re-run page-specific inline scripts if needed
+  if (window.initPage) window.initPage();
+});

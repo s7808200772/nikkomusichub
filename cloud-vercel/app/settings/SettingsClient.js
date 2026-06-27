@@ -2,21 +2,34 @@
 
 import { useState, useEffect } from 'react';
 import { Save, KeyRound, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { loadLocalSettings, saveLocalSettings } from '@/lib/localStorage';
 
-export default function SettingsClient({ initialSettings }) {
+export default function SettingsClient({ initialSettings, supabaseOk }) {
   const [settings, setSettings] = useState(initialSettings || {});
   const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    setSettings(initialSettings || {});
-  }, [initialSettings]);
+    if (!supabaseOk && typeof window !== 'undefined') {
+      const local = loadLocalSettings();
+      setSettings({ ...(initialSettings || {}), ...local });
+    } else {
+      setSettings(initialSettings || {});
+    }
+  }, [initialSettings, supabaseOk]);
 
   async function save(e) {
     e.preventDefault();
     setBusy(true);
     setMsg('');
+    if (!supabaseOk) {
+      saveLocalSettings(settings);
+      setMsg('設定已儲存至瀏覽器（未偵測到 Supabase，資料不會同步到雲端）');
+      setMsgType('success');
+      setBusy(false);
+      return;
+    }
     const res = await fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, Server, Hash, Save, AlertCircle, CheckCircle2, Search, Pencil, X, Activity, Loader2, Wifi, WifiOff } from 'lucide-react';
+import { loadLocalStores, saveLocalStores } from '@/lib/localStorage';
 
-export default function StoresClient({ initialStores }) {
+export default function StoresClient({ initialStores, supabaseOk }) {
   const [stores, setStores] = useState(initialStores || []);
   const [form, setForm] = useState({ mqttBroker: 'broker.hivemq.com', mqttPort: 1883 });
   const [msg, setMsg] = useState('');
@@ -13,7 +14,18 @@ export default function StoresClient({ initialStores }) {
   const [editing, setEditing] = useState(null);
   const [testStatus, setTestStatus] = useState({});
 
+  useEffect(() => {
+    if (!supabaseOk && typeof window !== 'undefined') {
+      const local = loadLocalStores();
+      setStores(local.length ? local : (initialStores || []));
+    }
+  }, [initialStores, supabaseOk]);
+
   async function load() {
+    if (!supabaseOk) {
+      setStores(loadLocalStores());
+      return;
+    }
     const res = await fetch('/api/stores');
     const data = await res.json();
     setStores(data.stores || []);
@@ -23,6 +35,17 @@ export default function StoresClient({ initialStores }) {
     e.preventDefault();
     setMsg('');
     setBusy(true);
+    if (!supabaseOk) {
+      const newStore = { ...form, storeId: form.storeId.trim(), storeName: form.storeName.trim() };
+      const next = [...stores, newStore];
+      saveLocalStores(next);
+      setStores(next);
+      setForm({ mqttBroker: 'broker.hivemq.com', mqttPort: 1883 });
+      setMsg('店點已儲存至瀏覽器（未偵測到 Supabase，資料不會同步到雲端）');
+      setMsgType('success');
+      setBusy(false);
+      return;
+    }
     const res = await fetch('/api/stores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -45,6 +68,16 @@ export default function StoresClient({ initialStores }) {
     e.preventDefault();
     setMsg('');
     setBusy(true);
+    if (!supabaseOk) {
+      const next = stores.map((s) => (s.storeId === editing.storeId ? editing : s));
+      saveLocalStores(next);
+      setStores(next);
+      setEditing(null);
+      setMsg('店點已更新（瀏覽器本機）');
+      setMsgType('success');
+      setBusy(false);
+      return;
+    }
     const res = await fetch('/api/stores', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -65,6 +98,12 @@ export default function StoresClient({ initialStores }) {
 
   async function remove(storeId) {
     if (!confirm(`確定刪除 ${storeId}？`)) return;
+    if (!supabaseOk) {
+      const next = stores.filter((s) => s.storeId !== storeId);
+      saveLocalStores(next);
+      setStores(next);
+      return;
+    }
     await fetch(`/api/stores?storeId=${storeId}`, { method: 'DELETE' });
     load();
   }

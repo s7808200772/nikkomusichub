@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
-import { listStores } from '@/lib/db';
+import { listStores, isSupabaseConfigured } from '@/lib/db';
 import Navbar from '@/components/Navbar';
+import SupabaseWarning from '@/components/SupabaseWarning';
 import StoresClient from './StoresClient';
 
 export default async function StoresPage() {
@@ -12,6 +13,7 @@ export default async function StoresPage() {
     redirect('/login');
   }
   const stores = await listStores();
+  const supabaseOk = isSupabaseConfigured();
   return (
     <>
       <Navbar />
@@ -20,7 +22,8 @@ export default async function StoresPage() {
           <h1>店點管理</h1>
           <p>新增與管理各店 Raspberry Pi 連線資訊</p>
         </div>
-        <StoresClient initialStores={stores} />
+        {!supabaseOk && <SupabaseWarning />}
+        <StoresClient initialStores={stores} supabaseOk={supabaseOk} />
       </main>
     </>
   );
