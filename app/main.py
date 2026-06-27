@@ -26,6 +26,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="NikkoMusicHub", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
+
+@app.middleware("http")
+async def no_cache_headers(request: Request, call_next):
+    """Force browsers and proxies to never cache any response."""
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(setup.router)
