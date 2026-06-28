@@ -10,7 +10,7 @@ from app.config import MUSIC_DIR
 
 def main():
     playlist = MUSIC_DIR.parent / "playlist.m3u"
-    files = sorted(MUSIC_DIR.rglob("*.mp3")) + sorted(MUSIC_DIR.rglob("*.MP3"))
+    files = sorted({p.resolve(): p for p in (list(MUSIC_DIR.rglob("*.mp3")) + list(MUSIC_DIR.rglob("*.MP3")))}.values())
     with open(playlist, "w", encoding="utf-8") as f:
         for file in files:
             f.write(str(file) + "\n")

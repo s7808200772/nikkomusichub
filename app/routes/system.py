@@ -84,27 +84,24 @@ def system_logs(request: Request):
 @router.post("/api/system/restart-player")
 async def restart_player(request: Request):
     user = get_current_user_or_local(request)
-    run(["sudo", "systemctl", "restart", "nikko-music-player.service"], timeout=30)
-    res = {"ok": True}
-    audit(user, "restart_player", {})
+    res = run(["sudo", "systemctl", "restart", "nikko-music-player.service"], timeout=30)
+    audit(user, "restart_player", {"ok": res.get("ok"), "returncode": res.get("returncode")})
     return res
 
 
 @router.post("/api/system/stop-player")
 async def stop_player_service(request: Request):
     user = get_current_user_or_local(request)
-    run(["sudo", "systemctl", "stop", "nikko-music-player.service"], timeout=30)
-    res = {"ok": True}
-    audit(user, "stop_player_service", {})
+    res = run(["sudo", "systemctl", "stop", "nikko-music-player.service"], timeout=30)
+    audit(user, "stop_player_service", {"ok": res.get("ok"), "returncode": res.get("returncode")})
     return res
 
 
 @router.post("/api/system/start-player")
 async def start_player_service(request: Request):
     user = get_current_user_or_local(request)
-    run(["sudo", "systemctl", "start", "nikko-music-player.service"], timeout=30)
-    res = {"ok": True}
-    audit(user, "start_player_service", {})
+    res = run(["sudo", "systemctl", "start", "nikko-music-player.service"], timeout=30)
+    audit(user, "start_player_service", {"ok": res.get("ok"), "returncode": res.get("returncode")})
     return res
 
 

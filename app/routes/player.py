@@ -138,13 +138,24 @@ def player_library(request: Request):
     return {"files": list_music_files(MUSIC_DIR)}
 
 
+def _resolve_music_path(path: str) -> str:
+    from pathlib import Path
+    from app.config import MUSIC_DIR
+
+    p = Path(path)
+    if not p.is_absolute():
+        p = MUSIC_DIR / p
+    return str(p.resolve())
+
+
 @router.post("/api/player/play-file")
 async def player_play_file(request: Request, path: str = Form(...)):
     user = get_current_user_or_local(request)
     from app.services.system import safe_path_validate
-    if not safe_path_validate(path):
+    full_path = _resolve_music_path(path)
+    if not safe_path_validate(full_path):
         return {"ok": False, "stderr": "Invalid path"}
-    res = mpv.load_file(path, "replace")
+    res = mpv.load_file(full_path, "replace")
     audit(user, "player_play_file", {"path": path, "ok": res["ok"]})
     return res
 
@@ -153,9 +164,10 @@ async def player_play_file(request: Request, path: str = Form(...)):
 async def player_delete_file(request: Request, path: str = Form(...)):
     user = get_current_user_or_local(request)
     from app.services.system import safe_path_validate
-    if not safe_path_validate(path):
+    full_path = _resolve_music_path(path)
+    if not safe_path_validate(full_path):
         return {"ok": False, "stderr": "Invalid path"}
-    res = mpv.remove_file(path)
+    res = mpv.remove_file(full_path)
     audit(user, "player_delete_file", {"path": path, "ok": res["ok"]})
     return res
 

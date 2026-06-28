@@ -4,7 +4,10 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-import pwd
+try:
+    import pwd
+except ImportError:  # pragma: no cover (Windows dev)
+    pwd = None
 
 from app.config import (
     BASE_DIR,
@@ -22,6 +25,8 @@ from app.services.system import command_exists, run, safe_path_validate
 
 
 def _get_uid_gid(user: str, group: str):
+    if pwd is None:
+        return None, None
     try:
         uid = pwd.getpwnam(user).pw_uid
         gid = pwd.getpwnam(group).pw_gid if group else pwd.getpwnam(user).pw_gid

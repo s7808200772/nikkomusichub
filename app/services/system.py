@@ -202,10 +202,14 @@ def service_enabled(name: str) -> bool:
     return res["stdout"].strip() == "enabled"
 
 
+def _is_mp3(p: Path) -> bool:
+    return p.is_file() and p.suffix.lower() == ".mp3"
+
+
 def count_mp3_files(path: Path = MUSIC_DIR) -> int:
     if not path.exists():
         return 0
-    return sum(1 for p in path.rglob("*") if p.is_file() and p.suffix.lower() == ".mp3")
+    return sum(1 for p in path.rglob("*") if _is_mp3(p))
 
 
 def list_music_files(path: Path = MUSIC_DIR) -> list[dict]:
@@ -213,7 +217,7 @@ def list_music_files(path: Path = MUSIC_DIR) -> list[dict]:
         return []
     files = []
     for p in sorted(path.rglob("*")):
-        if p.is_file() and p.suffix.lower() == ".mp3":
+        if _is_mp3(p):
             rel = p.relative_to(path)
             files.append(
                 {

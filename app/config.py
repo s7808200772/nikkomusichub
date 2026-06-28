@@ -7,7 +7,7 @@ PROJECT_NAME = "NikkoMusicHub"
 PROJECT_SLUG = "nikko-music-hub"
 
 # Base paths
-BASE_DIR = Path("/srv/nikko-music")
+BASE_DIR = Path(os.environ.get("NIKKO_BASE_DIR", "/srv/nikko-music"))
 MUSIC_DIR = BASE_DIR / "music"
 LOGS_DIR = BASE_DIR / "logs"
 SCRIPTS_DIR = BASE_DIR / "scripts"
