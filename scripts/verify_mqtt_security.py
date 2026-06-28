@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import ssl
 import threading
 import time
 import uuid
@@ -56,8 +57,19 @@ def main() -> int:
         callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
         client_id=f"nikko-security-check-{request_id}",
     )
+    username = os.environ.get("NIKKO_MQTT_USERNAME", "")
+    if username:
+        client.username_pw_set(username, os.environ.get("NIKKO_MQTT_PASSWORD", ""))
     if os.environ.get("NIKKO_MQTT_TLS", "1") not in ("0", "false", "no"):
-        client.tls_set()
+        ca_path = os.environ.get("NIKKO_MQTT_CA_PATH", "")
+        if ca_path:
+            context = ssl.create_default_context(cafile=ca_path)
+            if hasattr(ssl, "VERIFY_X509_STRICT"):
+                context.verify_flags &= ~ssl.VERIFY_X509_STRICT
+            context.check_hostname = False
+            client.tls_set_context(context)
+        else:
+            client.tls_set()
     client.on_connect = on_connect
     client.on_message = on_message
     client.connect(broker, port, keepalive=30)
