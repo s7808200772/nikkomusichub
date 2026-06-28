@@ -1,35 +1,38 @@
 # AGENTS.md
 
-本專案為 Raspberry Pi 門市音樂管理系統，包含三個子系統：
+本專案為 Raspberry Pi 門市音樂管理系統，目前實際運作架構：
 
-- `app/`：Pi 端 FastAPI 本機管理 + MQTT 客戶端
-- `cloud/`：VPS 版 FastAPI 中央管理平台
-- `cloud-vercel/`：Vercel 版 Next.js 中央管理平台
+- `app/`：Pi 端 FastAPI 本機管理 + MQTT 客戶端。
+- `cloud-vercel/`：Vercel Next.js 中央管理後台。
+- Pi 與 Cloud 透過私有 MQTT broker（EMQX 114.55.1.51:8883，TLS 1.3）溝通。
+- Cloud 與 Pi 之間的 MQTT 指令使用 HMAC 簽名、時效、防重放、白名單與危險指令二次確認。
 
 ## 技術決策
 
-- Python 3.12+ on Pi；FastAPI + Jinja2 傳統 SSR 模板。
+- Python 3.12+ on Pi；FastAPI + Jinja2 SSR 模板（`app/templates/`）。
 - `cloud-vercel/` 使用 Next.js App Router + Serverless Function。
-- Cloud 與 Pi 之間使用 MQTT 溝通：
-  - Cloud 發布指令到 `nikko/<storeId>/cmd`
-  - Pi 回傳結果到 `nikko/<storeId>/resp`
-  - Pi 定期發布狀態到 `nikko/<storeId>/status`
-- 不再需要 Tailscale、不再需要 SSH。
-- Pi 本機 API 仍綁定 `127.0.0.1:8080`，只接受本機存取。
-- 音樂同步使用 rclone + QNAP NAS WebDAV（經 Tailscale 內網）。
-- 預設 WebDAV URL：`http://100.106.208.65:5005/`，remote：`qnapmusic:NikkoMusic`，本地：`/srv/nikko-music/music`。
-- 播放器使用 mpv + IPC socket。
+- MQTT topic：
+  - 指令：`nikko/<storeId>/cmd`
+  - 回應：`nikko/<storeId>/resp`
+  - 狀態：`nikko/<storeId>/status`（retain）
+- Pi 本機 API 綁定 `127.0.0.1:8080`，僅接受本機存取；外部透過 Tailscale 或反向代理。
+- 音樂同步：rclone + QNAP NAS WebDAV over Tailscale；同步先寫入 `music.staging`，成功後原子替換 `music/`。
+- 播放器：mpv + IPC socket；音訊裝置可偵測與切換。
+- Cloud 資料：Supabase（stores、settings、alerts、update_log），透過 Edge Function `nikko-cloud-db` 存取。
+- 若未設定 Supabase，Cloud 僅允許瀏覽器 localStorage 預覽，遠端 MQTT 指令與連線測試停用。
 
 ## 開發與部署慣例
 
-- Pi Web UI 使用 HTMX 做 SPA 式導覽，左側邊欄包含選單與系統狀態面板，切換頁面時不會重新載入。
-- Pi 安裝腳本為 `install.sh`，會建立 systemd 服務。
+- Pi 安裝：`bash scripts/install.sh`（建立目錄、systemd 服務、啟用 timers）。
+- Pi 程式碼部署後需重啟服務：`sudo systemctl restart nikko-music-hub-web.service nikko-music-player.service nikko-music-mqtt.service`。
+- Cloud 部署：`cd cloud-vercel && vercel --prod`。
+- Edge Function 部署：`supabase functions deploy nikko-cloud-db && supabase db push`。
+- 自我測試：Pi 執行 `python scripts/test-suite.py`，Cloud 執行 `node cloud-vercel/scripts/test-suite.js`。
 - `requirements.txt` 必須使用有預編譯 wheel 的版本，避免在 Raspberry Pi 上編譯 Rust/C 套件。
-- `cloud-vercel/` 的 `lib/db.js` 使用 Supabase 作為正式資料庫；若未設定，僅允許瀏覽器 localStorage 預覽，遠端 MQTT 指令與連線測試必須停用。
-- MQTT 正式路徑必須啟用 TLS，並使用 Cloud/Pi 共用的 HMAC command secret、私有 topic prefix、時效檢查與防重放。
+- 所有密碼、token、secret 禁止寫入 Git；僅存於 `nikko.env`、Vercel env、Supabase Edge Function env。
 
 ## 管理帳號
 
-- 帳號預設為 `nikkolh`，密碼不得寫入 Git 或文件。
-- Pi 初始密碼會依裝置隨機產生於 `/srv/nikko-music/data/initial-admin-password`，首次登入後必須修改。
+- 預設帳號：`nikkolh`。
+- Pi 初始密碼會依裝置隨機產生於 `/srv/nikko-music/data/initial-admin-password`，首次登入後**建議**修改。
 - Cloud 帳密與 JWT secret 只允許從 Vercel encrypted environment variables 讀取。
