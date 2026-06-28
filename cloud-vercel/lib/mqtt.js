@@ -37,8 +37,10 @@ export function getTopics(storeId) {
 }
 
 function buildClient({ broker, port, username, password, tls = true }) {
-  const url = `${tls ? 'mqtts' : 'mqtt'}://${broker}:${port || (tls ? 8883 : 1883)}`;
   const options = {
+    protocol: tls ? 'mqtts' : 'mqtt',
+    host: broker,
+    port: port || (tls ? 8883 : 1883),
     clean: true,
     connectTimeout: 10000,
     reconnectPeriod: 0,
@@ -53,7 +55,7 @@ function buildClient({ broker, port, username, password, tls = true }) {
     options.username = username;
     options.password = password;
   }
-  return mqtt.connect(url, options);
+  return mqtt.connect(options);
 }
 
 export function publishCommand({ broker, port, username, password, tls = true, storeId, commandKey, timeout = 25000 }) {
