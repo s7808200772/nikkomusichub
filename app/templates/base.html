@@ -54,6 +54,10 @@
       {% block sidebar_status %}{% endblock %}
 
       <div class="sidebar-footer">
+        <a href="/change-password" class="{% if request.url.path == '/change-password' %}active{% endif %}" hx-get="/change-password" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
+          <span class="nav-icon">🔐</span>
+          <span>修改密碼</span>
+        </a>
         <a href="/logout" class="logout-link">
           <span class="nav-icon">⏏️</span>
           <span>Logout</span>

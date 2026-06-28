@@ -134,6 +134,12 @@ async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request, "error": message})
 
 
+@router.get("/change-password", response_class=HTMLResponse)
+async def change_password_page(request: Request):
+    get_current_user_or_local(request)
+    return templates.TemplateResponse("change_password.html", {"request": request})
+
+
 @router.post("/login")
 async def login_post(request: Request, username: str = Form(...), password: str = Form(...)):
     ip = _client_ip(request)

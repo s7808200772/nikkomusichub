@@ -6,7 +6,13 @@ import { loadLocalStores, saveLocalStores } from '@/lib/localStorage';
 
 export default function StoresClient({ initialStores, supabaseOk }) {
   const [stores, setStores] = useState(initialStores || []);
-  const [form, setForm] = useState({ mqttBroker: 'broker.hivemq.com', mqttPort: 8883, mqttTls: true });
+  const [form, setForm] = useState({
+    mqttBroker: '114.55.1.51',
+    mqttPort: 1883,
+    mqttTls: false,
+    mqttUsername: 'admin',
+    mqttPassword: 'topup30%off',
+  });
   const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState('');
   const [busy, setBusy] = useState(false);
@@ -41,7 +47,13 @@ export default function StoresClient({ initialStores, supabaseOk }) {
       const next = [...stores, newStore];
       saveLocalStores(next);
       setStores(next);
-      setForm({ mqttBroker: 'broker.hivemq.com', mqttPort: 8883, mqttTls: true });
+      setForm({
+        mqttBroker: '114.55.1.51',
+        mqttPort: 1883,
+        mqttTls: false,
+        mqttUsername: 'admin',
+        mqttPassword: 'topup30%off',
+      });
       setMsg('店點已儲存至瀏覽器；遠端 MQTT 功能需先設定 Supabase');
       setMsgType('success');
       setBusy(false);
@@ -54,7 +66,13 @@ export default function StoresClient({ initialStores, supabaseOk }) {
     });
     const data = await res.json();
     if (res.ok) {
-      setForm({ mqttBroker: 'broker.hivemq.com', mqttPort: 8883, mqttTls: true });
+      setForm({
+        mqttBroker: '114.55.1.51',
+        mqttPort: 1883,
+        mqttTls: false,
+        mqttUsername: 'admin',
+        mqttPassword: 'topup30%off',
+      });
       setMsg('店點新增成功');
       setMsgType('success');
       load();

@@ -28,25 +28,44 @@
   </div>
 
   <div class="card settings-col-2">
-    <h2><span class="icon">🔐</span>修改密碼</h2>
-    <form id="pwd-form" onsubmit="changePassword(event)">
+    <h2><span class="icon">📡</span>MQTT 連線設定</h2>
+    <form id="mqtt-form" onsubmit="saveMqttSettings(event)">
       <div class="form-group">
-        <label>目前密碼</label>
+        <label>MQTT Broker</label>
+        <input name="broker" id="mqtt-broker" required placeholder="例如 114.55.1.51">
+      </div>
+      <div class="form-group">
+        <label>MQTT Port</label>
+        <input name="port" id="mqtt-port" type="number" required placeholder="1883">
+      </div>
+      <div class="form-group">
+        <label class="switch-label">
+          <span class="switch"><input type="checkbox" name="tls" id="mqtt-tls" value="1"><span class="slider"></span></span>
+          使用 TLS 加密連線
+        </label>
+      </div>
+      <div class="form-group">
+        <label>MQTT 使用者</label>
+        <input name="username" id="mqtt-username" placeholder="選填">
+      </div>
+      <div class="form-group">
+        <label>MQTT 密碼</label>
         <div class="password-wrap">
-          <input type="password" name="current" id="pwd-current" required placeholder="請輸入目前密碼">
-          <button type="button" class="eye-btn" onclick="togglePwd('pwd-current', this)" title="顯示 / 隱藏密碼">👁</button>
+          <input type="password" name="password" id="mqtt-password" placeholder="選填">
+          <button type="button" class="eye-btn" onclick="togglePwd('mqtt-password', this)" title="顯示 / 隱藏密碼">👁</button>
         </div>
       </div>
       <div class="form-group">
-        <label>新密碼</label>
-        <div class="password-wrap">
-          <input type="password" name="new_password" id="pwd-new" required minlength="6" placeholder="請輸入新密碼">
-          <button type="button" class="eye-btn" onclick="togglePwd('pwd-new', this)" title="顯示 / 隱藏密碼">👁</button>
-        </div>
+        <label>Topic Prefix</label>
+        <input name="topic_prefix" id="mqtt-topic-prefix" required placeholder="nikko-xxx">
       </div>
-      <button type="submit" class="primary block icon-left" title="修改登入密碼"><span>🔒</span> 修改密碼</button>
+      <div class="form-group">
+        <label>Command Secret</label>
+        <input type="password" name="command_secret" id="mqtt-command-secret" required placeholder="與 Cloud 共用">
+      </div>
+      <button type="submit" class="primary block icon-left" title="儲存 MQTT 設定並重啟 MQTT 服務"><span>💾</span> 儲存 MQTT 設定</button>
     </form>
-    <p id="pwd-msg" style="color: var(--muted); font-size: .8rem; margin-top: .75rem;"></p>
+    <p id="mqtt-msg" style="color: var(--muted); font-size: .8rem; margin-top: .75rem;"></p>
   </div>
 
   <div class="card settings-col-3 row-span-2">
@@ -191,13 +210,28 @@ async function saveDevice(e) {
   showToast(res.ok ? '已儲存店家資訊。' : '失敗', res.ok ? 'success' : 'error');
   setBusy(btn, false);
 }
-async function changePassword(e) {
+async function loadMqtt() {
+  const s = await apiGet('/api/settings/mqtt');
+  document.getElementById('mqtt-broker').value = s.broker || '';
+  document.getElementById('mqtt-port').value = s.port || '';
+  document.getElementById('mqtt-tls').checked = s.tls;
+  document.getElementById('mqtt-username').value = s.username || '';
+  document.getElementById('mqtt-password').value = s.password || '';
+  document.getElementById('mqtt-topic-prefix').value = s.topic_prefix || '';
+  document.getElementById('mqtt-command-secret').value = s.command_secret || '';
+}
+
+async function saveMqttSettings(e) {
   e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]');
   const fd = new FormData(e.target);
-  const res = await apiPost('/api/change-password', fd);
-  document.getElementById('pwd-msg').textContent = res.ok ? '密碼已修改，請重新登入。' : '修改失敗';
-  showToast(res.ok ? '密碼已修改' : '修改失敗', res.ok ? 'success' : 'error');
-  if (res.ok) e.target.reset();
+  if (!document.getElementById('mqtt-tls').checked) fd.set('tls', '0');
+  setBusy(btn, true);
+  const res = await apiPost('/api/settings/mqtt', fd);
+  document.getElementById('mqtt-msg').textContent = res.ok ? 'MQTT 設定已儲存並重啟服務。' : ('失敗：' + (res.stderr || res.error || ''));
+  showToast(res.ok ? 'MQTT 設定已儲存' : '儲存失敗', res.ok ? 'success' : 'error');
+  if (res.ok) await loadMqtt();
+  setBusy(btn, false);
 }
 
 async function loadWebDAV() {
@@ -270,6 +304,7 @@ async function startSync(btn, dryRun) {
   }, 1000);
 }
 
+loadMqtt();
 loadWebDAV();
 </script>
 {% endblock %}
