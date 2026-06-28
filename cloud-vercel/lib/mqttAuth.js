@@ -24,6 +24,7 @@ export function commandMessage(payload, storeId) {
     payload.commandKey || '',
     String(payload.timestamp || ''),
     payload.nonce || '',
+    payload.confirm ? '1' : '0',
   ].join('\n');
 }
 

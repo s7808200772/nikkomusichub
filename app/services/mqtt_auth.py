@@ -8,6 +8,27 @@ import time
 from collections.abc import Mapping
 
 
+# Whitelist of MQTT commands the Pi will execute.
+ALLOWED_COMMANDS = frozenset(
+    {
+        "status_dashboard",
+        "status_system",
+        "status_player",
+        "player_play",
+        "player_pause",
+        "player_resume",
+        "player_next",
+        "sync",
+        "rescan",
+        "restart_player",
+        "reboot",
+    }
+)
+
+# Commands that can alter state or interrupt service. Require payload["confirm"]=True.
+DANGEROUS_COMMANDS = frozenset({"reboot", "restart_player", "sync", "clear_local_music", "system_update"})
+
+
 def _stable_json(value) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
@@ -24,6 +45,7 @@ def command_message(payload: Mapping, store_id: str) -> str:
             str(payload.get("commandKey", "")),
             str(payload.get("timestamp", "")),
             str(payload.get("nonce", "")),
+            "1" if payload.get("confirm") else "0",
         )
     )
 
@@ -82,4 +104,19 @@ def verify_command(
     expected = sign_message(secret, command_message(payload, store_id))
     if not hmac.compare_digest(expected, str(payload["signature"])):
         return False, "Invalid command signature"
+    return True, ""
+
+
+def verify_command_allowed(payload: Mapping) -> tuple[bool, str]:
+    """Verify command whitelist and dangerous-command confirmation.
+
+    Must be called *after* verify_command has validated the signature.
+    """
+    command_key = payload.get("commandKey")
+    if command_key not in ALLOWED_COMMANDS:
+        return False, f"Command not allowed: {command_key}"
+
+    if command_key in DANGEROUS_COMMANDS and not payload.get("confirm"):
+        return False, "Dangerous command requires confirmation"
+
     return True, ""

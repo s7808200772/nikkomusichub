@@ -38,7 +38,11 @@ from app.config import (
 )
 from app.db import audit, get_setting, init_db
 from app.services import mpv, rclone
-from app.services.mqtt_auth import sign_response, verify_command
+from app.services.mqtt_auth import (
+    sign_response,
+    verify_command,
+    verify_command_allowed,
+)
 from app.services.system import (
     command_exists,
     count_mp3_files,
@@ -263,7 +267,18 @@ def on_message(client, userdata, msg):
         audit("mqtt", "reject_command", {"request_id": request_id, "reason": reason})
         return
 
+    allowed, allow_reason = verify_command_allowed(payload)
+    if not allowed:
+        logger.warning(
+            "Rejected unauthorized MQTT command requestId=%s: %s", request_id, allow_reason
+        )
+        audit("mqtt", "reject_command", {"request_id": request_id, "reason": allow_reason})
+        return
+
     logger.info("Received command: %s (requestId=%s) on %s", command_key, request_id, msg.topic)
+
+    if command_key in {"reboot", "restart_player", "sync"}:
+        audit("mqtt", "dangerous_command", {"command": command_key, "request_id": request_id})
 
     ok, result = handle_command(command_key)
     response = {

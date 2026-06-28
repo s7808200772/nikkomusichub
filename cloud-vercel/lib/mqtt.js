@@ -13,11 +13,13 @@ const COMMANDS = [
   { key: 'status_dashboard', label: 'Dashboard' },
   { key: 'status_system', label: '系統資訊' },
   { key: 'status_player', label: '播放狀態' },
-  { key: 'sync', label: '同步 NAS WebDAV' },
+  { key: 'sync', label: '同步 NAS WebDAV', dangerous: true },
   { key: 'rescan', label: '重新掃描' },
-  { key: 'restart_player', label: '重啟播放服務' },
-  { key: 'reboot', label: '重開機' },
+  { key: 'restart_player', label: '重啟播放服務', dangerous: true },
+  { key: 'reboot', label: '重開機', dangerous: true },
 ];
+
+const DANGEROUS_KEYS = new Set(COMMANDS.filter((c) => c.dangerous).map((c) => c.key));
 
 export function listCommands() {
   return COMMANDS;
@@ -80,7 +82,13 @@ export function publishCommand({ broker, port, username, password, tls = true, s
           try { client.end(); } catch {}
           return resolve({ ok: false, error: `Subscribe error: ${err.message}`, requestId });
         }
-        const command = { requestId, commandKey, timestamp: Date.now(), nonce: randomUUID() };
+        const command = {
+          requestId,
+          commandKey,
+          timestamp: Date.now(),
+          nonce: randomUUID(),
+          confirm: DANGEROUS_KEYS.has(commandKey),
+        };
         command.signature = signCommand(command, storeId, COMMAND_SECRET);
         const payload = JSON.stringify(command);
         client.publish(topics.cmd, payload, { qos: 1 }, (err) => {

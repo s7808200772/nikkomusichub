@@ -1,10 +1,13 @@
 import unittest
 
 from app.services.mqtt_auth import (
+    ALLOWED_COMMANDS,
+    DANGEROUS_COMMANDS,
     command_message,
     sign_message,
     sign_response,
     verify_command,
+    verify_command_allowed,
     verify_response,
 )
 
@@ -16,6 +19,7 @@ class MqttAuthTests(unittest.TestCase):
         "commandKey": "status_dashboard",
         "timestamp": 1782595000000,
         "nonce": "nonce-456",
+        "confirm": False,
     }
 
     def test_command_signature_matches_cross_language_vector(self):
@@ -24,7 +28,7 @@ class MqttAuthTests(unittest.TestCase):
         )
         self.assertEqual(
             signature,
-            "6b75f2521a116d4665daabb321bdcd753634568460a18caffdc4898c3673e97e",
+            "07c010b65338b6984bd5fd6e32488b909ad67c95071d0b972005dc4c1c4e3c70",
         )
 
     def test_valid_command_and_tampering(self):
@@ -80,6 +84,26 @@ class MqttAuthTests(unittest.TestCase):
         self.assertTrue(verify_response(response, self.secret))
         response["result"]["b"] = 3
         self.assertFalse(verify_response(response, self.secret))
+
+
+    def test_command_whitelist(self):
+        self.assertIn("status_dashboard", ALLOWED_COMMANDS)
+        self.assertNotIn("evil_command", ALLOWED_COMMANDS)
+        ok, reason = verify_command_allowed({"commandKey": "evil_command"})
+        self.assertFalse(ok)
+        self.assertIn("not allowed", reason)
+
+    def test_dangerous_command_requires_confirmation(self):
+        ok, reason = verify_command_allowed({"commandKey": "reboot", "confirm": False})
+        self.assertFalse(ok)
+        self.assertIn("confirmation", reason)
+
+        ok, reason = verify_command_allowed({"commandKey": "reboot", "confirm": True})
+        self.assertTrue(ok)
+
+    def test_non_dangerous_command_does_not_require_confirmation(self):
+        ok, reason = verify_command_allowed({"commandKey": "status_dashboard"})
+        self.assertTrue(ok)
 
 
 if __name__ == "__main__":
