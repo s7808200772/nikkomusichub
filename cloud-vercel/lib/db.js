@@ -87,3 +87,18 @@ export async function getSettings() {
 export async function saveSettings(settings) {
   return await writeSettings(settings);
 }
+
+export async function listAlerts(limit = 50) {
+  if (!USE_SUPABASE) return [];
+  return (await databaseRequest('listAlerts', { limit })) || [];
+}
+
+export async function createAlert(alert) {
+  requireSupabase();
+  return await databaseRequest('createAlert', { alert });
+}
+
+export async function acknowledgeAlert(alertId) {
+  requireSupabase();
+  return await databaseRequest('acknowledgeAlert', { alertId });
+}

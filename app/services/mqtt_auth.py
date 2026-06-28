@@ -24,6 +24,8 @@ ALLOWED_COMMANDS = frozenset(
         "rescan",
         "restart_player",
         "reboot",
+        "library_list",
+        "get_log",
     }
 )
 

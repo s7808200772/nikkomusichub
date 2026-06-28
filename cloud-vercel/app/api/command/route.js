@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { getStore, isSupabaseConfigured } from '@/lib/db';
 import { publishCommand, listCommands } from '@/lib/mqtt';
+import { evaluateStoreStatus } from '@/lib/alertRules';
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -30,6 +31,11 @@ export async function POST(request) {
     commandKey: data.commandKey,
     timeout: 25000,
   });
+
+  // Evaluate alert rules on status checks in the background.
+  if (data.commandKey && data.commandKey.startsWith('status_')) {
+    evaluateStoreStatus(store, result).catch(() => {});
+  }
 
   return NextResponse.json(result);
 }

@@ -22,6 +22,8 @@ const COMMANDS = [
   { key: 'rescan', label: '重新掃描' },
   { key: 'restart_player', label: '重啟播放服務', dangerous: true },
   { key: 'reboot', label: '重開機', dangerous: true },
+  { key: 'library_list', label: '音樂庫列表' },
+  { key: 'get_log', label: '查看 Log' },
 ];
 
 const DANGEROUS_KEYS = new Set(COMMANDS.filter((c) => c.dangerous).map((c) => c.key));

@@ -132,6 +132,51 @@ Deno.serve(async (req) => {
         });
       }
 
+      case 'listAlerts': {
+        const limit = Math.min(parseInt(body.limit || '50', 10), 200);
+        const { data, error } = await supabase
+          .from('alerts')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(limit);
+        if (error) throw error;
+        return new Response(JSON.stringify({ data: data || [] }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      case 'createAlert': {
+        const { data, error } = await supabase
+          .from('alerts')
+          .insert({
+            store_id: body.alert.storeId,
+            severity: body.alert.severity,
+            type: body.alert.type,
+            message: body.alert.message,
+            details: body.alert.details || {},
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        return new Response(JSON.stringify({ data }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      case 'acknowledgeAlert': {
+        const { data, error } = await supabase
+          .from('alerts')
+          .update({ acknowledged_at: new Date().toISOString() })
+          .eq('id', body.alertId)
+          .is('acknowledged_at', null)
+          .select()
+          .single();
+        if (error) throw error;
+        return new Response(JSON.stringify({ data }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       default:
         return new Response(JSON.stringify({ error: 'Unknown action' }), {
           status: 400,

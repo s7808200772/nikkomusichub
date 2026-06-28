@@ -62,6 +62,7 @@ from app.services.system import (
     get_ram_usage,
     get_uptime_seconds,
     is_tailscale_up,
+    list_music_files,
     reboot,
     run,
     service_enabled,
@@ -197,8 +198,9 @@ def build_system_info():
     }
 
 
-def handle_command(command_key):
+def handle_command(command_key, payload=None):
     """Execute a command and return (ok, result)."""
+    payload = payload or {}
     try:
         if command_key == "status_dashboard":
             return True, build_dashboard()
@@ -232,6 +234,19 @@ def handle_command(command_key):
 
         if command_key == "rescan":
             return True, mpv.reload_playlist()
+        if command_key == "library_list":
+            files = list_music_files(MUSIC_DIR)
+            return True, {"count": len(files), "files": files[:500]}
+        if command_key == "get_log":
+            log_type = (payload.get("log_type") if isinstance(payload, dict) else None) or "system"
+            path_map = {
+                "player": PLAYER_LOG_PATH,
+                "sync": SYNC_LOG_PATH,
+                "system": SYSTEM_LOG_PATH,
+            }
+            path = path_map.get(log_type, SYSTEM_LOG_PATH)
+            lines = (payload.get("lines") if isinstance(payload, dict) else 100) or 100
+            return True, {"log_type": log_type, "lines": tail_log(path, int(lines))}
         if command_key == "restart_player":
             run(["sudo", "systemctl", "restart", "nikko-music-player.service"], timeout=30)
             return True, {"ok": True}
@@ -287,7 +302,7 @@ def on_message(client, userdata, msg):
     if command_key in {"reboot", "restart_player", "sync"}:
         audit("mqtt", "dangerous_command", {"command": command_key, "request_id": request_id})
 
-    ok, result = handle_command(command_key)
+    ok, result = handle_command(command_key, payload)
     response = {
         "requestId": request_id,
         "storeId": MQTT_STORE_ID,
