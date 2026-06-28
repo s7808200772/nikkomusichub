@@ -18,6 +18,23 @@ from app.config import (
 from app.db import get_setting
 
 
+# Allowed systemd service names for status / journal queries.
+ALLOWED_SERVICES = frozenset(
+    {
+        "nikko-music-hub-web.service",
+        "nikko-music-player.service",
+        "nikko-music-sync.service",
+        "nikko-music-sync.timer",
+        "nikko-music-mqtt.service",
+    }
+)
+
+
+def _validate_service_name(name: str) -> None:
+    if name not in ALLOWED_SERVICES:
+        raise ValueError(f"Service name not allowed: {name}")
+
+
 def run(cmd: list[str], shell: bool = False, timeout: int = 120, check: bool = False) -> dict:
     """Run a whitelisted command safely. cmd must be a list of args.
 
@@ -171,6 +188,7 @@ def get_cpu_temp() -> float | None:
 
 
 def service_status(name: str) -> str:
+    _validate_service_name(name)
     res = run(["systemctl", "is-active", name], timeout=10)
     status = res["stdout"].strip()
     if status in ("active", "inactive", "failed", "activating"):
@@ -179,6 +197,7 @@ def service_status(name: str) -> str:
 
 
 def service_enabled(name: str) -> bool:
+    _validate_service_name(name)
     res = run(["systemctl", "is-enabled", name], timeout=10)
     return res["stdout"].strip() == "enabled"
 
@@ -228,6 +247,7 @@ def tail_log(path: Path, lines: int = 100) -> str:
 
 
 def tail_journal(unit: str, lines: int = 100) -> str:
+    _validate_service_name(unit)
     res = run(["journalctl", "-u", unit, "-n", str(lines), "--no-pager"], timeout=15)
     return res["stdout"]
 
