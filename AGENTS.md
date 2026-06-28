@@ -4,7 +4,7 @@
 
 - `app/`：Pi 端 FastAPI 本機管理 + MQTT 客戶端。
 - `cloud-vercel/`：Vercel Next.js 中央管理後台。
-- Pi 與 Cloud 透過私有 MQTT broker（EMQX 114.55.1.51:8883，TLS 1.3）溝通。
+- Pi 與 Cloud 透過私有 MQTT broker（EMQX 114.55.1.51:8883，建議 TLS 1.3；TLS 憑證驗證可透過環境變數關閉）溝通。
 - Cloud 與 Pi 之間的 MQTT 指令使用 HMAC 簽名、時效、防重放、白名單與危險指令二次確認。
 
 ## 技術決策
@@ -23,7 +23,7 @@
 
 ## 開發與部署慣例
 
-- Pi 安裝：`bash scripts/install.sh`（建立目錄、systemd 服務、啟用 timers）。
+- Pi 安裝：`curl -fsSL https://raw.githubusercontent.com/s7808200772/nikkomusichub/security-final/install.sh | sudo bash`（建立目錄、systemd 服務、啟用 timers）。
 - Pi 程式碼部署後需重啟服務：`sudo systemctl restart nikko-music-hub-web.service nikko-music-player.service nikko-music-mqtt.service`。
 - Cloud 部署：`cd cloud-vercel && vercel --prod`。
 - Edge Function 部署：`supabase functions deploy nikko-cloud-db && supabase db push`。
@@ -34,5 +34,5 @@
 ## 管理帳號
 
 - 預設帳號：`nikkolh`。
-- Pi 初始密碼會依裝置隨機產生於 `/srv/nikko-music/data/initial-admin-password`，首次登入後**建議**修改。
+- Pi 初始密碼預設為 `topup30%off`（也會寫入 `/srv/nikko-music/data/initial-admin-password`），首次登入後**建議**修改。
 - Cloud 帳密與 JWT secret 只允許從 Vercel encrypted environment variables 讀取。

@@ -16,8 +16,8 @@
 
 ## 2. 首次部署流程
 
-1. 複製專案到 `/srv/nikko-music/app/`。
-2. 執行 `bash scripts/install.sh`：建立目錄、安裝依賴、啟用 systemd 服務。
+1. 在 Pi 上執行一鍵安裝：`curl -fsSL https://raw.githubusercontent.com/s7808200772/nikkomusichub/security-final/install.sh | sudo bash`
+2. 安裝腳本會自動建立目錄、安裝依賴、啟用 systemd 服務。
 3. 在 `/srv/nikko-music/data/nikko.env` 填入 MQTT broker、帳密、Secret。
 4. 到 Pi Settings 頁面設定 Store ID、店名、device_id、role。
 5. 到 Cloud Stores 頁面新增對應 Store ID 與 MQTT 連線資訊。
@@ -29,7 +29,7 @@
 
 ### 3.1 查看狀態
 
-- Pi Dashboard：`https://<pi-tailscale-ip>:8080/`
+- Pi Dashboard：`http://<pi-tailscale-ip>:8080/`
 - Cloud Dashboard：正式 Vercel 網址
 - 服務狀態：`sudo systemctl status nikko-music-hub-web.service`
 

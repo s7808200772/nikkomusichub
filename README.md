@@ -25,7 +25,7 @@ Raspberry Pi 門市音樂管理系統，透過私有 MQTT broker 讓中央平台
 ## 安裝 Pi 端
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/s7808200772/nikkomusichub/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/s7808200772/nikkomusichub/security-final/install.sh | sudo bash
 ```
 
 安裝完成後，會顯示：
@@ -38,7 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/s7808200772/nikkomusichub/main/inst
 1. 部署 `cloud-vercel/` 到 Vercel：`cd cloud-vercel && vercel --prod`
 2. 部署 Supabase Edge Function：`supabase functions deploy nikko-cloud-db && supabase db push`
 3. 在 Cloud 新增店點，Store ID 必須與 Pi 安裝時顯示的 MQTT Store ID 一致
-4. 填入 MQTT broker；必須使用 TLS，並讓 Cloud/Pi 共用 HMAC secret 與私有 topic prefix
+4. 填入 MQTT broker；建議使用 TLS，並讓 Cloud/Pi 共用 HMAC secret 與私有 topic prefix（若憑證暫時無法驗證，可設 `NIKKO_MQTT_TLS_VERIFY=0`）
 5. 點測試連線，確認 Pi 有回應
 
 詳細設定請見 `cloud-vercel/SUPABASE_SETUP.md`。

@@ -103,13 +103,14 @@ if [ -z "${MQTT_STORE_ID}" ]; then
   MQTT_STORE_ID="store-$(openssl rand -hex 4)"
 fi
 
-log "Installing systemd services..."
+SYSTEMD_SRC_DIR="${APP_DIR}/app/systemd"
+log "Installing systemd services from ${SYSTEMD_SRC_DIR}..."
 for unit in nikko-music-hub-web.service nikko-music-player.service nikko-music-sync.service nikko-music-sync.timer nikko-music-mqtt.service nikko-music-boot-sync.service nikko-music-watchdog.service nikko-music-watchdog.timer; do
-  if [ ! -f "${APP_DIR}/systemd/${unit}" ]; then
-    log "ERROR: systemd unit ${unit} missing in ${APP_DIR}/systemd/"
+  if [ ! -f "${SYSTEMD_SRC_DIR}/${unit}" ]; then
+    log "ERROR: systemd unit ${unit} missing in ${SYSTEMD_SRC_DIR}/"
     exit 1
   fi
-  cp "${APP_DIR}/systemd/${unit}" "/etc/systemd/system/${unit}"
+  cp "${SYSTEMD_SRC_DIR}/${unit}" "/etc/systemd/system/${unit}"
   # Replace placeholder user with actual user
   sed -i "s/^User=.*/User=${USER_NAME}/" "/etc/systemd/system/${unit}"
   sed -i "s/^Group=.*/Group=${USER_NAME}/" "/etc/systemd/system/${unit}"
