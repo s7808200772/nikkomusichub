@@ -10,7 +10,7 @@ function secretKey() {
 }
 
 export function isAuthConfigured() {
-  return CLOUD_SECRET.length >= 32 && !!ADMIN_USER && ADMIN_PASS.length >= 12;
+  return CLOUD_SECRET.length >= 32 && !!ADMIN_USER && ADMIN_PASS.length >= 8;
 }
 
 export async function createToken(username) {
