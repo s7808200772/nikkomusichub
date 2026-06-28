@@ -37,6 +37,7 @@ export async function POST(request) {
     mqttUsername: data.mqttUsername?.trim() || '',
     mqttPassword: data.mqttPassword?.trim() || '',
     mqttTls: data.mqttTls !== false,
+    tlsVerify: data.tlsVerify !== false,
   };
   if (!store.storeId || !store.storeName) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -57,13 +58,13 @@ export async function PUT(request) {
   const existing = await getStore(data.storeId);
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const updated = { ...existing };
-  ['storeName', 'deviceId', 'role', 'mqttBroker', 'mqttPort', 'mqttUsername', 'mqttPassword', 'mqttTls'].forEach((k) => {
+  ['storeName', 'deviceId', 'role', 'mqttBroker', 'mqttPort', 'mqttUsername', 'mqttPassword', 'mqttTls', 'tlsVerify'].forEach((k) => {
     if (data[k] === undefined) return;
     if (k === 'mqttPort') updated[k] = parseInt(data[k], 10);
     else if (k === 'mqttPassword') {
       const v = data[k]?.trim();
       if (v) updated[k] = v;
-    } else if (k === 'mqttTls') {
+    } else if (k === 'mqttTls' || k === 'tlsVerify') {
       updated[k] = data[k] !== false;
     } else {
       updated[k] = data[k]?.trim();

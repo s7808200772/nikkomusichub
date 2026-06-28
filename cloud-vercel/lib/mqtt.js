@@ -7,6 +7,7 @@ const COMMAND_SECRET = process.env.NIKKO_MQTT_COMMAND_SECRET || '';
 const TOPIC_PREFIX = process.env.NIKKO_MQTT_TOPIC_PREFIX || 'nikko';
 const MQTT_CA = process.env.NIKKO_MQTT_CA || '';
 const MQTT_TLS_SERVERNAME = process.env.NIKKO_MQTT_TLS_SERVERNAME || '';
+const MQTT_TLS_VERIFY = process.env.NIKKO_MQTT_TLS_VERIFY !== '0' && process.env.NIKKO_MQTT_TLS_VERIFY !== 'false';
 
 const COMMANDS = [
   { key: 'player_play', label: '播放' },
@@ -43,7 +44,7 @@ export function getTopics(storeId) {
   };
 }
 
-function buildClient({ broker, port, username, password, tls = true }) {
+function buildClient({ broker, port, username, password, tls = true, tlsVerify = true }) {
   const options = {
     protocol: tls ? 'mqtts' : 'mqtt',
     host: broker,
@@ -51,6 +52,7 @@ function buildClient({ broker, port, username, password, tls = true }) {
     clean: true,
     connectTimeout: 10000,
     reconnectPeriod: 0,
+    rejectUnauthorized: MQTT_TLS_VERIFY && tlsVerify,
   };
   if (tls && MQTT_CA) {
     options.ca = MQTT_CA;
@@ -65,7 +67,7 @@ function buildClient({ broker, port, username, password, tls = true }) {
   return mqtt.connect(options);
 }
 
-export function publishCommand({ broker, port, username, password, tls = true, storeId, commandKey, timeout = 25000 }) {
+export function publishCommand({ broker, port, username, password, tls = true, tlsVerify = true, storeId, commandKey, timeout = 25000 }) {
   return new Promise((resolve) => {
     if (!COMMAND_SECRET) {
       resolve({ ok: false, error: 'MQTT command authentication is not configured' });
@@ -73,7 +75,7 @@ export function publishCommand({ broker, port, username, password, tls = true, s
     }
     const requestId = randomUUID();
     const topics = getTopics(storeId);
-    const client = buildClient({ broker, port, username, password, tls });
+    const client = buildClient({ broker, port, username, password, tls, tlsVerify });
     let finished = false;
     let response = null;
 
@@ -171,7 +173,17 @@ export async function publishCommandWithRetry(options) {
     if (attempt > 0) {
       await delay(baseDelayMs * 2 ** (attempt - 1));
     }
-    const result = await publishCommand({ ...options, timeout: options.timeout || 25000 });
+    const result = await publishCommand({
+      broker: options.broker,
+      port: options.port,
+      username: options.username,
+      password: options.password,
+      tls: options.tls,
+      tlsVerify: options.tlsVerify,
+      storeId: options.storeId,
+      commandKey: options.commandKey,
+      timeout: options.timeout || 25000,
+    });
     if (result.ok) return result;
     lastError = result.error || 'Unknown error';
     const retryable = /timeout|disconnect|network|ECONNREFUSED/i.test(lastError);
@@ -202,6 +214,7 @@ export async function publishBatch({ stores, commandKey, timeout = 25000 }) {
         username: store.mqttUsername,
         password: store.mqttPassword,
         tls: store.mqttTls !== false,
+        tlsVerify: store.tlsVerify !== false,
         storeId: store.storeId,
         commandKey,
         timeout,
@@ -220,13 +233,14 @@ export async function publishBatch({ stores, commandKey, timeout = 25000 }) {
   return { jobId: job.id };
 }
 
-export function testMQTT({ broker, port, username, password, tls = true, storeId, timeout = 20000 }) {
+export function testMQTT({ broker, port, username, password, tls = true, tlsVerify = true, storeId, timeout = 20000 }) {
   return publishCommand({
     broker,
     port,
     username,
     password,
     tls,
+    tlsVerify,
     storeId,
     commandKey: 'status_dashboard',
     timeout,

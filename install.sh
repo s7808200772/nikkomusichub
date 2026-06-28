@@ -6,6 +6,7 @@ REPO_URL="https://github.com/s7808200772/nikkomusichub.git"
 INSTALL_DIR="/srv/nikko-music"
 APP_DIR="${INSTALL_DIR}/app"
 USER_NAME="${SUDO_USER:-$USER}"
+DEFAULT_BRANCH="security-final"
 
 log() { echo "[NikkoMusicHub] $*"; }
 
@@ -16,7 +17,7 @@ fi
 
 log "Installing system dependencies..."
 apt-get update
-apt-get install -y python3 python3-venv python3-pip git curl alsa-utils rsync
+apt-get install -y python3 python3-venv python3-pip git curl alsa-utils rsync mpv rclone
 
 log "Creating directories..."
 mkdir -p "${INSTALL_DIR}"/{app,logs,scripts,data}
@@ -30,17 +31,17 @@ else
   SOURCE_DIR="/tmp/nikkomusichub"
   rm -rf "${SOURCE_DIR}"
   log "Cloning repository..."
-  git clone --depth 1 --branch main "${REPO_URL}" "${SOURCE_DIR}"
+  git clone --depth 1 --branch "${DEFAULT_BRANCH}" "${REPO_URL}" "${SOURCE_DIR}"
   cd "${SOURCE_DIR}"
   log "Installed from commit: $(git rev-parse HEAD 2>/dev/null || echo unknown)"
 fi
 
 log "Copying application files..."
-rsync -a --delete --exclude='.git' --exclude='venv' "${SOURCE_DIR}/" "${APP_DIR}/"
+rsync -a --delete --exclude='.git' --exclude='venv' --exclude='cloud-vercel' --exclude='node_modules' "${SOURCE_DIR}/" "${APP_DIR}/"
 
-# Sanity check: mqtt client must exist after copy
-if [ ! -f "${APP_DIR}/mqtt_client.py" ]; then
-  log "ERROR: mqtt_client.py not found after copy. Source dir may be incomplete."
+# Sanity check: mqtt client must exist after copy (inside app package)
+if [ ! -f "${APP_DIR}/app/mqtt_client.py" ]; then
+  log "ERROR: app/mqtt_client.py not found after copy. Source dir may be incomplete."
   exit 1
 fi
 
@@ -60,13 +61,22 @@ if [ ! -f "${ENV_FILE}" ]; then
 NIKKO_ENV=production
 NIKKO_SECRET_KEY=${JWT_SECRET}
 NIKKO_COOKIE_SECURE=0
+NIKKO_DEFAULT_PASSWORD=topup30%off
 NIKKO_MQTT_COMMAND_SECRET=${MQTT_COMMAND_SECRET}
 NIKKO_MQTT_TOPIC_PREFIX=${MQTT_TOPIC_PREFIX}
 NIKKO_MQTT_TLS=1
+NIKKO_MQTT_TLS_VERIFY=1
 NIKKO_MQTT_PORT=8883
 NIKKO_MQTT_BROKER=broker.hivemq.com
 EOF
   chmod 600 "${ENV_FILE}"
+fi
+
+# Ensure the initial password file matches the default password
+DEFAULT_PASS="topup30%off"
+if [ ! -f "${INSTALL_DIR}/data/initial-admin-password" ]; then
+  echo "${DEFAULT_PASS}" > "${INSTALL_DIR}/data/initial-admin-password"
+  chmod 600 "${INSTALL_DIR}/data/initial-admin-password"
 fi
 
 log "Installing scripts..."

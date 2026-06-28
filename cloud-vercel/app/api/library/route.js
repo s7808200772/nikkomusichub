@@ -22,6 +22,7 @@ export async function GET(request) {
         username: store.mqttUsername,
         password: store.mqttPassword,
         tls: store.mqttTls !== false,
+        tlsVerify: store.tlsVerify !== false,
         storeId: store.storeId,
         commandKey: 'library_list',
         timeout: 20000,

@@ -31,6 +31,7 @@ export async function POST(request) {
     username: store.mqttUsername,
     password: store.mqttPassword,
     tls: store.mqttTls !== false,
+    tlsVerify: store.tlsVerify !== false,
     storeId: store.storeId,
     commandKey: action,
     timeout: 20000,

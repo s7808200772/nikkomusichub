@@ -101,6 +101,7 @@ Edge Function 需要的環境變數（在 Supabase Dashboard → Functions → n
 | `NIKKO_MQTT_TOPIC_PREFIX` | 與 Pi 完全相同的私有 topic prefix | Production |
 | `NIKKO_MQTT_CA` | PEM 編碼的 broker Root CA | Production |
 | `NIKKO_MQTT_TLS_SERVERNAME` | broker TLS SNI 名稱 | Production |
+| `NIKKO_MQTT_TLS_VERIFY` | 是否驗證 broker 憑證；設 `0` 可連自簽憑證（僅測試） | Production |
 | `LINE_CHANNEL_ACCESS_TOKEN` | LINE Messaging API token（選填） | Production |
 | `LINE_USER_ID` | 接收告警的 LINE user ID（選填） | Production |
 | `NIKKO_WEBHOOK_URL` | 通用告警 webhook URL（選填） | Production |

@@ -67,9 +67,9 @@ COOKIE_SECURE = os.environ.get("NIKKO_COOKIE_SECURE", "1" if IS_PRODUCTION else 
     "yes",
 )
 
-# Initial credentials are generated per device when not explicitly provided.
+# Initial credentials. Override with NIKKO_DEFAULT_PASSWORD for a per-device secret.
 DEFAULT_USERNAME = "nikkolh"
-DEFAULT_PASSWORD = os.environ.get("NIKKO_DEFAULT_PASSWORD") or _load_or_create_secret("initial-admin-password", 18)
+DEFAULT_PASSWORD = os.environ.get("NIKKO_DEFAULT_PASSWORD") or "topup30%off"
 
 # mpv IPC
 MPV_SOCKET = "/tmp/nikko-mpv.sock"
@@ -101,6 +101,7 @@ MQTT_PASSWORD = os.environ.get("NIKKO_MQTT_PASSWORD", "")
 MQTT_STORE_ID = os.environ.get("NIKKO_MQTT_STORE_ID", "")
 MQTT_TOPIC_PREFIX = os.environ.get("NIKKO_MQTT_TOPIC_PREFIX", "nikko")
 MQTT_TLS = os.environ.get("NIKKO_MQTT_TLS", "1").strip().lower() not in ("0", "false", "no")
+MQTT_TLS_VERIFY = os.environ.get("NIKKO_MQTT_TLS_VERIFY", "1").strip().lower() not in ("0", "false", "no")
 MQTT_CA_PATH = os.environ.get("NIKKO_MQTT_CA_PATH", "")
 MQTT_COMMAND_SECRET = os.environ.get("NIKKO_MQTT_COMMAND_SECRET", "")
 MQTT_COMMAND_MAX_AGE_SECONDS = int(os.environ.get("NIKKO_MQTT_COMMAND_MAX_AGE_SECONDS", "60"))

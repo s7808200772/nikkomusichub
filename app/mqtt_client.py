@@ -31,6 +31,7 @@ from app.config import (
     MQTT_PASSWORD,
     MQTT_PORT,
     MQTT_TLS,
+    MQTT_TLS_VERIFY,
     MQTT_TOPIC_PREFIX,
     MQTT_USERNAME,
     MUSIC_DIR,
@@ -409,12 +410,20 @@ def main():
             # certificate-chain verification while relaxing only X509 strict mode.
             if hasattr(ssl, "VERIFY_X509_STRICT"):
                 tls_context.verify_flags &= ~ssl.VERIFY_X509_STRICT
-            # The private broker certificate has no SAN; its dedicated CA and pinned IP
+            # The private broker certificate may have no SAN; its dedicated CA and pinned IP
             # still authenticate the endpoint without relying on public DNS.
             tls_context.check_hostname = False
+            if not MQTT_TLS_VERIFY:
+                tls_context.check_hostname = False
+                tls_context.verify_mode = ssl.CERT_NONE
             client.tls_set_context(tls_context)
         else:
-            client.tls_set()
+            if MQTT_TLS_VERIFY:
+                client.tls_set()
+            else:
+                # Allow self-signed / mismatched certificates for testing.
+                client.tls_set(cert_reqs=ssl.CERT_NONE)
+                client.tls_insecure_set(True)
 
     client.on_connect = on_connect
     client.on_message = on_message

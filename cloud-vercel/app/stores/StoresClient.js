@@ -10,6 +10,7 @@ const DEFAULT_STORE = {
   mqttBroker: 'broker.hivemq.com',
   mqttPort: 8883,
   mqttTls: true,
+  tlsVerify: true,
   mqttUsername: '',
   mqttPassword: '',
 };
@@ -53,6 +54,7 @@ export default function StoresClient({ initialStores, supabaseOk }) {
         storeName: form.storeName.trim(),
         deviceId: form.deviceId.trim(),
         role: form.role.trim() || 'store',
+        tlsVerify: form.tlsVerify !== false,
       };
       const next = [...stores, newStore];
       saveLocalStores(next);
@@ -206,6 +208,14 @@ export default function StoresClient({ initialStores, supabaseOk }) {
             />
             使用 TLS 加密連線（建議，預設 Port 8883）
           </label>
+          <label className="switch-row" style={{ marginBottom: '1rem' }}>
+            <input
+              type="checkbox"
+              checked={form.tlsVerify !== false}
+              onChange={(e) => setForm({ ...form, tlsVerify: e.target.checked })}
+            />
+            驗證 broker TLS 憑證（取消可連線自簽憑證，僅建議測試使用）
+          </label>
 
           <div className="form-row">
             <div className="form-group">
@@ -289,6 +299,14 @@ export default function StoresClient({ initialStores, supabaseOk }) {
                       onChange={(e) => setEditing({ ...editing, mqttTls: e.target.checked })}
                     />
                     使用 TLS 加密連線
+                  </label>
+                  <label className="switch-row" style={{ marginBottom: '1rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={editing.tlsVerify !== false}
+                      onChange={(e) => setEditing({ ...editing, tlsVerify: e.target.checked })}
+                    />
+                    驗證 broker TLS 憑證
                   </label>
                   <div className="form-row">
                     <div className="form-group">
