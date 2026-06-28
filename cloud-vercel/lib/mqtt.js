@@ -120,6 +120,7 @@ export function publishCommand({ broker, port, username, password, tls = true, s
           if (!verifyResponse(data, COMMAND_SECRET)) {
             return;
           }
+          const parsedResult = JSON.parse(data.resultJson || 'null');
           clearTimeout(timer);
           if (!finished) {
             finished = true;
@@ -127,9 +128,9 @@ export function publishCommand({ broker, port, username, password, tls = true, s
             resolve({
               ok: data.ok === true,
               requestId: data.requestId,
-              result: data.result,
+              result: parsedResult,
               error: data.error,
-              parsed: data.ok ? data.result : null,
+              parsed: data.ok ? parsedResult : null,
               stdout: '',
               stderr: data.error || '',
             });

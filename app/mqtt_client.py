@@ -41,6 +41,7 @@ from app.config import (
 from app.db import audit, get_setting, init_db
 from app.services import mpv, rclone
 from app.services.mqtt_auth import (
+    encode_result,
     sign_response,
     verify_command,
     verify_command_allowed,
@@ -287,7 +288,7 @@ def on_message(client, userdata, msg):
         "requestId": request_id,
         "storeId": MQTT_STORE_ID,
         "ok": ok,
-        "result": result,
+        "resultJson": encode_result(result),
         "error": result.get("error") if isinstance(result, dict) else None,
         "timestamp": int(time.time()),
     }

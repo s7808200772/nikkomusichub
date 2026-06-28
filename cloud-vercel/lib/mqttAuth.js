@@ -1,10 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from 'crypto';
 
-function stableStringify(value) {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
-}
 
 function sign(secret, message) {
   return createHmac('sha256', secret).update(message).digest('hex');
@@ -33,13 +28,14 @@ export function signCommand(payload, storeId, secret) {
 }
 
 export function responseMessage(payload) {
-  const digest = createHash('sha256').update(stableStringify(payload.result)).digest('hex');
+  const digest = createHash('sha256').update(payload.resultJson || '').digest('hex');
   return [
     payload.requestId || '',
     payload.storeId || '',
     String(payload.timestamp || ''),
     payload.ok === true ? '1' : '0',
     digest,
+    payload.error || '',
   ].join('\n');
 }
 

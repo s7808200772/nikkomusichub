@@ -19,16 +19,17 @@ test('command signature matches the Pi implementation vector', () => {
   );
 });
 
-test('response verification accepts canonical data and rejects tampering', () => {
+test('response verification accepts exact signed payload and rejects tampering', () => {
   const response = {
     requestId: 'req-123',
     storeId: 'store-001',
     timestamp: 1782595001,
     ok: true,
-    result: { b: 2, a: ['x', 1] },
-    signature: 'beb5b24a5bbefb8c7561425c93939e8ceff13e969c919435c0cd319af31ca6b1',
+    resultJson: '{"a":["x",1],"b":2}',
+    error: null,
+    signature: 'f3f5691c4d9758d87d3525f011d0d075842b66c667054109e8aa91cb34174129',
   };
   assert.equal(verifyResponse(response, secret), true);
-  response.result.b = 3;
+  response.resultJson = '{"a":["x",1],"b":3}';
   assert.equal(verifyResponse(response, secret), false);
 });

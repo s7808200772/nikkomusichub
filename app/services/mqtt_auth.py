@@ -33,8 +33,13 @@ def _stable_json(value) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
-def _result_digest(result) -> str:
-    return hashlib.sha256(_stable_json(result).encode("utf-8")).hexdigest()
+def encode_result(result) -> str:
+    """Serialize once on the Pi so Cloud verifies the exact signed bytes."""
+    return _stable_json(result)
+
+
+def _result_digest(result_json: str) -> str:
+    return hashlib.sha256(result_json.encode("utf-8")).hexdigest()
 
 
 def command_message(payload: Mapping, store_id: str) -> str:
@@ -57,7 +62,8 @@ def response_message(payload: Mapping) -> str:
             str(payload.get("storeId", "")),
             str(payload.get("timestamp", "")),
             "1" if payload.get("ok") is True else "0",
-            _result_digest(payload.get("result")),
+            _result_digest(str(payload.get("resultJson", ""))),
+            str(payload.get("error") or ""),
         )
     )
 

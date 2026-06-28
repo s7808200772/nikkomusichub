@@ -74,17 +74,17 @@ class MqttAuthTests(unittest.TestCase):
             "storeId": "store-001",
             "timestamp": 1782595001,
             "ok": True,
-            "result": {"b": 2, "a": ["x", 1]},
+            "resultJson": '{"a":["x",1],"b":2}',
+            "error": None,
         }
         self.assertEqual(
             sign_response(response, self.secret),
-            "beb5b24a5bbefb8c7561425c93939e8ceff13e969c919435c0cd319af31ca6b1",
+            "f3f5691c4d9758d87d3525f011d0d075842b66c667054109e8aa91cb34174129",
         )
         response["signature"] = sign_response(response, self.secret)
         self.assertTrue(verify_response(response, self.secret))
-        response["result"]["b"] = 3
+        response["resultJson"] = '{"a":["x",1],"b":3}'
         self.assertFalse(verify_response(response, self.secret))
-
 
     def test_command_whitelist(self):
         self.assertIn("status_dashboard", ALLOWED_COMMANDS)
