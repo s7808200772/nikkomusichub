@@ -760,14 +760,8 @@ button.icon-left span { font-size: 1rem; }
 .dash-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  grid-template-rows: auto auto;
   gap: 1rem;
-  align-items: start;
 }
-.dash-player { grid-column: 1 / 9; grid-row: 1; }
-.dash-status { grid-column: 9 / 13; grid-row: 1 / 3; }
-.dash-music { grid-column: 1 / 5; grid-row: 2; }
-.dash-maintenance { grid-column: 5 / 9; grid-row: 2; }
 .dash-col-8 { grid-column: span 8; }
 .dash-col-6 { grid-column: span 6; }
 .dash-col-4 { grid-column: span 4; }
@@ -825,34 +819,10 @@ button.icon-left span { font-size: 1rem; }
 .player-info .label { color: var(--muted); font-size: 0.78rem; }
 .player-info .track-title { font-size: 1.1rem; font-weight: 700; margin: 0.15rem 0 0.6rem; }
 .player-info .volume-row { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; color: var(--text-secondary); }
-.player-info .volume-row input { flex: 1; }
+.player-info .volume-row input { flex: 1; accent-color: var(--accent); }
+.player-info .progress-track { background: var(--panel-2); border-radius: 4px; height: 6px; margin: 0.6rem 0 0.3rem; overflow: hidden; }
+.player-info .progress-bar-fill { background: var(--accent); height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s; }
 .player-info .time-row { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); }
-
-.player-slider {
-  width: 100%;
-  height: 6px;
-  margin: 0.6rem 0 0.3rem;
-  -webkit-appearance: none;
-  appearance: none;
-  background: var(--panel-2);
-  border-radius: 4px;
-  outline: none;
-  cursor: pointer;
-}
-.player-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer;
-}
-.player-slider::-moz-range-thumb {
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer;
-  border: none;
-}
 
 .player-controls {
   display: flex; align-items: center; gap: 0.6rem; justify-content: flex-start;
@@ -907,6 +877,31 @@ button.icon-left span { font-size: 1rem; }
 .maintenance-col button.danger { grid-column: 1 / -1; background: var(--danger); border-color: var(--danger); color: #fff; }
 .maintenance-col button.danger:hover { background: #dc2626; }
 
+.seek-slider {
+  width: 100%;
+  height: 6px;
+  margin: 0.6rem 0 0.3rem;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--panel-2);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+.seek-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+.seek-slider::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
 .player-settings-mini .setting-row { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; color: var(--text-secondary); }
 .player-settings-mini .setting-row input[type="checkbox"] { width: auto; accent-color: var(--accent); }
 .player-settings-mini .service-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
@@ -1006,7 +1001,6 @@ button.icon-left span { font-size: 1rem; }
   .log-layout, .log-filter-bar { grid-template-columns: 1fr; }
   .status-grid { grid-template-columns: repeat(2, 1fr); }
   .bottom-logs { grid-template-columns: 1fr; }
-  .dash-player, .dash-status, .dash-music, .dash-maintenance { grid-column: 1 / -1; grid-row: auto; }
 }
 @media (max-width: 768px) {
   .sidebar { width: 56px; padding: 0.5rem; }
@@ -1017,7 +1011,6 @@ button.icon-left span { font-size: 1rem; }
   .maintenance-row button { flex: 1 1 45%; }
   .status-grid { grid-template-columns: 1fr; }
   .dash-col-8, .dash-col-6, .dash-col-4, .dash-col-2, .dash-col, .dash-col-12 { grid-column: span 12; }
-  .dash-player, .dash-status, .dash-music, .dash-maintenance { grid-column: 1 / -1; grid-row: auto; }
   .player-body { grid-template-columns: 1fr; }
   .log-toolbar { flex-direction: column; align-items: flex-start; }
 }
