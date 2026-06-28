@@ -1,6 +1,8 @@
 [Unit]
 Description=NikkoMusicHub MQTT Cloud Agent
 After=network.target nikko-music-hub-web.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple

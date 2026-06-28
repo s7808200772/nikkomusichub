@@ -1,12 +1,15 @@
 [Unit]
 Description=NikkoMusicHub NAS WebDAV Sync Runner
 After=network.target
+StartLimitIntervalSec=300
+StartLimitBurst=2
 
 [Service]
 Type=oneshot
 User=pi
 Group=pi
 WorkingDirectory=/srv/nikko-music/app
+EnvironmentFile=-/srv/nikko-music/data/nikko.env
 Environment="PATH=/srv/nikko-music/venv/bin:/usr/local/bin:/usr/bin:/bin"
 ExecStart=/srv/nikko-music/venv/bin/python -m app.services.sync_runner
 StandardOutput=journal
