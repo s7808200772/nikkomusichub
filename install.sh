@@ -52,10 +52,14 @@ python3 -m venv "${INSTALL_DIR}/venv"
 ENV_FILE="${INSTALL_DIR}/data/nikko.env"
 if [ ! -f "${ENV_FILE}" ]; then
   log "Generating device security secrets..."
+  JWT_SECRET=$("${INSTALL_DIR}/venv/bin/python" -c "import secrets; print(secrets.token_urlsafe(48))")
   MQTT_COMMAND_SECRET=$("${INSTALL_DIR}/venv/bin/python" -c "import secrets; print(secrets.token_urlsafe(48))")
   MQTT_TOPIC_PREFIX="nikko-$("${INSTALL_DIR}/venv/bin/python" -c "import secrets; print(secrets.token_hex(12))")"
   umask 077
   cat > "${ENV_FILE}" <<EOF
+NIKKO_ENV=production
+NIKKO_SECRET_KEY=${JWT_SECRET}
+NIKKO_COOKIE_SECURE=0
 NIKKO_MQTT_COMMAND_SECRET=${MQTT_COMMAND_SECRET}
 NIKKO_MQTT_TOPIC_PREFIX=${MQTT_TOPIC_PREFIX}
 NIKKO_MQTT_TLS=1

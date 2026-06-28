@@ -24,6 +24,10 @@ for d in (BASE_DIR, MUSIC_DIR, LOGS_DIR, SCRIPTS_DIR, DATA_DIR):
 # Database
 DATABASE_PATH = DATA_DIR / "nikkomusichub.db"
 
+ENV = os.environ.get("NIKKO_ENV", "development").strip().lower()
+IS_PRODUCTION = ENV == "production"
+
+
 # Security
 def _load_or_create_secret(filename: str, length: int = 48) -> str:
     path = DATA_DIR / filename
@@ -38,10 +42,29 @@ def _load_or_create_secret(filename: str, length: int = 48) -> str:
     return value
 
 
-SECRET_KEY = os.environ.get("NIKKO_SECRET_KEY") or _load_or_create_secret("jwt-secret")
+def _load_jwt_secret() -> str:
+    secret = os.environ.get("NIKKO_SECRET_KEY", "").strip()
+    if secret:
+        if len(secret) < 32:
+            raise RuntimeError("NIKKO_SECRET_KEY must be at least 32 characters in production")
+        return secret
+    if IS_PRODUCTION:
+        raise RuntimeError(
+            "NIKKO_SECRET_KEY environment variable is required in production. "
+            "Set it in /srv/nikko-music/data/nikko.env before starting the service."
+        )
+    # Development fallback: auto-generated file (convenient but not for production).
+    return _load_or_create_secret("jwt-secret")
+
+
+SECRET_KEY = _load_jwt_secret()
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # one week
-COOKIE_SECURE = os.environ.get("NIKKO_COOKIE_SECURE", "0").strip().lower() in ("1", "true", "yes")
+COOKIE_SECURE = os.environ.get("NIKKO_COOKIE_SECURE", "1" if IS_PRODUCTION else "0").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
 # Initial credentials are generated per device when not explicitly provided.
 DEFAULT_USERNAME = "nikkolh"
