@@ -42,3 +42,4 @@ settings.html
 logs.html
 .env.vercel-check
 .obsidian/
+.vercel/

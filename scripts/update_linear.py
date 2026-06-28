@@ -53,26 +53,13 @@ def find_project_id():
     return nodes[0]["id"]
 
 
-def update_project_progress(project_id: str, progress: int):
-    data = graphql(
-        """
-        mutation($id: String!, $progress: Float!) {
-          projectUpdate(id: $id, input: { progress: $progress }) {
-            success
-          }
-        }
-        """,
-        {"id": project_id, "progress": float(progress)},
-    )
-    return data["projectUpdate"]["success"]
-
-
 def create_project_update(project_id: str, body: str):
     data = graphql(
         """
         mutation($projectId: String!, $body: String!) {
           projectUpdateCreate(input: { projectId: $projectId, body: $body }) {
             success
+            projectUpdate { id }
           }
         }
         """,
@@ -83,12 +70,11 @@ def create_project_update(project_id: str, body: str):
 
 def main():
     progress = int(sys.argv[1]) if len(sys.argv) > 1 else 85
-    body = sys.argv[2] if len(sys.argv) > 2 else "Progress update from scripts/update_linear.py"
+    extra = sys.argv[2] if len(sys.argv) > 2 else ""
+    body = f"專案進度 {progress}%。{extra}".strip()
     project_id = find_project_id()
-    ok1 = update_project_progress(project_id, progress)
-    ok2 = create_project_update(project_id, body)
-    print(f"Updated {PROJECT_NAME} progress to {progress}%: {ok1}")
-    print(f"Created project update: {ok2}")
+    ok = create_project_update(project_id, body)
+    print(f"Created {PROJECT_NAME} project update at {progress}%: {ok}")
 
 
 if __name__ == "__main__":
