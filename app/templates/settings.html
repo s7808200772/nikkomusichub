@@ -51,7 +51,7 @@
       <div class="form-group">
         <label>MQTT 密碼</label>
         <div class="password-wrap">
-          <input type="password" name="password" id="mqtt-password" placeholder="選填">
+          <input type="password" name="password" id="mqtt-password" placeholder="留空則不變">
           <button type="button" class="eye-btn" onclick="togglePwd('mqtt-password', this)" title="顯示 / 隱藏密碼">👁</button>
         </div>
       </div>
@@ -61,7 +61,7 @@
       </div>
       <div class="form-group">
         <label>Command Secret</label>
-        <input type="password" name="command_secret" id="mqtt-command-secret" required placeholder="與 Cloud 共用">
+        <input type="password" name="command_secret" id="mqtt-command-secret" placeholder="留空則不變；新密鑰至少 32 字元">
       </div>
       <button type="submit" class="primary block icon-left" title="儲存 MQTT 設定並重啟 MQTT 服務"><span>💾</span> 儲存 MQTT 設定</button>
     </form>
@@ -216,9 +216,13 @@ async function loadMqtt() {
   document.getElementById('mqtt-port').value = s.port || '';
   document.getElementById('mqtt-tls').checked = s.tls;
   document.getElementById('mqtt-username').value = s.username || '';
-  document.getElementById('mqtt-password').value = s.password || '';
+  document.getElementById('mqtt-password').value = '';
+  document.getElementById('mqtt-password').placeholder = s.password_set ? '已設定；留空則不變' : '尚未設定';
   document.getElementById('mqtt-topic-prefix').value = s.topic_prefix || '';
-  document.getElementById('mqtt-command-secret').value = s.command_secret || '';
+  document.getElementById('mqtt-command-secret').value = '';
+  document.getElementById('mqtt-command-secret').placeholder = s.command_secret_set
+    ? '已設定；留空則不變'
+    : '尚未設定；至少 32 字元';
 }
 
 async function saveMqttSettings(e) {

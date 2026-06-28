@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from pathlib import Path
+import re
 
 from app.config import (
     DATA_DIR,
@@ -112,6 +113,10 @@ def _write_env_key(key: str, value: str) -> None:
     ENV_FILE_PATH.write_text("\n".join(out) + "\n", encoding="utf-8")
 
 
+def _valid_env_value(value: str) -> bool:
+    return "\n" not in value and "\r" not in value
+
+
 @router.get("/api/settings/mqtt")
 async def get_mqtt_settings(request: Request):
     get_current_user_or_local(request)
@@ -120,9 +125,9 @@ async def get_mqtt_settings(request: Request):
         "port": MQTT_PORT,
         "tls": bool(MQTT_TLS),
         "username": MQTT_USERNAME,
-        "password": MQTT_PASSWORD,
+        "password_set": bool(MQTT_PASSWORD),
         "topic_prefix": MQTT_TOPIC_PREFIX,
-        "command_secret": MQTT_COMMAND_SECRET,
+        "command_secret_set": bool(MQTT_COMMAND_SECRET),
     }
 
 
@@ -135,29 +140,47 @@ async def save_mqtt_settings(
     username: str = Form(""),
     password: str = Form(""),
     topic_prefix: str = Form(...),
-    command_secret: str = Form(...),
+    command_secret: str = Form(""),
 ):
     user = get_current_user_or_local(request)
-    if not broker or not topic_prefix or not command_secret:
-        return {"ok": False, "stderr": "Broker、Topic Prefix、Command Secret 為必填"}
+    broker = broker.strip()
+    username = username.strip()
+    password = password.strip()
+    topic_prefix = topic_prefix.strip()
+    command_secret = command_secret.strip()
 
-    _write_env_key("NIKKO_MQTT_BROKER", broker.strip())
+    if not re.fullmatch(r"[A-Za-z0-9.-]+", broker):
+        return {"ok": False, "stderr": "Broker 格式不正確"}
+    if not 1 <= int(port) <= 65535:
+        return {"ok": False, "stderr": "Port 必須介於 1 到 65535"}
+    if not re.fullmatch(r"[A-Za-z0-9._-]{8,128}", topic_prefix):
+        return {"ok": False, "stderr": "Topic Prefix 需為 8-128 個英數字、點、底線或連字號"}
+    if any(not _valid_env_value(value) for value in (username, password, command_secret)):
+        return {"ok": False, "stderr": "MQTT 設定不可包含換行字元"}
+    if command_secret and len(command_secret) < 32:
+        return {"ok": False, "stderr": "Command Secret 至少需要 32 個字元"}
+    if not command_secret and not MQTT_COMMAND_SECRET:
+        return {"ok": False, "stderr": "首次設定必須填入至少 32 字元的 Command Secret"}
+
+    _write_env_key("NIKKO_MQTT_BROKER", broker)
     _write_env_key("NIKKO_MQTT_PORT", str(int(port)))
     _write_env_key("NIKKO_MQTT_TLS", "1" if tls else "0")
-    _write_env_key("NIKKO_MQTT_USERNAME", username.strip())
-    _write_env_key("NIKKO_MQTT_PASSWORD", password.strip())
-    _write_env_key("NIKKO_MQTT_TOPIC_PREFIX", topic_prefix.strip())
-    _write_env_key("NIKKO_MQTT_COMMAND_SECRET", command_secret.strip())
+    _write_env_key("NIKKO_MQTT_USERNAME", username)
+    if password:
+        _write_env_key("NIKKO_MQTT_PASSWORD", password)
+    _write_env_key("NIKKO_MQTT_TOPIC_PREFIX", topic_prefix)
+    if command_secret:
+        _write_env_key("NIKKO_MQTT_COMMAND_SECRET", command_secret)
 
     restart_result = run(["sudo", "-n", "systemctl", "restart", "nikko-music-mqtt.service"], timeout=30)
     audit(
         user,
         "save_mqtt_settings",
         {
-            "broker": broker.strip(),
+            "broker": broker,
             "port": int(port),
             "tls": bool(tls),
-            "topic_prefix": topic_prefix.strip(),
+            "topic_prefix": topic_prefix,
             "restart_ok": restart_result.get("ok"),
         },
     )
