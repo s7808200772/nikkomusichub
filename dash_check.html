@@ -1,42 +1,85 @@
-{% extends "base.html" %}
-{% block title %}首頁儀表板 - NikkoMusicHub{% endblock %}
-{% block sidebar_status %}{% endblock %}
-{% block content %}
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>首頁儀表板 - NikkoMusicHub</title>
+  <link rel="stylesheet" href="/static/style.css?v=20260628-12">
+  <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      
+      <div class="store-info">
+        <span id="nav-store-name">-</span>
+        <span class="ip-tag" id="nav-tailscale-ip">Tailscale -</span>
+        <span class="ip-tag" id="nav-lan-ip">LAN -</span>
+      </div>
+      
+    </div>
+    <div class="topbar-center">
+      
+    </div>
+    <div class="topbar-right">
+      <span class="status-pill" id="nav-system-status"><span class="dot green"></span>系統狀態：正常</span>
+      <button class="icon-btn" onclick="window.location.reload()" title="重新整理">🔄</button>
+    </div>
+  </header>
 
-{% macro status_dot(active) %}<span class="dot {{ 'green' if active else 'gray' }}"></span>{% endmacro %}
-{% macro ring(label, pct, color) %}
-  {% set r = 24 %}
-  {% set c = 2 * 3.141592653589793 * r %}
-  {% set offset = c - (pct / 100) * c %}
-  <div class="ring" title="{{ label }} {{ pct }}%">
-    <svg width="58" height="58" viewBox="0 0 58 58"><circle class="ring-bg" cx="29" cy="29" r="{{ r }}"/><circle class="ring-fill" cx="29" cy="29" r="{{ r }}" stroke-dasharray="{{ c }}" stroke-dashoffset="{{ offset }}" style="stroke:{{ color }}"/></svg>
-    <div class="ring-text"><div>{{ pct }}%</div><div class="ring-label">{{ label }}</div></div>
-  </div>
-{% endmacro %}
-{% macro duration(seconds) %}
-  {% set d = (seconds // 86400) | int %}
-  {% set h = ((seconds % 86400) // 3600) | int %}
-  {% set m = ((seconds % 3600) // 60) | int %}
-  {% set s = (seconds % 60) | int %}
-  {% set parts = [] %}
-  {% if d %}{% set _ = parts.append(d ~ '天') %}{% endif %}
-  {% if h %}{% set _ = parts.append(h ~ '時') %}{% endif %}
-  {% if m %}{% set _ = parts.append(m ~ '分') %}{% endif %}
-  {% set _ = parts.append(s ~ '秒') %}
-  {{ parts | join(' ') }}
-{% endmacro %}
+  <div class="layout">
+    <aside class="sidebar">
+      <a href="/" class="brand" hx-get="/" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
+        <span class="brand-logo">🎵</span>
+        <span class="brand-name">NikkoMusicHub</span>
+      </a>
+      <nav>
+        <a href="/" class="active" hx-get="/" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
+          <span class="nav-icon">🏠</span>
+          <span>首頁儀表</span>
+        </a>
+        <a href="/settings" class="" hx-get="/settings" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
+          <span class="nav-icon">⚙️</span>
+          <span>系統設定</span>
+        </a>
+        <a href="/logs" class="" hx-get="/logs" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
+          <span class="nav-icon">📋</span>
+          <span>日誌紀錄</span>
+        </a>
+      </nav>
+
+      
+
+      <div class="sidebar-footer">
+        <a href="/logout" class="logout-link">
+          <span class="nav-icon">⏏️</span>
+          <span>Logout</span>
+        </a>
+        <div class="sidebar-version">© 2024 NikkoMusicHub<br>All rights reserved.</div>
+      </div>
+    </aside>
+
+    <main class="main" id="main-content">
+      
+
+
+
+
 
 <div id="dash-warning" class="dash-warning" style="display:none;">
   <span>⚠️</span>
   <span>您正在使用預設密碼，請到 <a href="/settings">系統設定</a> 修改。</span>
 </div>
 
-{% set cpu_pct = data.cpu_percent | int %}
-{% set ram_pct = data.ram.percent | int if data.ram else 0 %}
-{% set disk_pct = data.disk.percent | int if data.disk else 0 %}
-{% set cpu_color = 'var(--danger)' if cpu_pct > 75 else ('var(--warning)' if cpu_pct > 50 else 'var(--success)') %}
-{% set ram_color = 'var(--danger)' if ram_pct > 75 else ('var(--warning)' if ram_pct > 50 else 'var(--success)') %}
-{% set disk_color = 'var(--danger)' if disk_pct > 90 else 'var(--success)' %}
+
+
+
+
+
+
 
 <div class="dash-grid">
   <!-- Player console -->
@@ -97,67 +140,102 @@
     <div class="status-grid" id="status-grid">
       <div class="status-card">
         <h3><span class="icon">🏪</span>店家資訊</h3>
-        <div class="status-row"><span class="label">店名</span><span class="value" id="ss-store-name">{{ data.store_name or '-' }}</span></div>
-        <div class="status-row"><span class="label">Hostname</span><span class="value" id="ss-hostname">{{ data.hostname or '-' }}</span></div>
-        <div class="status-row"><span class="label">Tailscale IP</span><span class="value" id="ss-tailscale-ip">{{ data.tailscale_ip or '-' }}</span></div>
-        <div class="status-row"><span class="label">LAN IP</span><span class="value" id="ss-lan-ip">{{ data.lan_ip or '-' }}</span></div>
+        <div class="status-row"><span class="label">店名</span><span class="value" id="ss-store-name">三重和平店</span></div>
+        <div class="status-row"><span class="label">Hostname</span><span class="value" id="ss-hostname">NikkoMusic</span></div>
+        <div class="status-row"><span class="label">Tailscale IP</span><span class="value" id="ss-tailscale-ip">100.69.3.7</span></div>
+        <div class="status-row"><span class="label">LAN IP</span><span class="value" id="ss-lan-ip">192.168.1.188</span></div>
       </div>
 
       <div class="status-card">
         <h3><span class="icon">📊</span>系統資源</h3>
         <div class="progress-rings">
-          {{ ring('CPU', cpu_pct, cpu_color) }}
-          {{ ring('RAM', ram_pct, ram_color) }}
-          {{ ring('磁碟', disk_pct, disk_color) }}
+          
+  
+  
+  
+  <div class="ring" title="CPU 6%">
+    <svg width="58" height="58" viewBox="0 0 58 58"><circle class="ring-bg" cx="29" cy="29" r="24"/><circle class="ring-fill" cx="29" cy="29" r="24" stroke-dasharray="150.79644737231007" stroke-dashoffset="141.74866052997146" style="stroke:var(--success)"/></svg>
+    <div class="ring-text"><div>6%</div><div class="ring-label">CPU</div></div>
+  </div>
+
+          
+  
+  
+  
+  <div class="ring" title="RAM 37%">
+    <svg width="58" height="58" viewBox="0 0 58 58"><circle class="ring-bg" cx="29" cy="29" r="24"/><circle class="ring-fill" cx="29" cy="29" r="24" stroke-dasharray="150.79644737231007" stroke-dashoffset="95.00176184455535" style="stroke:var(--success)"/></svg>
+    <div class="ring-text"><div>37%</div><div class="ring-label">RAM</div></div>
+  </div>
+
+          
+  
+  
+  
+  <div class="ring" title="磁碟 21%">
+    <svg width="58" height="58" viewBox="0 0 58 58"><circle class="ring-bg" cx="29" cy="29" r="24"/><circle class="ring-fill" cx="29" cy="29" r="24" stroke-dasharray="150.79644737231007" stroke-dashoffset="119.12919342412496" style="stroke:var(--success)"/></svg>
+    <div class="ring-text"><div>21%</div><div class="ring-label">磁碟</div></div>
+  </div>
+
         </div>
-        <div class="status-row" style="margin-top:.4rem;"><span class="label">RAM 使用</span><span class="value" id="ss-ram">{{ data.ram.used_mb ~ '/' ~ data.ram.total_mb ~ ' MB' if data.ram else '-' }}</span></div>
-        <div class="status-row"><span class="label">磁碟空間</span><span class="value" id="ss-disk">{{ data.disk.total_gb ~ ' GB' if data.disk else '-' }}</span></div>
-        <div class="status-row"><span class="label">已運行</span><span class="value" id="ss-uptime">{{ duration(data.uptime_seconds or 0) }}</span></div>
+        <div class="status-row" style="margin-top:.4rem;"><span class="label">RAM 使用</span><span class="value" id="ss-ram">269/920 MB</span></div>
+        <div class="status-row"><span class="label">磁碟空間</span><span class="value" id="ss-disk">28.09 GB</span></div>
+        <div class="status-row"><span class="label">已運行</span><span class="value" id="ss-uptime">
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  3時 11分 48秒
+</span></div>
       </div>
 
       <div class="status-card">
         <h3><span class="icon">🧩</span>元件狀態</h3>
-        <div class="status-row"><span class="label">rclone</span><span class="value" id="ss-rclone">{{ status_dot(data.rclone_installed) }} 已{{ '安裝' if data.rclone_installed else '未安裝' }}</span></div>
-        <div class="status-row"><span class="label">mpv</span><span class="value" id="ss-mpv">{{ status_dot(data.mpv_installed) }} 已{{ '安裝' if data.mpv_installed else '未安裝' }}</span></div>
-        <div class="status-row"><span class="label">音樂服務</span><span class="value" id="ss-player-svc">{{ status_dot(data.player_service_status == 'active') }} {{ data.player_service_status or 'inactive' }}</span></div>
+        <div class="status-row"><span class="label">rclone</span><span class="value" id="ss-rclone"><span class="dot green"></span> 已安裝</span></div>
+        <div class="status-row"><span class="label">mpv</span><span class="value" id="ss-mpv"><span class="dot green"></span> 已安裝</span></div>
+        <div class="status-row"><span class="label">音樂服務</span><span class="value" id="ss-player-svc"><span class="dot green"></span> active</span></div>
       </div>
 
       <div class="status-card">
         <h3><span class="icon">🌐</span>服務狀態</h3>
-        <div class="status-row"><span class="label">Web Player</span><span class="value" id="ss-web-svc">{{ status_dot(data.web_service_status == 'active') }} {{ data.web_service_status or 'inactive' }}</span></div>
-        <div class="status-row"><span class="label">Sync Timer</span><span class="value" id="ss-sync-svc">{{ status_dot(data.sync_timer_status == 'active') }} {{ data.sync_timer_status or 'inactive' }}</span></div>
-        <div class="status-row"><span class="label">MQTT</span><span class="value" id="ss-mqtt-svc">{{ status_dot(data.mqtt_service_status == 'active') }} {{ data.mqtt_service_status or 'inactive' }}</span></div>
+        <div class="status-row"><span class="label">Web Player</span><span class="value" id="ss-web-svc"><span class="dot green"></span> active</span></div>
+        <div class="status-row"><span class="label">Sync Timer</span><span class="value" id="ss-sync-svc"><span class="dot green"></span> active</span></div>
+        <div class="status-row"><span class="label">MQTT</span><span class="value" id="ss-mqtt-svc"><span class="dot green"></span> active</span></div>
       </div>
 
       <div class="status-card">
         <h3><span class="icon">☁️</span>NAS WebDAV 同步</h3>
-        <div class="status-row"><span class="label">WebDAV 狀態</span><span class="value" id="ss-webdav">{{ status_dot(data.webdav_connected) }} {{ '可連線' if data.webdav_connected else '未設定' }}</span></div>
-        <div class="status-row"><span class="label">Remote</span><span class="value small" id="ss-webdav-remote">{{ data.webdav_remote or '-' }}</span></div>
-        <div class="status-row"><span class="label">URL</span><span class="value small" id="ss-webdav-url" style="word-break:break-all;">{{ data.webdav_url or '-' }}</span></div>
-        <div class="status-row"><span class="label">Remote Path</span><span class="value small" id="ss-webdav-rpath">{{ data.webdav_remote_path or '-' }}</span></div>
-        <div class="status-row"><span class="label">本地路徑</span><span class="value" id="ss-local-path">{{ data.local_music_path or '-' }}</span></div>
-        <div class="status-row"><span class="label">MP3 數量</span><span class="value" id="ss-mp3-count">{{ data.mp3_count if data.mp3_count is not none else '-' }}</span></div>
-        <div class="status-row"><span class="label">最近同步</span><span class="value small" id="ss-last-sync" style="font-size:.65rem;">{{ data.last_sync_at or '-' }} {{ data.last_sync_status or '' }}</span></div>
+        <div class="status-row"><span class="label">WebDAV 狀態</span><span class="value" id="ss-webdav"><span class="dot green"></span> 可連線</span></div>
+        <div class="status-row"><span class="label">Remote</span><span class="value small" id="ss-webdav-remote">qnapmusic</span></div>
+        <div class="status-row"><span class="label">URL</span><span class="value small" id="ss-webdav-url" style="word-break:break-all;">http://100.106.208.65:5005/</span></div>
+        <div class="status-row"><span class="label">Remote Path</span><span class="value small" id="ss-webdav-rpath">qnapmusic:NikkoMusic</span></div>
+        <div class="status-row"><span class="label">本地路徑</span><span class="value" id="ss-local-path">/srv/nikko-music/music</span></div>
+        <div class="status-row"><span class="label">MP3 數量</span><span class="value" id="ss-mp3-count">2</span></div>
+        <div class="status-row"><span class="label">最近同步</span><span class="value small" id="ss-last-sync" style="font-size:.65rem;">2026-06-27T23:54:15.089758 success</span></div>
       </div>
 
       <div class="status-card">
         <h3><span class="icon">🎵</span>播放器狀態</h3>
-        <div class="status-row"><span class="label">播放狀態</span><span class="value" id="ss-player-status">{{ status_dot(data.player_status == 'playing') }} {{ data.player_status or 'stopped' }}</span></div>
-        <div class="status-row"><span class="label">目前曲目</span><span class="value small" id="ss-current-track" style="word-break:break-all;">{{ data.current_track or '-' }}</span></div>
+        <div class="status-row"><span class="label">播放狀態</span><span class="value" id="ss-player-status"><span class="dot green"></span> playing</span></div>
+        <div class="status-row"><span class="label">目前曲目</span><span class="value small" id="ss-current-track" style="word-break:break-all;">001_relax_coffee_shop_jazz.mp3</span></div>
       </div>
 
       <div class="status-card">
         <h3><span class="icon">🖥️</span>系統詳細資訊</h3>
-        <div class="status-row"><span class="label">Pi 型號</span><span class="value small" id="ss-pi-model" style="font-size:.7rem;">{{ data.pi_model or '-' }}</span></div>
-        <div class="status-row"><span class="label">作業系統</span><span class="value small" id="ss-os" style="font-size:.7rem;">{{ data.os_version or '-' }}</span></div>
-        <div class="status-row"><span class="label">Python</span><span class="value" id="ss-python">{{ data.python_version or '-' }}</span></div>
-        <div class="status-row"><span class="label">CPU 溫度</span><span class="value" id="ss-cpu-temp">{{ data.cpu_temp_c ~ ' °C' if data.cpu_temp_c is not none else '-' }}</span></div>
+        <div class="status-row"><span class="label">Pi 型號</span><span class="value small" id="ss-pi-model" style="font-size:.7rem;">Raspberry Pi 3 Model B Plus Rev 1.4</span></div>
+        <div class="status-row"><span class="label">作業系統</span><span class="value small" id="ss-os" style="font-size:.7rem;">Raspbian GNU/Linux 13 (trixie)</span></div>
+        <div class="status-row"><span class="label">Python</span><span class="value" id="ss-python">3.13.5</span></div>
+        <div class="status-row"><span class="label">CPU 溫度</span><span class="value" id="ss-cpu-temp">39.2 °C</span></div>
       </div>
 
       <div class="status-card">
         <h3><span class="icon">📦</span>軟體版本</h3>
-        <div class="status-row"><span class="label">rclone</span><span class="value small" id="ss-rclone-ver" style="font-size:.7rem;">{{ data.rclone_version or '-' }}</span></div>
-        <div class="status-row"><span class="label">mpv</span><span class="value small" id="ss-mpv-ver" style="font-size:.7rem;">{{ data.mpv_version or '-' }}</span></div>
+        <div class="status-row"><span class="label">rclone</span><span class="value small" id="ss-rclone-ver" style="font-size:.7rem;">rclone v1.74.3</span></div>
+        <div class="status-row"><span class="label">mpv</span><span class="value small" id="ss-mpv-ver" style="font-size:.7rem;">mpv v0.40.0 Copyright © 2000-2025 mpv/MPlayer/mplayer2 projects</span></div>
       </div>
     </div>
   </aside>
@@ -178,7 +256,7 @@
     <div id="music-playlist-pane" class="tab-pane">
       <div id="playlist-output" class="list-area"><div class="empty-state"><div class="big-icon">⏳</div><div>載入中…</div></div></div>
     </div>
-  </section>
+  </div>
 
   <!-- Maintenance -->
   <section class="card dash-maintenance">
@@ -459,4 +537,12 @@ setInterval(refreshPlayer, 3000);
 setInterval(loadLibrary, 10000);
 setInterval(loadPlaylist, 10000);
 </script>
-{% endblock %}
+
+    </main>
+  </div>
+
+  <div id="toast" class="toast" style="display:none;"></div>
+  <script src="/static/app.js?v=20260628-12"></script>
+  
+</body>
+</html>
