@@ -11,10 +11,11 @@ test('command signature matches the Pi implementation vector', () => {
     commandKey: 'status_dashboard',
     timestamp: 1782595000000,
     nonce: 'nonce-456',
+    confirm: false,
   };
   assert.equal(
     signCommand(command, 'store-001', secret),
-    '6b75f2521a116d4665daabb321bdcd753634568460a18caffdc4898c3673e97e'
+    '07c010b65338b6984bd5fd6e32488b909ad67c95071d0b972005dc4c1c4e3c70'
   );
 });
 
