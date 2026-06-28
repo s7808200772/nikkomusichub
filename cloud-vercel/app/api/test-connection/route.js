@@ -21,7 +21,7 @@ export async function POST(request) {
     password: store.mqttPassword,
     tls: store.mqttTls !== false,
     storeId: store.storeId,
-    timeout: 10000,
+    timeout: 20000,
   });
 
   return NextResponse.json(result);

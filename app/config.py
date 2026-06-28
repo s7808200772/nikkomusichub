@@ -100,6 +100,7 @@ MQTT_PASSWORD = os.environ.get("NIKKO_MQTT_PASSWORD", "")
 MQTT_STORE_ID = os.environ.get("NIKKO_MQTT_STORE_ID", "")
 MQTT_TOPIC_PREFIX = os.environ.get("NIKKO_MQTT_TOPIC_PREFIX", "nikko")
 MQTT_TLS = os.environ.get("NIKKO_MQTT_TLS", "1").strip().lower() not in ("0", "false", "no")
+MQTT_CA_PATH = os.environ.get("NIKKO_MQTT_CA_PATH", "")
 MQTT_COMMAND_SECRET = os.environ.get("NIKKO_MQTT_COMMAND_SECRET", "")
 MQTT_COMMAND_MAX_AGE_SECONDS = int(os.environ.get("NIKKO_MQTT_COMMAND_MAX_AGE_SECONDS", "60"))
 

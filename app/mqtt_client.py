@@ -7,6 +7,7 @@ and publishes responses / status updates.
 import json
 import logging
 import os
+import ssl
 import sys
 import threading
 import time
@@ -24,6 +25,7 @@ from app.config import (
     DATA_DIR,
     LOGS_DIR,
     MQTT_BROKER,
+    MQTT_CA_PATH,
     MQTT_COMMAND_MAX_AGE_SECONDS,
     MQTT_COMMAND_SECRET,
     MQTT_PASSWORD,
@@ -347,7 +349,18 @@ def main():
     if MQTT_USERNAME:
         client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     if MQTT_TLS:
-        client.tls_set()
+        if MQTT_CA_PATH:
+            tls_context = ssl.create_default_context(cafile=MQTT_CA_PATH)
+            # EMQX's private Root CA predates Authority Key Identifier; keep
+            # certificate-chain verification while relaxing only X509 strict mode.
+            if hasattr(ssl, "VERIFY_X509_STRICT"):
+                tls_context.verify_flags &= ~ssl.VERIFY_X509_STRICT
+            # The private broker certificate has no SAN; its dedicated CA and pinned IP
+            # still authenticate the endpoint without relying on public DNS.
+            tls_context.check_hostname = False
+            client.tls_set_context(tls_context)
+        else:
+            client.tls_set()
 
     client.on_connect = on_connect
     client.on_message = on_message

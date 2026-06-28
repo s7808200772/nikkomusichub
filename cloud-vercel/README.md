@@ -43,6 +43,7 @@ npx vercel --prod
 - `NIKKO_ADMIN_USER`、`NIKKO_ADMIN_PASS`：管理員帳密
 - `NIKKO_CLOUD_SECRET`：JWT 簽章金鑰
 - `NIKKO_MQTT_COMMAND_SECRET`：與 Pi 相同的 HMAC 密鑰
+- `NIKKO_MQTT_CA`、`NIKKO_MQTT_TLS_SERVERNAME`：私有 broker Root CA 與憑證名稱
 - `NIKKO_MQTT_TOPIC_PREFIX`：與 Pi 相同的私有 topic prefix
 - `SUPABASE_URL`、`NIKKO_SUPABASE_PROXY_SECRET`：透過受保護 Edge Function 存取正式資料庫
 

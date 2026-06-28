@@ -158,58 +158,33 @@ cloud-vercel$ npm test
 
 ## 9. 剩餘風險
 
-1. **服務尚未在 Pi 上重啟**：app 檔案與 systemd unit 已部署到 `/srv/nikko-music/app/` 與 `/tmp/nikko-systemd-new/`，但 `systemctl daemon-reload` 與 `restart` 需要 sudo，需由管理員執行下方步驟。
-2. **Windows 本機無法驗證 mpv / systemd 實際行為**：播放、服務啟停、測試音訊、重開機等需在 Pi 實機確認。
-3. **`NIKKO_COOKIE_SECURE`**：目前 Pi `.env` 設為 `0`，因 LAN/ Tailscale 可能走 HTTP。若後續啟用 HTTPS，建議設為 `1`。
-4. **Cloud `.env.production.local`**：該檔案已被 `.gitignore` 忽略，請確認 Vercel 後台已設定正確的 `NIKKO_CLOUD_SECRET`、`NIKKO_ADMIN_*`、`SUPABASE_URL`、`NIKKO_SUPABASE_PROXY_SECRET`、`NIKKO_MQTT_COMMAND_SECRET`、`NIKKO_MQTT_TOPIC_PREFIX`。
-5. **Supabase Edge Function**：本報告未檢查 Supabase Edge Function 權限邏輯與 RLS，部署 Cloud 前請確認 `supabase/functions/nikko-cloud-db` 已正確部署並驗證 `x-nikko-secret`。
+1. **EMQX 管理頁仍只有 HTTP 18083**：Dashboard 管理密碼已輪替，MQTT 資料通道不受影響；後續應在 broker 主機防火牆限制 18083 僅允許管理 IP，或配置 18084 HTTPS。沒有 broker 主機 Shell / 防火牆權限時，不能安全地由本專案端直接關閉，以免鎖死管理入口。
+2. **私有 broker 憑證為舊版 EMQ Root CA**：憑證沒有 SAN，Root CA 也沒有 Authority Key Identifier。Pi 與 Vercel 已釘選該私有 Root CA，Vercel 以 `Server` 驗證憑證名稱，Pi 僅放寬 X509 strict/hostname、仍強制驗證私有 CA 鏈。建議日後重發含 SAN 與 AKI 的憑證。
 
 ---
 
-## 10. 部署方式
+## 10. 部署完成狀態
 
-已在 Pi 上完成：
-1. 備份 `/srv/nikko-music/data/nikko.env`、`rclone.conf`、`nikkomusichub.db`。
-2. 將 `security-final` branch 的程式碼複製到 `/srv/nikko-music/app/`。
-3. 在 `/srv/nikko-music/data/nikko.env` 加入 `NIKKO_ENV=production`、`NIKKO_SECRET_KEY`、`NIKKO_COOKIE_SECURE=0`。
-4. 將新版 systemd unit 檔放到 `/tmp/nikko-systemd-new/`。
+### Pi 實機
 
-**尚需管理員在 Pi 上執行（需要 sudo）：**
+- `security-final` 程式與 systemd units 已部署到 `/srv/nikko-music/app/` 與 `/etc/systemd/system/`。
+- systemd 執行帳號已依實機修正為 `nikkolh`；Web、MQTT、Player、Sync Timer 均為 `active`，`NRestarts=0`。
+- 私有 MQTT 已切到 `114.55.1.51:8883`，TLS 1.3，釘選 Root CA。
+- EMQX built-in database 驗證已啟用；專用 client 帳號已建立，匿名及錯誤帳密均被拒絕。
+- MQTT HMAC、時效、nonce/requestId、防重放、白名單、危險指令確認與 audit log 均保留。
+- Pi 管理密碼已輪替；MQTT 設定 API 不再回傳現有 password 或 command secret。
 
-```bash
-# 1. 複製新版 systemd units
-sudo cp /tmp/nikko-systemd-new/*.service /etc/systemd/system/
-sudo cp /tmp/nikko-systemd-new/*.timer /etc/systemd/system/
+### Cloud / Vercel / Supabase
 
-# 2. 重新載入 systemd
-sudo systemctl daemon-reload
-
-# 3. 重啟服務
-sudo systemctl restart nikko-music-hub-web.service
-sudo systemctl restart nikko-music-mqtt.service
-sudo systemctl restart nikko-music-sync.timer
-
-# 4. 檢查狀態
-systemctl status nikko-music-hub-web.service
-systemctl status nikko-music-mqtt.service
-systemctl status nikko-music-player.service
-systemctl status nikko-music-sync.timer
-journalctl -u nikko-music-hub-web.service -n 50 --no-pager
-```
-
-**Cloud（Vercel）部署：**
-```bash
-cd cloud-vercel
-npm install
-npm run build
-vercel --prod
-```
-並確認 Vercel Environment Variables 已填入所有必要值。
+- Production：`https://cloud-vercel-xi.vercel.app`。
+- Production 與 Preview 均已設定加密的登入、Supabase、MQTT、Root CA 與 TLS Server Name 環境變數。
+- Supabase `stores` / `settings` 已持久化，RLS 僅允許 service role；Vercel 透過帶共享密鑰的 Edge Function 存取。
+- Production 與 Preview CRUD 驗收均通過；暫存驗收店點已刪除。
+- Vercel build/test/audit 通過；正式 MQTT 端到端指令驗收通過。
 
 ---
 
 ## 11. 回滾方式
-
 1. **程式碼回滾**：
    ```bash
    git checkout main

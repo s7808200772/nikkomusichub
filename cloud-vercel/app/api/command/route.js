@@ -28,7 +28,7 @@ export async function POST(request) {
     tls: store.mqttTls !== false,
     storeId: store.storeId,
     commandKey: data.commandKey,
-    timeout: 15000,
+    timeout: 25000,
   });
 
   return NextResponse.json(result);

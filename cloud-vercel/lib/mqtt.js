@@ -4,6 +4,8 @@ import { signCommand, verifyResponse } from './mqttAuth.js';
 
 const COMMAND_SECRET = process.env.NIKKO_MQTT_COMMAND_SECRET || '';
 const TOPIC_PREFIX = process.env.NIKKO_MQTT_TOPIC_PREFIX || 'nikko';
+const MQTT_CA = process.env.NIKKO_MQTT_CA || '';
+const MQTT_TLS_SERVERNAME = process.env.NIKKO_MQTT_TLS_SERVERNAME || '';
 
 const COMMANDS = [
   { key: 'player_play', label: '播放' },
@@ -41,6 +43,12 @@ function buildClient({ broker, port, username, password, tls = true }) {
     connectTimeout: 10000,
     reconnectPeriod: 0,
   };
+  if (tls && MQTT_CA) {
+    options.ca = MQTT_CA;
+  }
+  if (tls && MQTT_TLS_SERVERNAME) {
+    options.servername = MQTT_TLS_SERVERNAME;
+  }
   if (username) {
     options.username = username;
     options.password = password;
@@ -48,7 +56,7 @@ function buildClient({ broker, port, username, password, tls = true }) {
   return mqtt.connect(url, options);
 }
 
-export function publishCommand({ broker, port, username, password, tls = true, storeId, commandKey, timeout = 15000 }) {
+export function publishCommand({ broker, port, username, password, tls = true, storeId, commandKey, timeout = 25000 }) {
   return new Promise((resolve) => {
     if (!COMMAND_SECRET) {
       resolve({ ok: false, error: 'MQTT command authentication is not configured' });
@@ -141,7 +149,7 @@ export function publishCommand({ broker, port, username, password, tls = true, s
   });
 }
 
-export function testMQTT({ broker, port, username, password, tls = true, storeId, timeout = 10000 }) {
+export function testMQTT({ broker, port, username, password, tls = true, storeId, timeout = 20000 }) {
   return publishCommand({
     broker,
     port,
