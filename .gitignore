@@ -27,3 +27,9 @@ out/
 # OS
 .DS_Store
 Thumbs.db
+
+# Secrets / local env files (keep .env.example in Git)
+.env
+.env.local
+.env.*.local
+!*.env.example
