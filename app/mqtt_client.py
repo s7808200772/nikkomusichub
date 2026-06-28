@@ -215,6 +215,10 @@ def handle_command(command_key):
             return True, mpv.resume()
         if command_key == "player_next":
             return True, mpv.next_track()
+        if command_key == "player_mute":
+            return True, mpv.set_mute(True)
+        if command_key == "player_unmute":
+            return True, mpv.set_mute(False)
         if command_key == "sync":
             remote_path = get_setting("webdav_remote_path", "qnapmusic:NikkoMusic")
             local = get_setting("local_music_path", str(MUSIC_DIR))
@@ -315,7 +319,8 @@ def publish_status(client):
             "dashboard": dashboard if ok else {},
             "timestamp": int(time.time()),
         }
-        publish(client, STATUS_TOPIC, status)
+        msg = json.dumps(status)
+        client.publish(STATUS_TOPIC, msg, qos=1, retain=True)
     except Exception as e:
         logger.error("Failed to publish status: %s", e)
 

@@ -4,6 +4,15 @@
 > 狀態分類：**已完成** / **部分完成** / **未開始**。  
 > 「本次規劃」欄位代表根據使用者最終決策，該項目是否納入後續開發。
 
+## 前置狀態更新（來自 Codex 完成報告）
+
+- **STE-101 ~ STE-105 全部完成**：MQTT HMAC、時效、防重放、白名單、危險指令確認、audit、JWT/session、Supabase RLS/Edge Function、npm audit 清乾淨。
+- **私有 MQTT 已上線**：改為私有 EMQX `114.55.1.51:8883`，TLS 1.3 + Root CA 驗證 + 專用 client 帳號 + 匿名拒絕。
+- **Supabase 正式持久化**：Production / Preview 皆可使用，RLS 與 Edge Function 已設定。
+- **Vercel Cloud 正式部署完成**：端到端連線成功，播放器狀態可回傳到 Cloud Dashboard。
+- **帳密已輪替**：Pi、Cloud、EMQX 管理密碼均已更新為強密碼；預設登入帳號維持 `nikkolh`。
+- **功能開發主軸轉移**：安全性基礎建設已完成，下一輪進入「功能開發與維運強化」階段（即本文件 Phase 0 ~ Phase 3）。
+
 ---
 
 ## 說明與分類原則

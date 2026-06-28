@@ -62,25 +62,6 @@ function setBusy(btn, busy) {
   btn.innerHTML = busy ? '執行中…' : btn.dataset.original;
 }
 
-async function checkDefaultPassword() {
-  if (window.location.pathname === '/login') return;
-  // Dashboard, Settings, and Logs render their own non-overlapping warning.
-  // Avoid showing the global toast on top of those page-level banners.
-  if (document.getElementById('default-pwd-banner') || document.getElementById('dash-warning')) return;
-  try {
-    const me = await apiGet('/api/me');
-    if (me && me.is_default) {
-      const t = document.getElementById('toast');
-      if (t) {
-        t.innerHTML = '⚠️ 您正在使用預設密碼，請到 <a href="/settings" style="color:#fff;text-decoration:underline">系統設定</a> 修改密碼。';
-        t.style.display = 'block';
-        t.style.borderLeftColor = 'var(--warning)';
-      }
-    }
-  } catch (e) {}
-}
-checkDefaultPassword();
-
 async function runAction(btn, url, body, outputId) {
   setBusy(btn, true);
   const out = document.getElementById(outputId);

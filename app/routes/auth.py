@@ -83,8 +83,6 @@ def get_current_user(request: Request):
     conn.close()
     if not row or not hmac.compare_digest(str(row["updated_at"]), str(password_version)):
         raise HTTPException(status_code=401, detail="Session expired")
-    if row["is_default"] and request.method != "GET" and request.url.path != "/api/change-password":
-        raise HTTPException(status_code=403, detail="Password change required")
     return username
 
 
@@ -155,8 +153,7 @@ async def login_post(request: Request, username: str = Form(...), password: str 
         return RedirectResponse(url="/login?error=invalid", status_code=303)
     _failed_logins.pop(ip, None)
     token = create_access_token({"sub": username, "pwdv": row["updated_at"]})
-    destination = "/settings?force_password=1" if row["is_default"] else "/"
-    resp = RedirectResponse(url=destination, status_code=303)
+    resp = RedirectResponse(url="/", status_code=303)
     resp.set_cookie(
         "nikko_token",
         token,

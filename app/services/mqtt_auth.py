@@ -18,6 +18,8 @@ ALLOWED_COMMANDS = frozenset(
         "player_pause",
         "player_resume",
         "player_next",
+        "player_mute",
+        "player_unmute",
         "sync",
         "rescan",
         "restart_player",

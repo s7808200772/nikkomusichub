@@ -82,7 +82,7 @@ if [ -z "${MQTT_STORE_ID}" ]; then
 fi
 
 log "Installing systemd services..."
-for unit in nikko-music-hub-web.service nikko-music-player.service nikko-music-sync.service nikko-music-sync.timer nikko-music-mqtt.service; do
+for unit in nikko-music-hub-web.service nikko-music-player.service nikko-music-sync.service nikko-music-sync.timer nikko-music-mqtt.service nikko-music-boot-sync.service; do
   if [ ! -f "${APP_DIR}/systemd/${unit}" ]; then
     log "ERROR: systemd unit ${unit} missing in ${APP_DIR}/systemd/"
     exit 1
@@ -106,6 +106,7 @@ systemctl daemon-reload
 systemctl enable nikko-music-hub-web.service
 systemctl enable nikko-music-sync.timer
 systemctl enable nikko-music-mqtt.service
+systemctl enable nikko-music-boot-sync.service
 
 log "Starting services..."
 systemctl restart nikko-music-hub-web.service

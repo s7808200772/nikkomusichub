@@ -1,0 +1,19 @@
+[Unit]
+Description=NikkoMusicHub Boot WebDAV Sync (delayed)
+After=network-online.target nikko-music-hub-web.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pi
+Group=pi
+WorkingDirectory=/srv/nikko-music/app
+EnvironmentFile=-/srv/nikko-music/data/nikko.env
+Environment="PATH=/srv/nikko-music/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStartPre=/bin/sleep 120
+ExecStart=/srv/nikko-music/venv/bin/python -m app.services.sync_runner
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

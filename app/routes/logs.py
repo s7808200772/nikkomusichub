@@ -4,12 +4,12 @@ import io
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import AUDIT_LOG_PATH, PLAYER_LOG_PATH, SYNC_LOG_PATH
 from app.db import get_db, get_recent_audit_logs
-from app.routes.auth import get_current_user_or_local, user_uses_initial_password
+from app.routes.auth import get_current_user_or_local
 from app.services.system import tail_log
 
 router = APIRouter()
@@ -18,9 +18,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/logs", response_class=HTMLResponse)
 async def logs_page(request: Request):
-    user = get_current_user_or_local(request)
-    if user != "local" and user_uses_initial_password(user):
-        return RedirectResponse(url="/settings?force_password=1", status_code=303)
+    get_current_user_or_local(request)
     return templates.TemplateResponse("logs.html", {"request": request})
 
 

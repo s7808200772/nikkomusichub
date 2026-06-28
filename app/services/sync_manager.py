@@ -1,10 +1,12 @@
-"""Background sync manager with progress tracking."""
+"""Background sync manager with progress tracking and staging."""
 import re
+import shutil
 import subprocess
 import threading
 from datetime import datetime
+from pathlib import Path
 
-from app.config import MUSIC_DIR, RCLONE_CONFIG_PATH, RCLONE_REMOTE_PATH_DEFAULT
+from app.config import BASE_DIR, MUSIC_DIR, RCLONE_CONFIG_PATH, RCLONE_REMOTE_PATH_DEFAULT
 from app.db import add_sync_log, set_setting
 from app.services import mpv
 from app.services.system import command_exists, safe_path_validate
@@ -26,6 +28,20 @@ _current_sync = {
     "stderr": "",
 }
 _lock = threading.Lock()
+
+# Staging directories for atomic music folder replacement
+STAGING_DIR = BASE_DIR / "music.staging"
+OLD_DIR = BASE_DIR / "music.old"
+
+
+def _empty_dir(path: Path):
+    if not path.exists():
+        return
+    for item in path.iterdir():
+        if item.is_dir():
+            shutil.rmtree(item)
+        else:
+            item.unlink()
 
 
 def _set_progress(**kwargs):
@@ -57,7 +73,40 @@ def _parse_progress_line(line: str) -> dict:
     return out
 
 
-def _run_sync(remote_path: str, local_path: str, dry_run: bool):
+def _atomic_replace_staging(local_path: Path):
+    """Replace local_path with STAGING_DIR atomically."""
+    local_path = Path(local_path).resolve()
+    staging = STAGING_DIR.resolve()
+    old = OLD_DIR.resolve()
+
+    # Remove any leftover old dir from a previous swap
+    if old.exists():
+        shutil.rmtree(old)
+
+    # If local_path doesn't exist yet, just rename staging into place
+    if not local_path.exists():
+        staging.rename(local_path)
+        return
+
+    # Atomic-ish swap: music -> music.old, music.staging -> music
+    local_path.rename(old)
+    try:
+        staging.rename(local_path)
+    except Exception:
+        # Attempt to roll back if rename fails
+        if old.exists():
+            old.rename(local_path)
+        raise
+    finally:
+        # Clean up old dir in background (mpv may still hold fds to old files)
+        if old.exists():
+            try:
+                shutil.rmtree(old)
+            except Exception:
+                pass
+
+
+def _run_sync(remote_path: str, local_path: str, dry_run: bool, use_staging: bool = True):
     started_at = datetime.utcnow().isoformat()
     _set_progress(
         running=True,
@@ -93,14 +142,24 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool):
         add_sync_log(started_at, finished_at, "failed", "本地路徑無效", "", "")
         return
 
-    from pathlib import Path
-    Path(local_path).mkdir(parents=True, exist_ok=True)
+    local_path_obj = Path(local_path)
+    target_path = STAGING_DIR if (use_staging and not dry_run) else local_path_obj
+
+    if not safe_path_validate(str(target_path)):
+        finished_at = datetime.utcnow().isoformat()
+        _set_progress(running=False, finished_at=finished_at, status="failed", message="暫存路徑無效")
+        add_sync_log(started_at, finished_at, "failed", "暫存路徑無效", "", "")
+        return
+
+    if use_staging and not dry_run:
+        _empty_dir(STAGING_DIR)
+    target_path.mkdir(parents=True, exist_ok=True)
 
     args = [
         "rclone",
         "sync",
         f"{remote_name}:{remote_dir}",
-        local_path,
+        str(target_path),
         "--config", str(RCLONE_CONFIG_PATH),
         "--filter", "+ *.mp3",
         "--filter", "+ *.MP3",
@@ -139,6 +198,20 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool):
         ok = False
         stderr_lines.append(str(e))
 
+    # Failure protection: do NOT touch the live music folder on error
+    if not ok and use_staging and not dry_run:
+        _empty_dir(STAGING_DIR)
+
+    # Atomic swap only after successful rclone run
+    swap_ok = True
+    if ok and use_staging and not dry_run:
+        try:
+            _atomic_replace_staging(local_path_obj)
+        except Exception as e:
+            ok = False
+            swap_ok = False
+            stderr_lines.append(f"Staging swap failed: {e}")
+
     stdout = "\n".join(stdout_lines)
     stderr = "\n".join(stderr_lines)
     finished_at = datetime.utcnow().isoformat()
@@ -147,7 +220,12 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool):
     if dry_run:
         message = "Dry-run 完成" if ok else "Dry-run 失敗"
     else:
-        message = "同步完成" if ok else "同步失敗"
+        if ok:
+            message = "同步完成"
+        elif not swap_ok:
+            message = "同步暫存區替換失敗，已保留原始音樂"
+        else:
+            message = "同步失敗，已保留原始音樂"
 
     _set_progress(
         running=False,
@@ -164,29 +242,27 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool):
     set_setting("last_sync_message", message)
 
     if ok and not dry_run:
-        auto_restart = True  # controlled by caller/settings
         if mpv.mpv_is_running():
             mpv.reload_playlist()
-        # Do not auto-start player here to avoid surprising the user
 
 
-def start_sync(remote_path: str, local_path: str, dry_run: bool = False) -> dict:
+def start_sync(remote_path: str, local_path: str, dry_run: bool = False, use_staging: bool = True) -> dict:
     with _lock:
         if _current_sync["running"]:
             return {"ok": False, "stderr": "已有同步任務正在進行"}
 
     thread = threading.Thread(
         target=_run_sync,
-        args=(remote_path, local_path, dry_run),
+        args=(remote_path, local_path, dry_run, use_staging),
         daemon=True,
     )
     thread.start()
     return {"ok": True, "message": "Dry-run 已啟動" if dry_run else "同步已啟動"}
 
 
-def run_sync_sync(remote_path: str, local_path: str, dry_run: bool = False) -> dict:
+def run_sync_sync(remote_path: str, local_path: str, dry_run: bool = False, use_staging: bool = True) -> dict:
     """Synchronous wrapper used by the systemd timer."""
-    start_sync(remote_path, local_path, dry_run)
+    start_sync(remote_path, local_path, dry_run, use_staging)
     # Wait for completion
     import time
     for _ in range(720):

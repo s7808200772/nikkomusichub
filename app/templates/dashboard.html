@@ -26,11 +26,6 @@
   {{ parts | join(' ') }}
 {% endmacro %}
 
-<div id="dash-warning" class="dash-warning" style="display:none;">
-  <span>⚠️</span>
-  <span>您正在使用預設密碼，請到 <a href="/settings">系統設定</a> 修改。</span>
-</div>
-
 {% set cpu_pct = data.cpu_percent | int %}
 {% set ram_pct = data.ram.percent | int if data.ram else 0 %}
 {% set disk_pct = data.disk.percent | int if data.disk else 0 %}
@@ -76,6 +71,8 @@
           <button class="stop" onclick="runAction(this, '/api/player/stop', null, null)" title="停止">⏹</button>
           <button onclick="runAction(this, '/api/player/next', null, null)" title="下一首">⏭</button>
           <button onclick="runAction(this, '/api/player/reload', null, null)" title="重新載入播放清單">🔄</button>
+          <button onclick="runAction(this, '/api/player/mute', new URLSearchParams({mute:'1'}), null)" title="靜音">🔇</button>
+          <button onclick="runAction(this, '/api/player/mute', new URLSearchParams({mute:'0'}), null)" title="取消靜音">🔊</button>
           <button onclick="toggleLoop()" id="btn-loop" title="循環播放 / 關閉循環">🔁</button>
         </div>
       </div>
@@ -441,15 +438,6 @@ async function toggleAutostart() {
   refreshPlayer();
 }
 
-async function checkDefaultPwd() {
-  try {
-    const me = await apiGet('/api/me');
-    const w = document.getElementById('dash-warning');
-    if (w && me && me.is_default) w.style.display = 'flex';
-  } catch(e){}
-}
-
-checkDefaultPwd();
 loadDashboardData();
 loadLibrary();
 loadPlaylist();

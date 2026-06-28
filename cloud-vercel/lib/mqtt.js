@@ -12,6 +12,8 @@ const COMMANDS = [
   { key: 'player_pause', label: '暫停' },
   { key: 'player_resume', label: '繼續' },
   { key: 'player_next', label: '下一首' },
+  { key: 'player_mute', label: '靜音' },
+  { key: 'player_unmute', label: '取消靜音' },
   { key: 'status_dashboard', label: 'Dashboard' },
   { key: 'status_system', label: '系統資訊' },
   { key: 'status_player', label: '播放狀態' },
