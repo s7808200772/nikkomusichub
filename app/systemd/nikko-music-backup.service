@@ -1,0 +1,10 @@
+[Unit]
+Description=NikkoMusicHub settings backup
+After=nikko-music-hub-web.service
+
+[Service]
+Type=oneshot
+User=pi
+Group=pi
+WorkingDirectory=/srv/nikko-music/app
+ExecStart=/bin/bash /srv/nikko-music/app/scripts/backup.sh

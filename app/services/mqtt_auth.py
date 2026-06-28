@@ -26,11 +26,13 @@ ALLOWED_COMMANDS = frozenset(
         "reboot",
         "library_list",
         "get_log",
+        "ota_update",
+        "rollback",
     }
 )
 
 # Commands that can alter state or interrupt service. Require payload["confirm"]=True.
-DANGEROUS_COMMANDS = frozenset({"reboot", "restart_player", "sync", "clear_local_music", "system_update"})
+DANGEROUS_COMMANDS = frozenset({"reboot", "restart_player", "sync", "clear_local_music", "system_update", "ota_update", "rollback"})
 
 
 def _stable_json(value) -> str:

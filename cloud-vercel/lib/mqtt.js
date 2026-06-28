@@ -24,6 +24,8 @@ const COMMANDS = [
   { key: 'reboot', label: '重開機', dangerous: true },
   { key: 'library_list', label: '音樂庫列表' },
   { key: 'get_log', label: '查看 Log' },
+  { key: 'ota_update', label: 'OTA 更新', dangerous: true },
+  { key: 'rollback', label: 'Rollback', dangerous: true },
 ];
 
 const DANGEROUS_KEYS = new Set(COMMANDS.filter((c) => c.dangerous).map((c) => c.key));

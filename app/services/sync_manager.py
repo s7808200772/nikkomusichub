@@ -9,7 +9,7 @@ from pathlib import Path
 from app.config import BASE_DIR, MUSIC_DIR, MUSIC_OLD_DIR, RCLONE_CONFIG_PATH, RCLONE_REMOTE_PATH_DEFAULT
 from app.db import add_sync_log, set_setting
 from app.services import mpv
-from app.services.system import command_exists, safe_path_validate
+from app.services.system import command_exists, get_disk_usage, safe_path_validate
 
 
 _current_sync = {
@@ -129,6 +129,17 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool, use_staging: boo
         stdout="",
         stderr="",
     )
+
+    # Disk space protection: do not start a sync if the root filesystem is nearly full.
+    disk = get_disk_usage("/")
+    if disk.get("percent", 0) >= 90:
+        finished_at = datetime.utcnow().isoformat()
+        message = f"磁碟空間不足（{disk['percent']}%），已停止同步以避免系統當機"
+        _set_progress(running=False, finished_at=finished_at, status="failed", message=message)
+        add_sync_log(started_at, finished_at, "failed", message, "", "")
+        set_setting("last_sync_status", "failed")
+        set_setting("last_sync_message", message)
+        return
 
     if not command_exists("rclone"):
         finished_at = datetime.utcnow().isoformat()

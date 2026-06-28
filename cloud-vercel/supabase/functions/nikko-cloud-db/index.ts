@@ -177,6 +177,57 @@ Deno.serve(async (req) => {
         });
       }
 
+      case 'listUpdateLogs': {
+        const limit = Math.min(parseInt(body.limit || '50', 10), 200);
+        const { data, error } = await supabase
+          .from('update_log')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(limit);
+        if (error) throw error;
+        return new Response(JSON.stringify({ data: data || [] }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      case 'createUpdateLog': {
+        const { data, error } = await supabase
+          .from('update_log')
+          .insert({
+            store_id: body.log.storeId,
+            action: body.log.action,
+            status: body.log.status,
+            version_before: body.log.versionBefore,
+            version_after: body.log.versionAfter,
+            error: body.log.error,
+            finished_at: body.log.status !== 'started' ? new Date().toISOString() : null,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        return new Response(JSON.stringify({ data }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      case 'finishUpdateLog': {
+        const { data, error } = await supabase
+          .from('update_log')
+          .update({
+            status: body.log.status,
+            version_after: body.log.versionAfter,
+            error: body.log.error,
+            finished_at: new Date().toISOString(),
+          })
+          .eq('id', body.logId)
+          .select()
+          .single();
+        if (error) throw error;
+        return new Response(JSON.stringify({ data }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       default:
         return new Response(JSON.stringify({ error: 'Unknown action' }), {
           status: 400,

@@ -161,6 +161,13 @@ def get_python_version() -> str:
     return sys.version
 
 
+def get_git_version() -> dict:
+    """Return current git commit hash and branch."""
+    commit = run(["git", "rev-parse", "HEAD"], timeout=10)["stdout"].strip() or "unknown"
+    branch = run(["git", "branch", "--show-current"], timeout=10)["stdout"].strip() or "unknown"
+    return {"commit": commit, "branch": branch}
+
+
 def get_pi_model() -> str:
     try:
         p = Path("/proc/device-tree/model")

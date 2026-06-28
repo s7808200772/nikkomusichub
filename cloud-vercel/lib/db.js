@@ -102,3 +102,18 @@ export async function acknowledgeAlert(alertId) {
   requireSupabase();
   return await databaseRequest('acknowledgeAlert', { alertId });
 }
+
+export async function listUpdateLogs(limit = 50) {
+  if (!USE_SUPABASE) return [];
+  return (await databaseRequest('listUpdateLogs', { limit })) || [];
+}
+
+export async function createUpdateLog(log) {
+  requireSupabase();
+  return await databaseRequest('createUpdateLog', { log });
+}
+
+export async function finishUpdateLog(logId, log) {
+  requireSupabase();
+  return await databaseRequest('finishUpdateLog', { logId, log });
+}

@@ -253,6 +253,35 @@ def handle_command(command_key, payload=None):
         if command_key == "reboot":
             reboot()
             return True, {"ok": True, "message": "Reboot initiated"}
+        if command_key == "ota_update":
+            def _ota():
+                run(["git", "tag", "-f", "rollback-before-ota"], timeout=15)
+                run(
+                    [
+                        "bash",
+                        "-c",
+                        "git pull && pip install -r requirements.txt && sudo systemctl restart nikko-music-hub-web.service nikko-music-player.service nikko-music-mqtt.service",
+                    ],
+                    timeout=300,
+                )
+            threading.Thread(target=_ota, daemon=True).start()
+            return True, {"ok": True, "message": "OTA update started in background"}
+        if command_key == "rollback":
+            def _rollback():
+                run(["git", "checkout", "rollback-before-ota"], timeout=30)
+                run(
+                    [
+                        "sudo",
+                        "systemctl",
+                        "restart",
+                        "nikko-music-hub-web.service",
+                        "nikko-music-player.service",
+                        "nikko-music-mqtt.service",
+                    ],
+                    timeout=60,
+                )
+            threading.Thread(target=_rollback, daemon=True).start()
+            return True, {"ok": True, "message": "Rollback started in background"}
         return False, {"error": f"Unknown command: {command_key}"}
     except Exception as e:
         logger.exception("Command %s failed", command_key)

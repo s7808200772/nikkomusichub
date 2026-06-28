@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Cloud, LayoutDashboard, Store, Terminal, Music, FileText, Settings, Bell, LogOut } from 'lucide-react';
+import { Cloud, LayoutDashboard, Store, Terminal, Music, FileText, Settings, Bell, RefreshCw, LogOut } from 'lucide-react';
 
 export default function Navbar() {
   const router = useRouter();
@@ -21,6 +21,7 @@ export default function Navbar() {
     { href: '/library', label: 'Library', icon: Music },
     { href: '/logs', label: 'Logs', icon: FileText },
     { href: '/alerts', label: 'Alerts', icon: Bell },
+    { href: '/ota', label: 'OTA', icon: RefreshCw },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 

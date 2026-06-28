@@ -274,15 +274,15 @@
 
 ### Phase 3 交付
 
-- [ ] Pi `/api/version` 回報 git commit/branch。
-- [ ] Cloud OTA 更新頁面（發送 update 指令 + 追蹤）。
-- [ ] OTA rollback 設計（保留前一版 git tag）。
-- [ ] 更新 log table。
-- [ ] 設定自動備份（tar）與 `/api/backup` 下載。
-- [ ] 設定還原腳本 `scripts/restore.sh`。
-- [ ] 磁碟空間 / 溫度監控與告警。
-- [ ] 網路恢復後自動同步與回報。
-- [ ] `OPERATIONS_MANUAL.md` 正式文件。
+- [x] Pi `/api/version` 回報 git commit/branch。
+- [x] Cloud OTA 更新頁面（發送 update 指令 + 追蹤）。
+- [x] OTA rollback 設計（保留前一版 git tag）。
+- [x] 更新 log table。
+- [x] 設定自動備份（tar）與 `/api/backup` 下載。
+- [x] 設定還原腳本 `scripts/restore.sh`。
+- [x] 磁碟空間 / 溫度監控與告警。
+- [x] 網路恢復後自動同步與回報。
+- [x] `OPERATIONS_MANUAL.md` 正式文件。
 
 ---
 

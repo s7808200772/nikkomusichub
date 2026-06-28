@@ -46,6 +46,17 @@ export async function evaluateStoreStatus(store, result) {
         details: { player_status: dash.player_status },
       });
     }
+
+    // Temperature protection
+    if (dash.cpu_temp_c && dash.cpu_temp_c > 80) {
+      alerts.push({
+        storeId,
+        severity: 'critical',
+        type: 'high_temperature',
+        message: `CPU 溫度過高 ${dash.cpu_temp_c} °C`,
+        details: { cpu_temp_c: dash.cpu_temp_c },
+      });
+    }
   } else {
     const lastSeen = LAST_SEEN.get(storeId) || 0;
     if (now - lastSeen > OFFLINE_THRESHOLD_MS) {
