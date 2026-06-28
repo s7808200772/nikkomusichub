@@ -72,9 +72,15 @@ EOF
   chmod 600 "${ENV_FILE}"
 fi
 
-# Ensure the initial password file matches the default password
+# Ensure the default password is present in both env file and initial password file.
+# This guarantees a fresh install (or an old install without the env variable) can
+# log in with the documented default credentials.
 DEFAULT_PASS="topup30%off"
-if [ ! -f "${INSTALL_DIR}/data/initial-admin-password" ]; then
+if ! grep -qE '^NIKKO_DEFAULT_PASSWORD=' "${ENV_FILE}" 2>/dev/null; then
+  umask 077
+  echo "NIKKO_DEFAULT_PASSWORD=${DEFAULT_PASS}" >> "${ENV_FILE}"
+fi
+if [ ! -f "${INSTALL_DIR}/data/initial-admin-password" ] || ! grep -qF "${DEFAULT_PASS}" "${INSTALL_DIR}/data/initial-admin-password" 2>/dev/null; then
   echo "${DEFAULT_PASS}" > "${INSTALL_DIR}/data/initial-admin-password"
   chmod 600 "${INSTALL_DIR}/data/initial-admin-password"
 fi
