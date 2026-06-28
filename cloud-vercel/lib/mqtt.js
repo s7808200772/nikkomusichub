@@ -1,6 +1,7 @@
 import mqtt from 'mqtt';
 import { randomUUID } from 'crypto';
 import { signCommand, verifyResponse } from './mqttAuth.js';
+import { createJob, updateStoreResult } from './jobs.js';
 
 const COMMAND_SECRET = process.env.NIKKO_MQTT_COMMAND_SECRET || '';
 const TOPIC_PREFIX = process.env.NIKKO_MQTT_TOPIC_PREFIX || 'nikko';
@@ -152,6 +153,67 @@ export function publishCommand({ broker, port, username, password, tls = true, s
       }
     });
   });
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function publishCommandWithRetry(options) {
+  const retries = options.retries ?? 2; // initial + 2 retries = up to 3 attempts
+  const baseDelayMs = options.baseDelayMs ?? 2000;
+  let lastError = null;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    if (attempt > 0) {
+      await delay(baseDelayMs * 2 ** (attempt - 1));
+    }
+    const result = await publishCommand({ ...options, timeout: options.timeout || 25000 });
+    if (result.ok) return result;
+    lastError = result.error || 'Unknown error';
+    const retryable = /timeout|disconnect|network|ECONNREFUSED/i.test(lastError);
+    if (!retryable) return result;
+  }
+  return {
+    ok: false,
+    error: `重試 ${retries + 1} 次後仍失敗：${lastError}`,
+    requestId: options.requestId || randomUUID(),
+    stdout: '',
+    stderr: lastError,
+  };
+}
+
+export async function publishBatch({ stores, commandKey, timeout = 25000 }) {
+  const job = createJob(
+    stores.map((s) => s.storeId),
+    commandKey
+  );
+
+  // Run commands concurrently; each has its own retry logic.
+  await Promise.all(
+    stores.map(async (store) => {
+      updateStoreResult(job.id, store.storeId, 'pending', null, null);
+      const result = await publishCommandWithRetry({
+        broker: store.mqttBroker,
+        port: store.mqttPort,
+        username: store.mqttUsername,
+        password: store.mqttPassword,
+        tls: store.mqttTls !== false,
+        storeId: store.storeId,
+        commandKey,
+        timeout,
+        retries: 2,
+      });
+      if (result.ok) {
+        updateStoreResult(job.id, store.storeId, 'success', result.parsed || result.result || null, null);
+      } else if (/timeout|no response|waiting for response/i.test(result.error || '')) {
+        updateStoreResult(job.id, store.storeId, 'no_response', null, result.error);
+      } else {
+        updateStoreResult(job.id, store.storeId, 'failed', null, result.error);
+      }
+    })
+  );
+
+  return { jobId: job.id };
 }
 
 export function testMQTT({ broker, port, username, password, tls = true, storeId, timeout = 20000 }) {

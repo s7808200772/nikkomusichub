@@ -347,9 +347,13 @@ def main():
     logger.info("STATUS topic: %s", STATUS_TOPIC)
     logger.info("=" * 60)
 
+    device_id = get_setting("device_id", "") or "pi"
+    random_suffix = uuid.uuid4().hex[:8]
+    client_id = f"nikko-{MQTT_STORE_ID}-{device_id}-{random_suffix}"
+
     client = mqtt.Client(
         callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
-        client_id=f"nikko-pi-{MQTT_STORE_ID}",
+        client_id=client_id,
     )
 
     if MQTT_USERNAME:

@@ -37,6 +37,8 @@ async def settings_page(request: Request):
     settings = {
         "store_name": get_setting("store_name", "未命名店鋪"),
         "store_id": get_setting("store_id", ""),
+        "device_id": get_setting("device_id", ""),
+        "role": get_setting("role", "store"),
         "remote_name": get_setting("webdav_remote", RCLONE_REMOTE_NAME_DEFAULT),
         "url": get_setting("webdav_url", RCLONE_WEBDAV_URL_DEFAULT),
         "vendor": get_setting("webdav_vendor", RCLONE_WEBDAV_VENDOR_DEFAULT),
@@ -59,6 +61,8 @@ async def get_device_settings(request: Request):
     return {
         "store_name": get_setting("store_name", "未命名店鋪"),
         "store_id": get_setting("store_id", ""),
+        "device_id": get_setting("device_id", ""),
+        "role": get_setting("role", "store"),
         "hostname": get_hostname(),
         "tailscale_ip": get_ip_addresses()["tailscale_ip"],
     }
@@ -69,13 +73,24 @@ async def save_device_settings(
     request: Request,
     store_name: str = Form(...),
     store_id: str = Form(""),
+    device_id: str = Form(""),
+    role: str = Form("store"),
 ):
     user = get_current_user_or_local(request)
     old_store_id = get_setting("store_id", "")
     new_store_id = store_id.strip().lower()
+    new_device_id = device_id.strip()
+    new_role = role.strip() or "store"
     set_setting("store_name", store_name)
     set_setting("store_id", new_store_id)
-    audit(user, "save_device_settings", {"store_name": store_name, "store_id": new_store_id})
+    set_setting("device_id", new_device_id)
+    set_setting("role", new_role)
+    audit(user, "save_device_settings", {
+        "store_name": store_name,
+        "store_id": new_store_id,
+        "device_id": new_device_id,
+        "role": new_role,
+    })
     # Restart MQTT agent so the new store ID takes effect immediately
     restart_result = {"ok": True}
     if old_store_id != new_store_id:

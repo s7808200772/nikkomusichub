@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Activity, Music, RefreshCw, Wifi, WifiOff, HelpCircle, Loader2, Store } from 'lucide-react';
+import Link from 'next/link';
+import { Activity, Music, RefreshCw, Wifi, WifiOff, HelpCircle, Loader2, Store, Terminal, CheckCircle2, AlertCircle } from 'lucide-react';
 import { loadLocalStores } from '@/lib/localStorage';
 
 export default function DashboardClient({ initialStores, supabaseOk }) {
   const [stores, setStores] = useState(initialStores || []);
   const [status, setStatus] = useState({});
+  const [jobs, setJobs] = useState([]);
 
   async function fetchStatus(store) {
     if (!supabaseOk) {
@@ -43,6 +45,18 @@ export default function DashboardClient({ initialStores, supabaseOk }) {
     return () => clearInterval(id);
   }, [stores.length, supabaseOk]);
 
+  useEffect(() => {
+    if (!supabaseOk) return;
+    async function loadJobs() {
+      const res = await fetch('/api/command/batch');
+      const data = await res.json();
+      setJobs(data.jobs || []);
+    }
+    loadJobs();
+    const id = setInterval(loadJobs, 10000);
+    return () => clearInterval(id);
+  }, [supabaseOk]);
+
   const online = Object.values(status).filter((s) => s.ok).length;
 
   return (
@@ -75,6 +89,40 @@ export default function DashboardClient({ initialStores, supabaseOk }) {
             <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>異常</div>
           </div>
         </div>
+      </div>
+
+      <div className="card">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h2 style={{ margin: '0 0 0.3rem' }}>中央控制台</h2>
+            <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>快速入口與最近批量任務</p>
+          </div>
+          <Link href="/commands" className="primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Terminal size={16} /> 前往批量指令
+          </Link>
+        </div>
+
+        {jobs.length > 0 && (
+          <div style={{ marginTop: '1rem' }}>
+            <h3 style={{ fontSize: '0.9rem', color: 'var(--muted)', margin: '0 0 0.5rem' }}>最近批量任務</h3>
+            <div className="store-grid">
+              {jobs.slice(0, 4).map((job) => (
+                <div key={job.id} className="store-card" style={{ padding: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                    {job.pending > 0 ? <Loader2 size={14} className="spin" color="var(--accent-2)" /> :
+                     job.failed === 0 && job.noResponse === 0 ? <CheckCircle2 size={14} color="var(--success)" /> :
+                     <AlertCircle size={14} color="var(--danger)" />}
+                    <strong>{job.commandKey}</strong>
+                    <span className="badge badge-gray">{new Date(job.createdAt).toLocaleTimeString('zh-TW')}</span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>
+                    成功 {job.success} / 失敗 {job.failed} / 無回應 {job.noResponse} / 總計 {job.total}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="card">

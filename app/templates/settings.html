@@ -23,6 +23,19 @@
         <input name="store_id" id="store_id" value="{{ settings.store_id }}" required placeholder="store-001">
         <div class="hint">Store ID 必須與 Cloud 平台新增的店點 Store ID 完全一致。</div>
       </div>
+      <div class="form-group">
+        <label>裝置 ID（選填）</label>
+        <input name="device_id" id="device_id" value="{{ settings.device_id }}" placeholder="pi-001">
+        <div class="hint">例如 pi-001，用於區分同一家店的多台播放設備。</div>
+      </div>
+      <div class="form-group">
+        <label>角色</label>
+        <select name="role" id="role">
+          <option value="store" {% if settings.role == 'store' %}selected{% endif %}>門市播放機（store）</option>
+          <option value="backup" {% if settings.role == 'backup' %}selected{% endif %}>備援播放機（backup）</option>
+          <option value="test" {% if settings.role == 'test' %}selected{% endif %}>測試設備（test）</option>
+        </select>
+      </div>
       <button type="submit" class="primary block icon-left" title="儲存店家名稱與 MQTT Store ID"><span>💾</span> 儲存店家資訊</button>
     </form>
   </div>

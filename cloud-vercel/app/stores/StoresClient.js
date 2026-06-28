@@ -5,6 +5,8 @@ import { Plus, Trash2, Server, Hash, Save, AlertCircle, CheckCircle2, Search, Pe
 import { loadLocalStores, saveLocalStores } from '@/lib/localStorage';
 
 const DEFAULT_STORE = {
+  deviceId: '',
+  role: 'store',
   mqttBroker: 'broker.hivemq.com',
   mqttPort: 8883,
   mqttTls: true,
@@ -45,7 +47,13 @@ export default function StoresClient({ initialStores, supabaseOk }) {
     setBusy(true);
     if (!supabaseOk) {
       const { mqttPassword: _mqttPassword, mqttUsername: _mqttUsername, ...safeForm } = form;
-      const newStore = { ...safeForm, storeId: form.storeId.trim(), storeName: form.storeName.trim() };
+      const newStore = {
+        ...safeForm,
+        storeId: form.storeId.trim(),
+        storeName: form.storeName.trim(),
+        deviceId: form.deviceId.trim(),
+        role: form.role.trim() || 'store',
+      };
       const next = [...stores, newStore];
       saveLocalStores(next);
       setStores(next);
@@ -166,6 +174,21 @@ export default function StoresClient({ initialStores, supabaseOk }) {
 
           <div className="form-row">
             <div className="form-group">
+              <label>裝置 ID（選填）</label>
+              <input value={form.deviceId || ''} onChange={(e) => setForm({ ...form, deviceId: e.target.value })} placeholder="pi-001" />
+            </div>
+            <div className="form-group">
+              <label>角色</label>
+              <select value={form.role || 'store'} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                <option value="store">門市播放機</option>
+                <option value="backup">備援播放機</option>
+                <option value="test">測試設備</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
               <label>MQTT Broker *</label>
               <input value={form.mqttBroker || 'broker.hivemq.com'} onChange={(e) => setForm({ ...form, mqttBroker: e.target.value })} placeholder="broker.hivemq.com" required />
             </div>
@@ -237,6 +260,20 @@ export default function StoresClient({ initialStores, supabaseOk }) {
                   </div>
                   <div className="form-row">
                     <div className="form-group">
+                      <label>裝置 ID</label>
+                      <input value={editing.deviceId || ''} onChange={(e) => setEditing({ ...editing, deviceId: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                      <label>角色</label>
+                      <select value={editing.role || 'store'} onChange={(e) => setEditing({ ...editing, role: e.target.value })}>
+                        <option value="store">門市播放機</option>
+                        <option value="backup">備援播放機</option>
+                        <option value="test">測試設備</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
                       <label>MQTT Broker</label>
                       <input value={editing.mqttBroker} onChange={(e) => setEditing({ ...editing, mqttBroker: e.target.value })} required />
                     </div>
@@ -277,7 +314,7 @@ export default function StoresClient({ initialStores, supabaseOk }) {
                   <div className="store-card-header">
                     <div>
                       <div className="store-card-title">{s.storeName}</div>
-                      <div className="store-card-meta">{s.storeId}</div>
+                      <div className="store-card-meta">{s.storeId} · {s.deviceId || '無裝置 ID'} · {s.role || 'store'}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
                       <button className="icon-btn" onClick={() => testConnection(s.storeId)} title="測試連線" disabled={testStatus[s.storeId]?.loading}>

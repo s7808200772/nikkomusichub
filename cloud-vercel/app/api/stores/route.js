@@ -30,6 +30,8 @@ export async function POST(request) {
   const store = {
     storeId: data.storeId?.trim(),
     storeName: data.storeName?.trim(),
+    deviceId: data.deviceId?.trim() || '',
+    role: data.role?.trim() || 'store',
     mqttBroker: data.mqttBroker?.trim() || 'broker.hivemq.com',
     mqttPort: parseInt(data.mqttPort || '8883', 10),
     mqttUsername: data.mqttUsername?.trim() || '',
@@ -55,7 +57,7 @@ export async function PUT(request) {
   const existing = await getStore(data.storeId);
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const updated = { ...existing };
-  ['storeName', 'mqttBroker', 'mqttPort', 'mqttUsername', 'mqttPassword', 'mqttTls'].forEach((k) => {
+  ['storeName', 'deviceId', 'role', 'mqttBroker', 'mqttPort', 'mqttUsername', 'mqttPassword', 'mqttTls'].forEach((k) => {
     if (data[k] === undefined) return;
     if (k === 'mqttPort') updated[k] = parseInt(data[k], 10);
     else if (k === 'mqttPassword') {

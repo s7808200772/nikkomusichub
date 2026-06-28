@@ -252,14 +252,14 @@
 
 ### Phase 1 交付
 
-- [ ] Pi `/api/settings/device` 正規化 store_id / store_name / device_id / role。
-- [ ] Cloud Stores 頁面顯示並編輯 device_id / role。
-- [ ] Cloud 批量控制 UI（多選 store + 指令）。
-- [ ] `/api/command/batch` + job queue table。
-- [ ] 批次指令狀態頁：成功 / 失敗 / 無回應 / 重試。
-- [ ] MQTT 指令重試機制（最多 3 次，指數退避）。
-- [ ] MQTT 帳密管理設計文件（獨立 clientId / 過渡方案）。
-- [ ] 中央 Console 首頁改版（任務、告警摘要、多店狀態）。
+- [x] Pi `/api/settings/device` 正規化 store_id / store_name / device_id / role。
+- [x] Cloud Stores 頁面顯示並編輯 device_id / role。
+- [x] Cloud 批量控制 UI（多選 store + 指令）。
+- [x] `/api/command/batch` + job queue table。
+- [x] 批次指令狀態頁：成功 / 失敗 / 無回應 / 重試。
+- [x] MQTT 指令重試機制（最多 3 次，指數退避）。
+- [x] MQTT 帳密管理設計文件（獨立 clientId / 過渡方案）。
+- [x] 中央 Console 首頁改版（任務、告警摘要、多店狀態）。
 
 ### Phase 2 交付
 

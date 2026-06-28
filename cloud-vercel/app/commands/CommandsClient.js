@@ -57,6 +57,9 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
   const [expanded, setExpanded] = useState({});
   const [runningAll, setRunningAll] = useState(null);
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(new Set());
+  const [batchJob, setBatchJob] = useState(null);
+  const [batchLoading, setBatchLoading] = useState(false);
 
   useEffect(() => {
     setStores(initialStores || []);
@@ -108,6 +111,62 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
     return { key: lastKey, ...map[lastKey] };
   }
 
+  function toggleSelect(storeId) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(storeId)) next.delete(storeId);
+      else next.add(storeId);
+      return next;
+    });
+  }
+
+  function selectAll() {
+    if (selected.size === filtered.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map((s) => s.storeId)));
+    }
+  }
+
+  async function runBatch(commandKey) {
+    if (!supabaseOk || selected.size === 0) return;
+    setBatchLoading(true);
+    const res = await fetch('/api/command/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storeIds: Array.from(selected), commandKey }),
+    });
+    const data = await res.json();
+    setBatchLoading(false);
+    if (data.jobId) {
+      setBatchJob({ id: data.jobId, polling: true });
+      pollJob(data.jobId);
+    }
+  }
+
+  async function pollJob(jobId) {
+    const interval = setInterval(async () => {
+      const res = await fetch(`/api/command/batch?jobId=${jobId}`);
+      const data = await res.json();
+      if (data.job) {
+        setBatchJob(data.job);
+        if (data.job.pending === 0) {
+          clearInterval(interval);
+        }
+      }
+    }, 2000);
+  }
+
+  async function retryFailed() {
+    if (!batchJob || batchLoading) return;
+    const retryIds = batchJob.stores
+      .filter((s) => s.status === 'failed' || s.status === 'no_response')
+      .map((s) => s.storeId);
+    if (retryIds.length === 0) return;
+    setSelected(new Set(retryIds));
+    await runBatch(batchJob.commandKey);
+  }
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return stores;
@@ -124,8 +183,10 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h2 style={{ margin: '0 0 0.3rem' }}>全域指令</h2>
-            <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>點擊按鈕對「所有店點」同時執行</p>
+            <h2 style={{ margin: '0 0 0.3rem' }}>批量指令</h2>
+            <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>
+              已選取 <strong>{selected.size}</strong> 家店點
+            </p>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {ALL_COMMANDS.filter((c) => ['player_play', 'player_pause', 'player_next', 'sync'].includes(c.key)).map((c) => {
@@ -134,12 +195,12 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
                 <button
                   key={c.key}
                   className="primary"
-                  onClick={() => runForAll(c.key)}
-                  disabled={!supabaseOk || runningAll === c.key}
-                  title={c.label}
+                  onClick={() => runBatch(c.key)}
+                  disabled={!supabaseOk || batchLoading || selected.size === 0}
+                  title={`對選取店點執行：${c.label}`}
                   style={{ minWidth: '2.8rem', height: '2.4rem', padding: 0 }}
                 >
-                  {runningAll === c.key ? <Loader2 size={18} className="spin" /> : <Icon size={18} />}
+                  {batchLoading ? <Loader2 size={18} className="spin" /> : <Icon size={18} />}
                 </button>
               );
             })}
@@ -147,20 +208,57 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
         </div>
       </div>
 
+      {batchJob && (
+        <div className="card" style={{ borderLeft: '4px solid var(--accent-2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h2 style={{ margin: '0 0 0.3rem' }}>批次任務：{batchJob.commandKey}</h2>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>
+                成功 {batchJob.success} / 失敗 {batchJob.failed} / 無回應 {batchJob.noResponse} / 待處理 {batchJob.pending}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button className="ghost" onClick={retryFailed} disabled={batchLoading || batchJob.pending > 0}>
+                <RotateCcw size={14} /> 重試失敗/無回應
+              </button>
+              <button className="ghost" onClick={() => setBatchJob(null)}>關閉</button>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gap: '0.4rem', marginTop: '0.75rem' }}>
+            {batchJob.stores.map((s) => (
+              <div key={s.storeId} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem' }}>
+                {s.status === 'success' ? <CheckCircle2 size={14} color="var(--success)" /> :
+                 s.status === 'failed' ? <AlertCircle size={14} color="var(--danger)" /> :
+                 s.status === 'no_response' ? <WifiOff size={14} color="var(--warning)" /> :
+                 <Loader2 size={14} className="spin" color="var(--accent-2)" />}
+                <span>{s.storeId}</span>
+                <span style={{ color: 'var(--muted)' }}>{s.error || ''}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <Terminal size={20} color="var(--accent-2)" /> 店點指令
             <span className="badge badge-gray">{filtered.length} / {stores.length}</span>
           </h2>
-          <div style={{ position: 'relative', minWidth: '240px' }}>
-            <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索 Store ID、店名、Broker"
-              style={{ paddingLeft: '2.4rem', marginBottom: 0 }}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: 'var(--text-2)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={selectAll} />
+              全選
+            </label>
+            <div style={{ position: 'relative', minWidth: '240px' }}>
+              <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="搜索 Store ID、店名、Broker"
+                style={{ paddingLeft: '2.4rem', marginBottom: 0 }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -172,6 +270,12 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
             <div key={s.storeId} className="store-card">
               <div className="store-card-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(s.storeId)}
+                    onChange={() => toggleSelect(s.storeId)}
+                    title="加入批量選取"
+                  />
                   <div style={{ background: 'rgba(14,165,233,0.12)', padding: '0.6rem', borderRadius: '0.7rem' }}>
                     <Server size={20} color="var(--accent-2)" />
                   </div>
