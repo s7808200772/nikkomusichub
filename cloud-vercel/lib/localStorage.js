@@ -1,5 +1,7 @@
 "use client";
 
+// Dev-only preview fallback. Production must use Supabase so that the server
+// API can read stores/settings and issue remote MQTT commands.
 const KEYS = {
   stores: "nikko_cloud_stores",
   settings: "nikko_cloud_settings",

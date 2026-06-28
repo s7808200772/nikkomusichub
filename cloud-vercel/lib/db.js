@@ -7,6 +7,12 @@ export function isSupabaseConfigured() {
   return !!USE_SUPABASE;
 }
 
+export function requireSupabase() {
+  if (!USE_SUPABASE) {
+    throw new Error('Supabase database proxy is not configured');
+  }
+}
+
 export function redactStore(store) {
   const { mqttPassword: _mqttPassword, ...safe } = store;
   return { ...safe, mqttPassword: store.mqttPassword ? '***' : '' };
@@ -36,11 +42,13 @@ async function readStores() {
 }
 
 async function writeStore(store) {
+  requireSupabase();
   await databaseRequest('saveStore', { store });
   return store;
 }
 
 async function removeStore(storeId) {
+  requireSupabase();
   await databaseRequest('deleteStore', { storeId });
 }
 
@@ -50,6 +58,7 @@ async function readSettings() {
 }
 
 async function writeSettings(settings) {
+  requireSupabase();
   await databaseRequest('saveSettings', { settings });
   return settings;
 }
