@@ -8,11 +8,15 @@ from app.core.config_validator import settings as validated_settings
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 
 from app.config import BASE_DIR, DATA_DIR, LOGS_DIR, MUSIC_DIR, SCRIPTS_DIR
 from app.db import init_db
 from app.routes import auth, dashboard, health, logs, player, settings, setup, system, webdav
 from app.routes.auth import init_default_user
+from app.routes.dashboard import bump_dashboard_version
+from app.services.system import ensure_local_music_fallback
+from app.db import set_dashboard_bump_callback
 
 
 @asynccontextmanager
@@ -22,11 +26,14 @@ async def lifespan(app: FastAPI):
         d.mkdir(parents=True, exist_ok=True)
     init_db()
     init_default_user()
+    set_dashboard_bump_callback(bump_dashboard_version)
+    ensure_local_music_fallback()
     yield
     # Shutdown
 
 
 app = FastAPI(title="NikkoMusicHub", lifespan=lifespan)
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 

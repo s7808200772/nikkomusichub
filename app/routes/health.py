@@ -8,8 +8,11 @@ from app.services import rclone
 from app.services.system import (
     command_exists,
     get_disk_usage,
+    get_ip_addresses,
     is_tailscale_up,
+    qnap_connectivity_check,
     service_status,
+    tailscale_ping,
 )
 
 router = APIRouter()
@@ -71,6 +74,38 @@ def health_check(request: Request):
             "disk": disk,
             "disk_ok": disk_ok,
         },
+    }
+
+
+@router.get("/api/health/qnap")
+def qnap_health(request: Request):
+    """Check QNAP WebDAV reachability via Tailscale."""
+    get_current_user_or_local(request)
+    from app.db import get_setting
+    url = get_setting("webdav_url", "")
+    result = qnap_connectivity_check(url)
+    return result
+
+
+@router.get("/api/health/tailscale")
+def tailscale_health(request: Request):
+    """Check Tailscale status and whether the QNAP host is pingable."""
+    get_current_user_or_local(request)
+    from app.db import get_setting
+    url = get_setting("webdav_url", "")
+    host = ""
+    try:
+        from app.services.system import _extract_host_from_url
+        host = _extract_host_from_url(url)
+    except Exception:
+        pass
+    ping_res = tailscale_ping(host) if host else {"ok": False, "stderr": "no host"}
+    ips = get_ip_addresses()
+    return {
+        "up": is_tailscale_up(),
+        "ip": ips.get("tailscale_ip", ""),
+        "qnap_host": host,
+        "qnap_ping_ok": ping_res.get("ok", False),
     }
 
 

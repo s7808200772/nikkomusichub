@@ -8,7 +8,7 @@ from pathlib import Path
 
 from app.config import MPV_SOCKET, MUSIC_DIR, PLAYER_LOG_PATH
 from app.db import get_setting
-from app.services.system import command_exists, run
+from app.services.system import command_exists, ensure_local_music_fallback, run
 
 
 def _ensure_socket():
@@ -100,6 +100,9 @@ def get_status():
 def start_player() -> dict:
     if mpv_is_running():
         return {"ok": True, "stdout": "mpv already running", "stderr": ""}
+
+    # Make sure we never start with an empty music folder if a backup exists.
+    ensure_local_music_fallback()
 
     # Build playlist file to avoid shell glob issues
     _ensure_socket()

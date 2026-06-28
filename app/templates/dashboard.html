@@ -135,7 +135,9 @@
 
       <div class="status-card">
         <h3><span class="icon">☁️</span>NAS WebDAV 同步</h3>
-        <div class="status-row"><span class="label">WebDAV 狀態</span><span class="value" id="ss-webdav">{{ status_dot(data.webdav_connected) }} {{ '可連線' if data.webdav_connected else '未設定' }}</span></div>
+        <div class="status-row"><span class="label">WebDAV 設定</span><span class="value" id="ss-webdav-cfg">{{ status_dot(data.webdav_configured) }} {{ '已設定' if data.webdav_configured else '未設定' }}</span></div>
+        <div class="status-row"><span class="label">QNAP 連線</span><span class="value" id="ss-webdav">{{ status_dot(data.webdav_connected) }} <span id="ss-webdav-text">檢查中…</span></span></div>
+        <div class="status-row"><span class="label">Tailscale</span><span class="value" id="ss-tailscale">{{ status_dot(data.tailscale_up) }} <span id="ss-tailscale-text">{{ '上線' if data.tailscale_up else '未上線' }}</span></span></div>
         <div class="status-row"><span class="label">Remote</span><span class="value small" id="ss-webdav-remote">{{ data.webdav_remote or '-' }}</span></div>
         <div class="status-row"><span class="label">URL</span><span class="value small" id="ss-webdav-url" style="word-break:break-all;">{{ data.webdav_url or '-' }}</span></div>
         <div class="status-row"><span class="label">Remote Path</span><span class="value small" id="ss-webdav-rpath">{{ data.webdav_remote_path or '-' }}</span></div>
@@ -211,6 +213,7 @@
 let currentState = {};
 let libraryFiles = [];
 let dashData = {};
+let lastDashboardVersion = 0;
 
 function ring(label, pct, color) {
   const r = 24;
@@ -265,7 +268,9 @@ function renderStatusCards(data) {
     </div>
     <div class="status-card">
       <h3><span class="icon">☁️</span>NAS WebDAV 同步</h3>
-      <div class="status-row"><span class="label">WebDAV 狀態</span><span class="value">${statusDot(data.webdav_connected)} ${data.webdav_connected ? '可連線' : '未設定'}</span></div>
+      <div class="status-row"><span class="label">WebDAV 設定</span><span class="value">${statusDot(data.webdav_configured)} ${data.webdav_configured ? '已設定' : '未設定'}</span></div>
+      <div class="status-row"><span class="label">QNAP 連線</span><span class="value" id="js-ss-webdav">${statusDot(data.webdav_connected)} <span id="js-ss-webdav-text">檢查中…</span></span></div>
+      <div class="status-row"><span class="label">Tailscale</span><span class="value" id="js-ss-tailscale">${statusDot(data.tailscale_up)} <span id="js-ss-tailscale-text">${data.tailscale_up ? '上線' : '未上線'}</span></span></div>
       <div class="status-row"><span class="label">Remote</span><span class="value small">${data.webdav_remote || '-'}</span></div>
       <div class="status-row"><span class="label">URL</span><span class="value" style="word-break:break-all;">${data.webdav_url || '-'}</span></div>
       <div class="status-row"><span class="label">Remote Path</span><span class="value">${data.webdav_remote_path || '-'}</span></div>
@@ -318,7 +323,23 @@ function updateWaveform(state, volume) {
 async function loadDashboardData() {
   const data = await apiGet('/api/dashboard');
   dashData = data;
+  lastDashboardVersion = data.dashboard_version || lastDashboardVersion;
   renderStatusCards(data);
+}
+
+async function listenEvents() {
+  try {
+    const ev = await apiGet('/api/events?version=' + lastDashboardVersion);
+    if (ev && ev.changed && ev.data) {
+      dashData = ev.data;
+      lastDashboardVersion = ev.data.dashboard_version || ev.version;
+      renderStatusCards(ev.data);
+      loadConnectivity();
+    }
+  } catch (e) {
+    // Long-polling errors are normal when navigating away; reconnect shortly.
+  }
+  setTimeout(listenEvents, 1000);
 }
 
 async function refreshPlayer() {
@@ -468,14 +489,53 @@ async function testAudioWithDevice() {
   showToast(res.ok ? '測試音播放完成' : '測試音播放失敗：' + (res.stderr || res.error), res.ok ? 'success' : 'error');
 }
 
+function coloredDot(ok) {
+  const color = ok ? 'var(--success)' : 'var(--danger)';
+  return `<span class="dot" style="background:${color};"></span>`;
+}
+
+function updateConnRow(rowId, textId, ok, text) {
+  const row = document.getElementById(rowId);
+  const txt = document.getElementById(textId);
+  if (txt) txt.textContent = text;
+  if (row) {
+    const dot = row.querySelector('.dot');
+    if (dot) dot.style.background = ok ? 'var(--success)' : 'var(--danger)';
+  }
+}
+
+async function loadConnectivity() {
+  try {
+    const [ts, qnap] = await Promise.all([
+      apiGet('/api/health/tailscale'),
+      apiGet('/api/health/qnap'),
+    ]);
+    const tsUp = !!ts.up;
+    updateConnRow('ss-tailscale', 'ss-tailscale-text', tsUp, tsUp ? '上線' : '未上線');
+    updateConnRow('js-ss-tailscale', 'js-ss-tailscale-text', tsUp, tsUp ? '上線' : '未上線');
+
+    const qnapReachable = !!(qnap.ok && qnap.webdav_ok);
+    let qnapText = '檢查中…';
+    if (qnapReachable) qnapText = 'QNAP 可連線';
+    else if (qnap.tailscale_ping_ok === false) qnapText = 'Tailscale 不通';
+    else if (qnap.webdav_ok === false) qnapText = 'WebDAV 失敗';
+    else qnapText = '未設定';
+    updateConnRow('ss-webdav', 'ss-webdav-text', qnapReachable, qnapText);
+    updateConnRow('js-ss-webdav', 'js-ss-webdav-text', qnapReachable, qnapText);
+  } catch (e) {}
+}
+
 loadDashboardData();
 loadLibrary();
 loadPlaylist();
 refreshPlayer();
 loadAudioDevices();
-setInterval(loadDashboardData, 5000);
+loadConnectivity();
+listenEvents();
+setInterval(loadDashboardData, 30000);
 setInterval(refreshPlayer, 3000);
-setInterval(loadLibrary, 10000);
-setInterval(loadPlaylist, 10000);
+setInterval(loadLibrary, 30000);
+setInterval(loadPlaylist, 30000);
+setInterval(loadConnectivity, 30000);
 </script>
 {% endblock %}

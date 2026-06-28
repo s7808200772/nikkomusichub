@@ -9,6 +9,7 @@ from app.routes.auth import get_current_user_or_local
 from app.services import mpv
 from app.services.system import list_audio_devices, list_music_files, run, service_enabled
 from app.db import set_setting, get_setting
+from app.routes.dashboard import bump_dashboard_version
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")

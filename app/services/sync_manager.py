@@ -6,7 +6,7 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
-from app.config import BASE_DIR, MUSIC_DIR, RCLONE_CONFIG_PATH, RCLONE_REMOTE_PATH_DEFAULT
+from app.config import BASE_DIR, MUSIC_DIR, MUSIC_OLD_DIR, RCLONE_CONFIG_PATH, RCLONE_REMOTE_PATH_DEFAULT
 from app.db import add_sync_log, set_setting
 from app.services import mpv
 from app.services.system import command_exists, safe_path_validate
@@ -31,7 +31,7 @@ _lock = threading.Lock()
 
 # Staging directories for atomic music folder replacement
 STAGING_DIR = BASE_DIR / "music.staging"
-OLD_DIR = BASE_DIR / "music.old"
+OLD_DIR = MUSIC_OLD_DIR
 
 
 def _empty_dir(path: Path):
@@ -42,6 +42,12 @@ def _empty_dir(path: Path):
             shutil.rmtree(item)
         else:
             item.unlink()
+
+
+def _count_mp3(path: Path) -> int:
+    if not path.exists():
+        return 0
+    return sum(1 for p in path.rglob("*") if p.is_file() and p.suffix.lower() == ".mp3")
 
 
 def _set_progress(**kwargs):
@@ -207,6 +213,15 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool, use_staging: boo
     if ok and use_staging and not dry_run:
         try:
             _atomic_replace_staging(local_path_obj)
+            # Fallback: if the new folder is empty but the old folder had music,
+            # roll back so playback never stops.
+            new_count = _count_mp3(local_path_obj)
+            if new_count == 0 and OLD_DIR.exists() and _count_mp3(OLD_DIR) > 0:
+                shutil.rmtree(local_path_obj)
+                OLD_DIR.rename(local_path_obj)
+                stderr_lines.append("Staging folder was empty; rolled back to previous music")
+                swap_ok = False
+                ok = False
         except Exception as e:
             ok = False
             swap_ok = False
@@ -244,6 +259,13 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool, use_staging: boo
     if ok and not dry_run:
         if mpv.mpv_is_running():
             mpv.reload_playlist()
+
+    # Notify any open dashboard long-polling connections that sync finished.
+    try:
+        from app.routes.dashboard import bump_dashboard_version
+        bump_dashboard_version()
+    except Exception:
+        pass
 
 
 def start_sync(remote_path: str, local_path: str, dry_run: bool = False, use_staging: bool = True) -> dict:

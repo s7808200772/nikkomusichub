@@ -132,6 +132,15 @@ def get_all_settings():
     return {r["key"]: r["value"] for r in rows}
 
 
+# Optional callback registered at startup to notify the dashboard of state changes.
+_dashboard_bump = None
+
+
+def set_dashboard_bump_callback(callback):
+    global _dashboard_bump
+    _dashboard_bump = callback
+
+
 def audit(username: str, action: str, details: dict | None = None):
     DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     db = get_db()
@@ -140,6 +149,11 @@ def audit(username: str, action: str, details: dict | None = None):
         (datetime.utcnow().isoformat(), username, action, json.dumps(details or {}, ensure_ascii=False)),
     )
     db.commit()
+    if _dashboard_bump is not None:
+        try:
+            _dashboard_bump()
+        except Exception:
+            pass
 
 
 def add_sync_log(started_at: str, finished_at: str | None, status: str, message: str, stdout: str = "", stderr: str = ""):

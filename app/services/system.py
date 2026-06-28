@@ -1,6 +1,7 @@
 """System information helpers."""
 import os
 import re
+import shutil
 import socket
 import subprocess
 import time
@@ -11,6 +12,7 @@ import psutil
 from app.config import (
     BASE_DIR,
     MUSIC_DIR,
+    MUSIC_OLD_DIR,
     PLAYER_LOG_PATH,
     SYNC_LOG_PATH,
     SYSTEM_LOG_PATH,
@@ -247,6 +249,31 @@ def get_music_folder_size(path: Path = MUSIC_DIR) -> str:
     return f"{total} B"
 
 
+def _count_mp3_files(path: Path) -> int:
+    if not path.exists():
+        return 0
+    return sum(1 for p in path.rglob("*") if p.is_file() and p.suffix.lower() == ".mp3")
+
+
+def ensure_local_music_fallback() -> dict:
+    """If the live music folder is empty but a backup exists, restore it.
+
+    This guarantees playback continues even if a previous sync or
+    replacement left the live folder without music.
+    """
+    if _count_mp3_files(MUSIC_DIR) > 0:
+        return {"ok": True, "restored": False}
+    if MUSIC_OLD_DIR.exists() and _count_mp3_files(MUSIC_OLD_DIR) > 0:
+        try:
+            if MUSIC_DIR.exists():
+                shutil.rmtree(MUSIC_DIR)
+            MUSIC_OLD_DIR.rename(MUSIC_DIR)
+            return {"ok": True, "restored": True, "message": "已從備份還原音樂"}
+        except Exception as e:
+            return {"ok": False, "restored": False, "error": str(e)}
+    return {"ok": True, "restored": False, "message": "無可用備份"}
+
+
 def tail_log(path: Path, lines: int = 100) -> str:
     if not path.exists():
         return ""
@@ -263,6 +290,49 @@ def tail_journal(unit: str, lines: int = 100) -> str:
 def is_tailscale_up() -> bool:
     res = run(["tailscale", "status", "--self"], timeout=10)
     return res["ok"]
+
+
+def _extract_host_from_url(url: str) -> str:
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(url.strip())
+        host = parsed.hostname or ""
+        return host
+    except Exception:
+        return ""
+
+
+def tailscale_ping(host: str) -> dict:
+    """Ping a host over the Tailscale network."""
+    if not host:
+        return {"ok": False, "stderr": "no host"}
+    res = run(["tailscale", "ping", "--c", "1", "--timeout", "5s", host], timeout=15)
+    return res
+
+
+def qnap_connectivity_check(webdav_url: str = "") -> dict:
+    """Check if QNAP WebDAV is reachable via Tailscale and rclone."""
+    host = _extract_host_from_url(webdav_url) if webdav_url else ""
+    tailscale_res = tailscale_ping(host) if host else {"ok": False, "stderr": "no url"}
+    if not tailscale_res["ok"]:
+        return {
+            "ok": False,
+            "tailscale_ping_ok": False,
+            "webdav_ok": False,
+            "host": host,
+            "message": "Tailscale 無法連到 QNAP",
+            "stderr": tailscale_res.get("stderr", ""),
+        }
+    from app.services import rclone
+    webdav_res = rclone.test_remote("qnapmusic")
+    return {
+        "ok": webdav_res.get("ok", False),
+        "tailscale_ping_ok": True,
+        "webdav_ok": webdav_res.get("ok", False),
+        "host": host,
+        "message": "QNAP WebDAV 可連線" if webdav_res.get("ok") else "Tailscale 通但 WebDAV 失敗",
+        "stderr": webdav_res.get("stderr", ""),
+    }
 
 
 def list_audio_devices() -> list[dict]:

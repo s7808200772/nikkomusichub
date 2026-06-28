@@ -236,19 +236,19 @@
 
 ### Phase 0 交付
 
-- [ ] `app/services/sync_manager.py` 支援 staging + atomic swap。
-- [ ] 新增 `nikko-music-boot-sync.service`（延遲 2 分鐘）。
-- [ ] Dashboard 靜音按鈕與 `/api/player/mute` 連動。
-- [ ] `/api/audio/devices` 與 `/api/audio/output`（偵測與切換）。
-- [ ] Dashboard 顯示 QNAP / Tailscale 連線狀態。
-- [ ] 預設帳密改為 `nikkolh` / `topup30%off`，取消首次強制改密碼。
-- [ ] MQTT status publish 改為 `retain=True`。
-- [ ] Pydantic settings 驗證 (`app/settings.py`)。
-- [ ] `/health` endpoint。
-- [ ] SQLite WAL + indexes + connection pool。
-- [ ] systemd watchdog timer。
-- [ ] Dashboard long-polling `/api/events`。
-- [ ] 靜態資源 Brotli/gzip 壓縮。
+- [x] `app/services/sync_manager.py` 支援 staging + atomic swap。
+- [x] 新增 `nikko-music-boot-sync.service`（延遲 2 分鐘）。
+- [x] Dashboard 靜音按鈕與 `/api/player/mute` 連動。
+- [x] `/api/audio/devices` 與 `/api/audio/output`（偵測與切換）。
+- [x] Dashboard 顯示 QNAP / Tailscale 連線狀態。
+- [x] 預設帳密改為 `nikkolh` / `topup30%off`，取消首次強制改密碼。
+- [x] MQTT status publish 改為 `retain=True`。
+- [x] Pydantic settings 驗證 (`app/core/config_validator.py`)。
+- [x] `/health` endpoint。
+- [x] SQLite WAL + indexes + connection pool。
+- [x] systemd watchdog timer。
+- [x] Dashboard long-polling `/api/events`。
+- [x] 靜態資源 gzip 壓縮（`GZipMiddleware`）。
 
 ### Phase 1 交付
 

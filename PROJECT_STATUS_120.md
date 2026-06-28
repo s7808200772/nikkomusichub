@@ -53,12 +53,12 @@
 | 7 | Dry Run 同步測試 | P0 | 已完成 | 底座完成 | Dashboard「模擬同步」已實作。 |
 | 8 | 同步檔案格式限制 | P0 | 已完成 | 底座完成 | 只同步 `.mp3` / `.MP3`。 |
 | 9 | 本地音樂資料夾管理 | P0 | 已完成 | 底座完成 | 統一使用 `/srv/nikko-music/music`。 |
-| 10 | 同步失敗保護 | P0 | 部分完成 | **必做** | 連線失敗會中斷，但 `rclone sync` 仍可能刪本地檔案；需靠 #11 staging 解決。 |
-| 11 | 同步暫存區機制 | P1 | 未開始 | **必做** | 本次核心項目：staging → 驗證 → 原子替換。 |
+| 10 | 同步失敗保護 | P0 | 已完成 | 底座完成 | QNAP 斷線或 rclone 失敗時不會刪除 `music/`，播放不中斷。 |
+| 11 | 同步暫存區機制 | P1 | 已完成 | 底座完成 | `music.staging` → 驗證成功 → 原子替換 `music/`；失敗自動 rollback。 |
 | 12 | 同步完成後重啟播放器 | P0 | 已完成 | 底座完成 | `sync_runner.py` 會 reload_playlist 或 start_player。 |
 | 13 | 同步 log | P0 | 已完成 | 底座完成 | SQLite `sync_log` + Dashboard 可查詢。 |
 | 14 | 定時同步排程 | P1 | 已完成 | 底座完成 | systemd timer 每天執行。 |
-| 15 | 開機後同步一次 | P1 | 部分完成 | **必做** | 需補獨立開機延遲同步服務（延遲 2 分鐘）。 |
+| 15 | 開機後同步一次 | P1 | 已完成 | 底座完成 | `nikko-music-boot-sync.service` 延遲 2 分鐘執行一次同步。 |
 
 ---
 
@@ -75,11 +75,11 @@
 | 22 | 目前播放曲目顯示 | P0 | 已完成 | 底座完成 | Dashboard 與 `/api/player/status`。 |
 | 23 | 播放狀態顯示 | P0 | 已完成 | 底座完成 | Dashboard 顯示播放狀態。 |
 | 24 | 音量控制 | P1 | 已完成 | 底座完成 | `/api/player/volume` 與 UI 滑桿。 |
-| 25 | 靜音控制 | P1 | 部分完成 | **必做** | API `/api/player/mute` 已存在，但 Dashboard / 雲端缺少靜音按鈕。 |
+| 25 | 靜音控制 | P1 | 已完成 | 底座完成 | Dashboard 與 Cloud 均已加入靜音 / 取消靜音按鈕。 |
 | 26 | 重新載入播放清單 | P1 | 已完成 | 底座完成 | `/api/player/reload` 已實作。 |
 | 27 | 本地音樂列表 | P0 | 已完成 | 底座完成 | `/api/player/library` 與 Dashboard。 |
-| 28 | 音訊設備偵測 | P1 | 未開始 | **必做** | 本次新增：偵測 USB / HDMI / 3.5mm。 |
-| 29 | 指定音訊輸出 | P1 | 未開始 | **必做** | #28 底座：偵測後要能在 UI 選擇輸出裝置。 |
+| 28 | 音訊設備偵測 | P1 | 已完成 | 底座完成 | `/api/audio/devices` 偵測 PulseAudio / ALSA 輸出。 |
+| 29 | 指定音訊輸出 | P1 | 已完成 | 底座完成 | Dashboard 下拉選擇裝置，mpv 即時切換 `audio-device`。 |
 | 30 | 測試音效按鈕 | P1 | 已完成 | 底座完成 | Dashboard「測試音訊輸出」。 |
 
 ---
@@ -91,7 +91,7 @@
 | 31 | Dashboard 首頁 | P0 | 已完成 | 底座完成 | 集中顯示設備、播放、同步、錯誤提醒。 |
 | 32 | Pi 系統狀態 | P0 | 已完成 | 底座完成 | CPU、RAM、磁碟、溫度、uptime。 |
 | 33 | 網路狀態 | P0 | 已完成 | 底座完成 | LAN IP、Wi-Fi、Tailscale IP。 |
-| 34 | QNAP WebDAV 狀態 | P0 | 部分完成 | **必做** | 需增加定時可用性檢查與 Dashboard 狀態燈。 |
+| 34 | QNAP WebDAV 狀態 | P0 | 已完成 | 底座完成 | Dashboard 每 30 秒透過 `/api/health/qnap` 更新 QNAP/Tailscale 狀態燈。 |
 | 35 | 本地音樂統計 | P0 | 已完成 | 底座完成 | MP3 數量、總容量、最近同步時間。 |
 | 36 | 播放服務狀態 | P0 | 已完成 | 底座完成 | Dashboard 顯示 player service 狀態。 |
 | 37 | 同步服務狀態 | P1 | 已完成 | 底座完成 | Dashboard 顯示 sync timer / service 狀態。 |
@@ -103,7 +103,7 @@
 | 編號 | 項目 | 優先級 | 狀態 | 本次規劃 | 必要性 / 備註 |
 |---|---|---|---|---|---|
 | 38 | Web UI 登入 | P0 | 已完成 | 底座完成 | JWT + cookie + bcrypt。 |
-| 39 | 預設帳密 | P1 | 部分完成 | **必做** | 需改為 `nikkolh` / `topup30%off`，且**第一次登入不強制改密碼**，保留手動修改功能。 |
+| 39 | 預設帳密 | P1 | 已完成 | 底座完成 | 預設帳號 `nikkolh` / `topup30%off`，首次登入不強制改密碼。 |
 | 40 | RBAC 權限分級 | P2 | 未開始 | 暫緩 | 本次單一管理者階段先不做。 |
 | 41 | TOTP MFA | P3 | 未開始 | 暫緩 | 使用者明確暫緩。 |
 | 42 | 操作審計 log | P1 | 已完成 | 底座完成 | `audit_log` 已記錄操作。 |
@@ -119,7 +119,7 @@
 |---|---|---|---|---|---|
 | 46 | MQTT Agent | P1 | 已完成 | 底座完成 | `nikko-music-mqtt.service` 已運行。 |
 | 47 | MQTT Heartbeat | P1 | 已完成 | 底座完成 | 每 30 秒發布 status。 |
-| 48 | MQTT Retained Status | P2 | 未開始 | **必做** | 本次新增：status publish 需設 `retain=true`。 |
+| 48 | MQTT Retained Status | P2 | 已完成 | 底座完成 | Pi status topic 發布時已設 `retain=True`。 |
 | 49 | MQTT 指令下發 | P1 | 已完成 | 底座完成 | Cloud 可發送指令到 Pi。 |
 | 50 | MQTT 指令結果回報 | P1 | 已完成 | 底座完成 | Pi 回傳結果到 `.../resp`。 |
 | 51 | MQTT 指令冪等性 | P1 | 已完成 | 底座完成 | requestId 去重機制。 |
@@ -149,10 +149,10 @@
 | 編號 | 項目 | 優先級 | 狀態 | 本次規劃 | 必要性 / 備註 |
 |---|---|---|---|---|---|
 | 63 | 一鍵安裝腳本 | P1 | 已完成 | 底座完成 | `install.sh` 已存在。 |
-| 64 | 自動環境檢查 | P1 | 部分完成 | **必做** | 需擴充檢查 Tailscale / WebDAV / 音效輸出。 |
-| 65 | Pydantic env 驗證 | P1 | 未開始 | **必做** | 啟動前統一驗證 env，避免缺設定後才出錯。 |
-| 66 | /health endpoint | P1 | 未開始 | **必做** | 提供監控與健康檢查端點。 |
-| 67 | Watchdog Timer | P0 | 部分完成 | **必做** | systemd StartLimit 已有基礎，但需獨立 watchdog 與主動告警。 |
+| 64 | 自動環境檢查 | P1 | 已完成 | 底座完成 | `/health` 檢查 DB / 服務 / WebDAV / Tailscale / 磁碟 / 音效。 |
+| 65 | Pydantic env 驗證 | P1 | 已完成 | 底座完成 | `app/core/config_validator.py` 啟動前驗證必要 env。 |
+| 66 | /health endpoint | P1 | 已完成 | 底座完成 | `/health` 與 `/api/health/*` 已提供監控端點。 |
+| 67 | Watchdog Timer | P0 | 已完成 | 底座完成 | `nikko-music-watchdog.timer` 每 5 分鐘檢查並重啟失敗服務。 |
 
 ---
 
@@ -161,12 +161,12 @@
 | 編號 | 項目 | 優先級 | 狀態 | 本次規劃 | 必要性 / 備註 |
 |---|---|---|---|---|---|
 | 68 | SQLite 本地資料庫 | P0 | 已完成 | 底座完成 | 設定、log、audit 存 SQLite。 |
-| 69 | SQLite WAL | P1 | 未開始 | **必做** | 啟用 WAL 提升並行穩定性。 |
-| 70 | SQLite indexes | P1 | 未開始 | **必做** | 為 audit / sync_log / settings 加索引。 |
-| 71 | Connection Pool | P2 | 未開始 | **必做** | 納入 64-74 範圍；避免頻繁開關連線。 |
-| 72 | Sync 進度批次上報 | P1 | 部分完成 | **必做** | 減少輪詢頻率，改由事件或批次上報。 |
-| 73 | Dashboard 事件驅動 | P2 | 未開始 | **必做** | 納入 64-74 範圍；用 long-polling 或 MQTT 取代高頻輪詢。 |
-| 74 | 靜態資源壓縮 | P2 | 未開始 | **必做** | 納入 64-74 範圍；壓縮 CSS/JS。 |
+| 69 | SQLite WAL | P1 | 已完成 | 底座完成 | `PRAGMA journal_mode=WAL` 已啟用。 |
+| 70 | SQLite indexes | P1 | 已完成 | 底座完成 | audit / sync_log / device / settings 索引已建立。 |
+| 71 | Connection Pool | P2 | 已完成 | 底座完成 | 每執行緒重用 SQLite 連線。 |
+| 72 | Sync 進度批次上報 | P1 | 部分完成 | **必做** | 已有記憶體進度物件；Dashboard 改用 long-polling 減少輪詢。 |
+| 73 | Dashboard 事件驅動 | P2 | 已完成 | 底座完成 | `/api/events` long-polling 已實作，操作後即時更新。 |
+| 74 | 靜態資源壓縮 | P2 | 已完成 | 底座完成 | `GZipMiddleware` 啟用 gzip 壓縮。 |
 
 ---
 
@@ -221,7 +221,7 @@
 | 98 | 設定備份 | P1 | 部分完成 | **必做** | 自動備份 nikko.env / db / rclone.conf / settings。 |
 | 99 | 設定還原 | P1 | 未開始 | **必做** | 一鍵還原到新 Pi 或故障復原。 |
 | 100 | 災難恢復流程 | P1 | 未開始 | **必做** | 文件化 SD 卡損壞、NAS 失聯、Pi 壞掉時的恢復步驟。 |
-| 101 | 本地備援播放 | P0 | 部分完成 | **必做** | 播放永遠使用本地 SD 卡；sync 失敗不中斷播放。 |
+| 101 | 本地備援播放 | P0 | 已完成 | 底座完成 | 播放永遠使用本地 SD 卡；staging 替換失敗會 rollback，啟動時會自動還原備份。 |
 | 102 | 磁碟空間保護 | P1 | 未開始 | **必做** | 空間不足時停止同步並告警。 |
 | 103 | 溫度保護 | P2 | 未開始 | **必做** | Pi 過熱時告警。 |
 | 104 | 網路恢復重試 | P1 | 未開始 | **必做** | 網路斷線恢復後自動重連、同步、回報。 |
@@ -232,8 +232,8 @@
 
 | 編號 | 項目 | 優先級 | 狀態 | 本次規劃 | 必要性 / 備註 |
 |---|---|---|---|---|---|
-| 105 | Tailscale 狀態檢查 | P1 | 部分完成 | **必做** | 檢查 Tailscale 在線、IP 存在、可連 QNAP。 |
-| 106 | QNAP 可用性檢查 | P1 | 部分完成 | **必做** | 定期測試 WebDAV 可讀取。 |
+| 105 | Tailscale 狀態檢查 | P1 | 已完成 | 底座完成 | `/api/health/tailscale` 檢查上線狀態與 QNAP ping。 |
+| 106 | QNAP 可用性檢查 | P1 | 已完成 | 底座完成 | `/api/health/qnap` 測試 Tailscale ping + rclone WebDAV listing。 |
 
 ---
 
@@ -262,9 +262,9 @@
 
 | 狀態 | 數量 | 比例 |
 |---|---|---|
-| 已完成 | 59 | 49.2% |
-| 部分完成 | 22 | 18.3% |
-| 未開始 | 39 | 32.5% |
+| 已完成 | 80 | 66.7% |
+| 部分完成 | 12 | 10.0% |
+| 未開始 | 28 | 23.3% |
 | **總計** | **120** | **100%** |
 
 ### 本次規劃分類

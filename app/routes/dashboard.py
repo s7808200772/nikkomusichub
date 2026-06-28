@@ -1,4 +1,7 @@
 """Dashboard page and API."""
+import asyncio
+import threading
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -37,6 +40,30 @@ from app.services.system import (
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+# Simple event counter for dashboard long-polling. State-changing operations
+# call bump_dashboard_version() so open /api/events connections return immediately.
+_dashboard_version = 0
+_dashboard_event = asyncio.Event()
+_dashboard_lock = threading.Lock()
+
+
+def bump_dashboard_version():
+    global _dashboard_version
+    with _dashboard_lock:
+        _dashboard_version += 1
+    _dashboard_event.set()
+
+
+async def wait_dashboard_version(current: int, timeout: float = 30.0) -> int:
+    try:
+        await asyncio.wait_for(_dashboard_event.wait(), timeout=timeout)
+    except asyncio.TimeoutError:
+        pass
+    with _dashboard_lock:
+        new_version = _dashboard_version
+    _dashboard_event.clear()
+    return new_version
+
 
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
@@ -55,10 +82,9 @@ def dashboard_data(request: Request):
     mpv_installed = command_exists("mpv")
     player_active = service_status("nikko-music-player.service")
 
-    # Report WebDAV status based on whether a config exists.
-    # Actual connectivity is tested manually from Settings to avoid blocking
-    # the dashboard worker with a synchronous network call every 5 seconds.
-    webdav_ok = rclone_installed and RCLONE_CONFIG_PATH.exists()
+    # Report whether WebDAV is configured. Actual reachability is checked
+    # separately via /api/health/qnap so the dashboard worker is not blocked.
+    webdav_configured = rclone_installed and RCLONE_CONFIG_PATH.exists()
 
     last_sync = get_setting("last_sync_at")
     last_sync_status = get_setting("last_sync_status", "never")
@@ -83,7 +109,8 @@ def dashboard_data(request: Request):
         "rclone_installed": rclone_installed,
         "mpv_installed": mpv_installed,
         "player_active": player_active,
-        "webdav_connected": webdav_ok,
+        "webdav_configured": webdav_configured,
+        "webdav_connected": False,
         "last_sync_at": last_sync,
         "last_sync_status": last_sync_status,
         "last_sync_message": last_sync_message,
@@ -109,4 +136,18 @@ def dashboard_data(request: Request):
         "sync_timer_status": service_status("nikko-music-sync.timer"),
         "mqtt_service_status": service_status("nikko-music-mqtt.service"),
         "player_service_enabled": service_enabled("nikko-music-player.service"),
+        "dashboard_version": _dashboard_version,
+    }
+
+
+@router.get("/api/events")
+async def dashboard_events(request: Request, version: int = 0):
+    """Long-polling endpoint for dashboard state changes."""
+    get_current_user_or_local(request)
+    new_version = await wait_dashboard_version(version)
+    changed = new_version != version
+    return {
+        "changed": changed,
+        "version": new_version,
+        "data": dashboard_data(request) if changed else None,
     }
