@@ -2,13 +2,16 @@
 import os
 from contextlib import asynccontextmanager
 
+# Import first so missing/invalid env vars fail loudly on startup.
+from app.core.config_validator import settings as validated_settings
+
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import BASE_DIR, DATA_DIR, LOGS_DIR, MUSIC_DIR, SCRIPTS_DIR
 from app.db import init_db
-from app.routes import auth, dashboard, logs, player, settings, setup, system, webdav
+from app.routes import auth, dashboard, health, logs, player, settings, setup, system, webdav
 from app.routes.auth import init_default_user
 
 
@@ -38,6 +41,7 @@ async def no_cache_headers(request: Request, call_next):
 
 app.include_router(auth.router)
 app.include_router(dashboard.router)
+app.include_router(health.router)
 app.include_router(setup.router)
 app.include_router(webdav.router)
 app.include_router(player.router)

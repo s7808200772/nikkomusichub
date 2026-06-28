@@ -1,0 +1,81 @@
+"""Health check endpoint."""
+from fastapi import APIRouter, Request
+
+from app.config import DATABASE_PATH, MUSIC_DIR
+from app.db import get_db
+from app.routes.auth import get_current_user_or_local
+from app.services import rclone
+from app.services.system import (
+    command_exists,
+    get_disk_usage,
+    is_tailscale_up,
+    service_status,
+)
+
+router = APIRouter()
+
+
+@router.get("/health")
+def health_check(request: Request):
+    """Public-ish health endpoint for monitoring and watchdog."""
+    # Database check
+    db_ok = False
+    try:
+        conn = get_db()
+        conn.execute("SELECT 1").fetchone()
+        conn.close()
+        db_ok = True
+    except Exception:
+        db_ok = False
+
+    # Directory checks
+    dirs_ok = MUSIC_DIR.exists() and DATABASE_PATH.parent.exists()
+
+    # Service checks
+    services = {
+        "web": "running",  # we are serving this request
+        "player": service_status("nikko-music-player.service"),
+        "mqtt": service_status("nikko-music-mqtt.service"),
+        "sync_timer": service_status("nikko-music-sync.timer"),
+    }
+
+    # Dependency checks
+    rclone_ok = command_exists("rclone")
+    webdav_ok = False
+    if rclone_ok:
+        try:
+            webdav_ok = rclone.test_remote("qnapmusic").get("ok", False)
+        except Exception:
+            webdav_ok = False
+
+    disk = get_disk_usage("/")
+    disk_ok = disk.get("percent", 0) < 90
+
+    overall = (
+        db_ok
+        and dirs_ok
+        and services["mqtt"] == "active"
+        and services["player"] in ("active", "inactive")
+        and disk_ok
+    )
+
+    return {
+        "ok": overall,
+        "checks": {
+            "database": db_ok,
+            "directories": dirs_ok,
+            "services": services,
+            "rclone_installed": rclone_ok,
+            "webdav_connected": webdav_ok,
+            "tailscale_up": is_tailscale_up(),
+            "disk": disk,
+            "disk_ok": disk_ok,
+        },
+    }
+
+
+@router.get("/api/health")
+def api_health_check(request: Request):
+    """Authenticated health check (same data, but requires login)."""
+    get_current_user_or_local(request)
+    return health_check(request)
