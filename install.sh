@@ -76,11 +76,17 @@ fi
 # This guarantees a fresh install (or an old install without the env variable) can
 # log in with the documented default credentials.
 DEFAULT_PASS="topup30%off"
+PASSWORD_ENV_WAS_MISSING=0
 if ! grep -qE '^NIKKO_DEFAULT_PASSWORD=' "${ENV_FILE}" 2>/dev/null; then
   umask 077
   echo "NIKKO_DEFAULT_PASSWORD=${DEFAULT_PASS}" >> "${ENV_FILE}"
+  PASSWORD_ENV_WAS_MISSING=1
 fi
-if [ ! -f "${INSTALL_DIR}/data/initial-admin-password" ] || ! grep -qF "${DEFAULT_PASS}" "${INSTALL_DIR}/data/initial-admin-password" 2>/dev/null; then
+# Only rewrite the initial password file if the env variable was missing, which
+# indicates this is either a fresh install or an upgrade from a version that did
+# not use the documented default password. This avoids resetting a password the
+# user already changed through the Settings UI.
+if [ "${PASSWORD_ENV_WAS_MISSING}" -eq 1 ]; then
   echo "${DEFAULT_PASS}" > "${INSTALL_DIR}/data/initial-admin-password"
   chmod 600 "${INSTALL_DIR}/data/initial-admin-password"
 fi
