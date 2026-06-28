@@ -761,7 +761,12 @@ button.icon-left span { font-size: 1rem; }
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   gap: 1rem;
+  align-items: start;
 }
+.dash-player { grid-column: 1 / 9; grid-row: 1; }
+.dash-status { grid-column: 9 / 13; grid-row: 1 / 4; }
+.dash-library { grid-column: 1 / 7; grid-row: 2; }
+.dash-maintenance { grid-column: 7 / 9; grid-row: 2; }
 .dash-col-8 { grid-column: span 8; }
 .dash-col-6 { grid-column: span 6; }
 .dash-col-4 { grid-column: span 4; }
@@ -867,10 +872,11 @@ button.icon-left span { font-size: 1rem; }
   gap: 0.6rem;
 }
 .maintenance-col button {
-  display: flex; align-items: center; gap: 0.5rem;
-  justify-content: flex-start; padding-left: 1rem;
+  display: flex; align-items: center; gap: 0.4rem;
+  justify-content: flex-start; padding: 0.55rem 0.5rem;
   background: var(--panel-2); border: 1px solid var(--border);
-  color: var(--text-secondary); font-size: 0.9rem;
+  color: var(--text-secondary); font-size: 0.78rem;
+  text-align: left; line-height: 1.2;
 }
 .maintenance-col button:hover { background: var(--panel-hover); color: var(--text); }
 .maintenance-col button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
@@ -980,6 +986,7 @@ button.icon-left span { font-size: 1rem; }
   .log-layout, .log-filter-bar { grid-template-columns: 1fr; }
   .status-grid { grid-template-columns: repeat(2, 1fr); }
   .bottom-logs { grid-template-columns: 1fr; }
+  .dash-player, .dash-status, .dash-library, .dash-maintenance { grid-column: 1 / -1; grid-row: auto; }
 }
 @media (max-width: 768px) {
   .sidebar { width: 56px; padding: 0.5rem; }
@@ -990,6 +997,7 @@ button.icon-left span { font-size: 1rem; }
   .maintenance-row button { flex: 1 1 45%; }
   .status-grid { grid-template-columns: 1fr; }
   .dash-col-8, .dash-col-6, .dash-col-4, .dash-col-2, .dash-col, .dash-col-12 { grid-column: span 12; }
+  .dash-player, .dash-status, .dash-library, .dash-maintenance { grid-column: 1 / -1; grid-row: auto; }
   .player-body { grid-template-columns: 1fr; }
   .log-toolbar { flex-direction: column; align-items: flex-start; }
 }

@@ -40,7 +40,7 @@
 
 <div class="dash-grid">
   <!-- Player console -->
-  <div class="card player-console dash-col-8">
+  <div class="card player-console dash-player">
     <h2><span class="icon">🎛️</span>播放控制台</h2>
     <div class="waveform" id="waveform" aria-hidden="true">
       <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
@@ -93,7 +93,7 @@
   </div>
 
   <!-- Status cards (server-side rendered to avoid layout shift) -->
-  <div class="dash-col-4">
+  <aside class="dash-status">
     <div class="status-grid" id="status-grid">
       <div class="status-card">
         <h3><span class="icon">🏪</span>店家資訊</h3>
@@ -160,10 +160,10 @@
         <div class="status-row"><span class="label">mpv</span><span class="value small" id="ss-mpv-ver" style="font-size:.7rem;">{{ data.mpv_version or '-' }}</span></div>
       </div>
     </div>
-  </div>
+  </aside>
 
   <!-- Music library + playlist -->
-  <div class="card dash-col-8 music-card">
+  <section class="card dash-col-6 music-card dash-library">
     <div class="card-header">
       <h2><span class="icon">🎶</span>音樂庫 / 播放清單</h2>
       <div class="tab-bar">
@@ -181,7 +181,7 @@
   </div>
 
   <!-- Maintenance -->
-  <div class="card dash-col-4">
+  <section class="card dash-col-2 dash-maintenance">
     <h2><span class="icon">🛠️</span>維護操作</h2>
     <div class="maintenance-col">
       <button onclick="runAction(this, '/api/system/start-player', null, 'global-log')" title="啟動 systemd 播放器服務（開機自動播放用）"><span>▶</span> 啟動播放服務</button>
@@ -191,7 +191,7 @@
       <button onclick="runAction(this, '/api/system/test-audio', null, 'global-log')" title="播放測試音訊確認喇叭有聲"><span>🔊</span> 測試音訊輸出</button>
       <button onclick="document.getElementById('reboot-modal').classList.add('active')" class="danger" title="重新啟動 Raspberry Pi"><span>🔴</span> 重開機</button>
     </div>
-  </div>
+  </section>
 </div>
 
 <div class="modal-overlay" id="reboot-modal">
