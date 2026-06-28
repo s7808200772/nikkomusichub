@@ -4,6 +4,8 @@
 > 報告時間：2026-06-28  
 > 執行範圍：STE-101 ~ STE-105、全按鈕測試、安全加固、systemd/mpv 穩定性、Cloud 端整理
 
+> **2026-06-29 Hotfix 補充**：為了方便首次安裝與維修，預設帳密已統一為 `nikkolh` / `topup30%off`；MQTT TLS 憑證驗證也可透過 `NIKKO_MQTT_TLS_VERIFY=0` 暫時關閉（測試或憑證尚未更新時使用）。
+
 ---
 
 ## 1. 修改檔案清單
@@ -41,7 +43,7 @@
 | 編號 | 任務 | 狀態 | 說明 |
 |---|---|---|---|
 | STE-101 | 封鎖未驗證 MQTT 指令 | 完成 | HMAC 簽名 + 60 秒時效 + nonce/requestId 防重放 + command 白名單 + 危險指令需 `confirm` + audit log |
-| STE-102 | 移除預設帳密與固定 secret | 完成 | production 強制 `NIKKO_SECRET_KEY`；初始密碼 per-device 隨機；cookie HttpOnly/SameSite/MaxAge；改密後舊 session 失效 |
+| STE-102 | 移除預設帳密與固定 secret | 完成 | production 強制 `NIKKO_SECRET_KEY`；預設帳密 `nikkolh` / `topup30%off`；cookie HttpOnly/SameSite/MaxAge；改密後舊 session 失效 |
 | STE-103 | 完成 Supabase 正式持久化 | 完成 | Cloud API 在未設定 Supabase 時回 503；service role key 不透過 API 暴露；寫入操作強制 Supabase |
 | STE-104 | 修復 localStorage 模式 | 完成 | localStorage 僅作 dev preview；UI 顯示警告；server API 不依賴 localStorage |
 | STE-105 | 更新 PostCSS / npm audit | 完成 | `npm audit` 0 vulnerabilities；`npm run build` 通過；`npm test` 通過 |
@@ -53,7 +55,7 @@
 | 序號 | 問題 | 修復方式 |
 |---|---|---|
 | 1 | 公開 MQTT 可被偽造指令 | Pi 端 `verify_command` + `verify_command_allowed`；Cloud 端發送時簽名並對危險指令帶 `confirm`；非法指令寫 audit |
-| 2 | 預設帳密 / 固定 JWT secret | `install.sh` 隨機產生 JWT + MQTT secret；`config.py` production 缺少 secret 直接啟動失敗 |
+| 2 | 預設帳密 / 固定 JWT secret | `install.sh` 隨機產生 JWT + MQTT secret；預設帳密 `nikkolh` / `topup30%off`；`config.py` production 缺少 secret 直接啟動失敗 |
 | 3 | Supabase 未確認正式設定 | Cloud API 未設定 Supabase 時回 503；寫入操作必須 Supabase；client 顯示 `<SupabaseWarning />` |
 | 4 | localStorage 無法讓 Server API 找到店點 | localStorage 降級為 dev-only；server API 只讀 Supabase；遠端指令在未設定 Supabase 時禁用 |
 | 5 | npm audit PostCSS 警告 | 目前 `npm audit` 已無警告；`overrides` 保留，build/test 通過 |
@@ -101,7 +103,7 @@
 |---|---|---|
 | MQTT 安全 | 通過 | HMAC-SHA256、時效 60s、nonce/requestId 防重放、白名單、危險指令 confirm、audit log |
 | JWT / Session | 通過 | secret 從 env 讀取、production 缺 secret 拒絕啟動、cookie HttpOnly/SameSite/MaxAge、pwdv 讓舊 session 失效 |
-| 預設帳密 | 通過 | 無硬編碼密碼；初始密碼 per-device 隨機；首次登入強制修改 |
+| 預設帳密 | 通過 | 2026-06-29 Hotfix 後預設為 `nikkolh` / `topup30%off`，方便首次安裝與維修；使用者仍可於 Settings 修改 |
 | Supabase key | 通過 | service role / proxy secret 僅在 server-side env；不暴露前端 |
 | Command injection | 通過 | 所有 subprocess 使用 list args、`shell=False`；路徑經 `safe_path_validate`；systemctl service name allowlist |
 | Secrets / log 洩漏 | 通過 | 未在 log 中發現密碼/JWT/MQTT secret；rclone log 已遮蔽 pass |

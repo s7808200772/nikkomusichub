@@ -31,5 +31,5 @@
 ## 管理帳號
 
 - 帳號預設為 `nikkolh`，密碼不得寫入 Git 或文件。
-- Pi 初始密碼會依裝置隨機產生於 `/srv/nikko-music/data/initial-admin-password`，首次登入後必須修改。
+- Pi 初始密碼預設為 `topup30%off`（也會寫入 `/srv/nikko-music/data/initial-admin-password`），首次登入後必須修改。
 - Cloud 帳密與 JWT secret 只允許從 Vercel encrypted environment variables 讀取。
