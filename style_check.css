@@ -986,6 +986,7 @@ button.icon-left span { font-size: 1rem; }
   .log-layout, .log-filter-bar { grid-template-columns: 1fr; }
   .status-grid { grid-template-columns: repeat(2, 1fr); }
   .bottom-logs { grid-template-columns: 1fr; }
+  .dash-player, .dash-status, .dash-library, .dash-maintenance { grid-column: 1 / -1; grid-row: auto; }
 }
 @media (max-width: 768px) {
   .sidebar { width: 56px; padding: 0.5rem; }
