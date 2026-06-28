@@ -85,6 +85,13 @@
           <span class="switch"><input type="checkbox" id="autostart-toggle" onchange="toggleAutostart()"><span class="slider"></span></span>
           開機自動播放
         </label>
+        <div class="form-group" style="margin-top:.5rem;">
+          <label>音訊輸出裝置</label>
+          <select id="audio-device-select" onchange="setAudioDevice(this.value)" style="width:100%;">
+            <option value="">系統預設</option>
+          </select>
+        </div>
+        <button class="btn-sm" onclick="testAudioWithDevice()" title="使用選定裝置播放測試音"><span>🔊</span> 測試所選裝置</button>
       </div>
     </div>
   </div>
@@ -438,10 +445,34 @@ async function toggleAutostart() {
   refreshPlayer();
 }
 
+async function loadAudioDevices() {
+  try {
+    const data = await apiGet('/api/audio/devices');
+    const sel = document.getElementById('audio-device-select');
+    if (!sel) return;
+    const current = data.current || '';
+    sel.innerHTML = '<option value="">系統預設</option>' +
+      data.devices.map(d => `<option value="${d.id}" ${d.id === current ? 'selected' : ''}>${d.name} (${d.driver})</option>`).join('');
+  } catch (e) {}
+}
+
+async function setAudioDevice(device) {
+  const res = await apiPost('/api/audio/output', new URLSearchParams({device}));
+  showToast(res.ok ? '已切換音訊輸出裝置' : '切換失敗：' + (res.error || res.stderr), res.ok ? 'success' : 'error');
+}
+
+async function testAudioWithDevice() {
+  const sel = document.getElementById('audio-device-select');
+  const device = sel ? sel.value : '';
+  const res = await apiPost('/api/system/test-audio', device ? new URLSearchParams({device}) : null);
+  showToast(res.ok ? '測試音播放完成' : '測試音播放失敗：' + (res.stderr || res.error), res.ok ? 'success' : 'error');
+}
+
 loadDashboardData();
 loadLibrary();
 loadPlaylist();
 refreshPlayer();
+loadAudioDevices();
 setInterval(loadDashboardData, 5000);
 setInterval(refreshPlayer, 3000);
 setInterval(loadLibrary, 10000);

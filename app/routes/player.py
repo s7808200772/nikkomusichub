@@ -7,7 +7,8 @@ from app.config import MUSIC_DIR
 from app.db import audit
 from app.routes.auth import get_current_user_or_local
 from app.services import mpv
-from app.services.system import list_music_files, run, service_enabled
+from app.services.system import list_audio_devices, list_music_files, run, service_enabled
+from app.db import set_setting, get_setting
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -191,4 +192,19 @@ async def disable_player_service(request: Request):
     user = get_current_user_or_local(request)
     res = run(["sudo", "systemctl", "disable", "nikko-music-player.service"], timeout=30)
     audit(user, "disable_player_service", {"ok": res["ok"]})
+    return res
+
+
+@router.get("/api/audio/devices")
+def audio_devices(request: Request):
+    get_current_user_or_local(request)
+    return {"devices": list_audio_devices(), "current": get_setting("audio_output_device", "")}
+
+
+@router.post("/api/audio/output")
+async def set_audio_output(request: Request, device: str = Form(...)):
+    user = get_current_user_or_local(request)
+    set_setting("audio_output_device", device)
+    res = mpv.set_audio_device(device)
+    audit(user, "set_audio_output", {"device": device, "ok": res["ok"]})
     return res

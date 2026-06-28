@@ -13,5 +13,9 @@ if [ -z "$XDG_RUNTIME_DIR" ]; then
 fi
 
 echo "Playing 3-second 1kHz test tone through mpv..."
-mpv --no-video --length=3 "lavfi://sine=frequency=1000:duration=3"
+AUDIO_DEVICE_ARG=""
+if [ -n "$NIKKO_AUDIO_DEVICE" ]; then
+  AUDIO_DEVICE_ARG="--audio-device=$NIKKO_AUDIO_DEVICE"
+fi
+mpv --no-video --length=3 $AUDIO_DEVICE_ARG "lavfi://sine=frequency=1000:duration=3"
 echo "Audio test finished."

@@ -121,10 +121,10 @@ async def rescan_music(request: Request):
 
 
 @router.post("/api/system/test-audio")
-async def api_test_audio(request: Request):
+async def api_test_audio(request: Request, device: str = Form("")):
     user = get_current_user_or_local(request)
-    res = test_audio()
-    audit(user, "test_audio", {"ok": res["ok"]})
+    res = test_audio(device=device)
+    audit(user, "test_audio", {"ok": res["ok"], "device": device})
     return res
 
 

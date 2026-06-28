@@ -35,7 +35,7 @@ def _validate_service_name(name: str) -> None:
         raise ValueError(f"Service name not allowed: {name}")
 
 
-def run(cmd: list[str], shell: bool = False, timeout: int = 120, check: bool = False) -> dict:
+def run(cmd: list[str], shell: bool = False, timeout: int = 120, check: bool = False, env: dict | None = None) -> dict:
     """Run a whitelisted command safely. cmd must be a list of args.
 
     Uses a new process group so that child processes (e.g. rclone) are
@@ -44,6 +44,9 @@ def run(cmd: list[str], shell: bool = False, timeout: int = 120, check: bool = F
     import signal
 
     try:
+        proc_env = os.environ.copy()
+        if env:
+            proc_env.update(env)
         proc = subprocess.Popen(
             cmd,
             shell=shell,
@@ -51,6 +54,7 @@ def run(cmd: list[str], shell: bool = False, timeout: int = 120, check: bool = F
             stderr=subprocess.PIPE,
             text=True,
             start_new_session=True,
+            env=proc_env,
         )
         try:
             stdout, stderr = proc.communicate(timeout=timeout)
@@ -261,8 +265,55 @@ def is_tailscale_up() -> bool:
     return res["ok"]
 
 
-def test_audio() -> dict:
-    return run(["bash", str(BASE_DIR / "scripts" / "nikko-test-audio.sh")], timeout=30)
+def list_audio_devices() -> list[dict]:
+    """Return available audio output devices in mpv-compatible format."""
+    devices = []
+    if command_exists("pactl"):
+        res = run(["pactl", "list", "short", "sinks"], timeout=10)
+        if res["ok"]:
+            for line in res["stdout"].splitlines():
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    sink_name = parts[1]
+                    description = " ".join(parts[2:]) if len(parts) > 2 else sink_name
+                    devices.append(
+                        {
+                            "id": f"pulse/{sink_name}",
+                            "name": description,
+                            "driver": "pulse",
+                        }
+                    )
+    if not devices and command_exists("aplay"):
+        # Fallback for bare ALSA systems
+        res = run(["aplay", "-l"], timeout=10)
+        if res["ok"]:
+            card = None
+            device = None
+            description = ""
+            for line in res["stdout"].splitlines():
+                if line.startswith("card "):
+                    # e.g. card 0: PCH [Intel PCH], device 0: ALC255 Analog [...]
+                    head, _, rest = line.partition(",")
+                    if "card " in head and "device " in head:
+                        card = head.split(":")[0].replace("card ", "").strip()
+                        device = head.split("device ")[1].split(":")[0].strip()
+                        description = rest.strip() if rest else f"ALSA card {card} device {device}"
+                        devices.append(
+                            {
+                                "id": f"alsa/hw:{card},{device}",
+                                "name": description,
+                                "driver": "alsa",
+                            }
+                        )
+    return devices
+
+
+def test_audio(device: str = "") -> dict:
+    script = BASE_DIR / "scripts" / "nikko-test-audio.sh"
+    env = os.environ.copy()
+    if device:
+        env["NIKKO_AUDIO_DEVICE"] = device
+    return run(["bash", str(script)], timeout=30, env=env)
 
 
 def reboot() -> dict:

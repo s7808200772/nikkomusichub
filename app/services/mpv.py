@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from app.config import MPV_SOCKET, MUSIC_DIR, PLAYER_LOG_PATH
+from app.db import get_setting
 from app.services.system import command_exists, run
 
 
@@ -129,6 +130,10 @@ def start_player() -> dict:
         "--playlist=" + str(playlist),
         f"--log-file={PLAYER_LOG_PATH}",
     ]
+    audio_device = get_setting("audio_output_device", "").strip()
+    if audio_device:
+        cmd.append(f"--audio-device={audio_device}")
+
 
     with open(PLAYER_LOG_PATH, "a") as log:
         proc = subprocess.Popen(
@@ -172,6 +177,10 @@ def set_volume(vol: int):
 
 def set_mute(mute: bool):
     return _ipc_send({"command": ["set_property", "mute", bool(mute)]})
+
+
+def set_audio_device(device: str):
+    return _ipc_send({"command": ["set_property", "audio-device", device]})
 
 
 def set_shuffle(enabled: bool):
