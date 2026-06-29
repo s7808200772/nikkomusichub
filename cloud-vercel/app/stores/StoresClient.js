@@ -240,6 +240,24 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
   const [watchdogResult, setWatchdogResult] = useState({});
   const [watchdogConfig, setWatchdogConfig] = useState({ target: '8.8.8.8', interval: 300, threshold: 5 });
   const [showWatchdogConfig, setShowWatchdogConfig] = useState(false);
+  const [selected, setSelected] = useState(new Set());
+
+  function toggleSelect(storeId) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(storeId)) next.delete(storeId);
+      else next.add(storeId);
+      return next;
+    });
+  }
+
+  function selectAll() {
+    if (selected.size === filtered.length && filtered.length > 0) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map((s) => s.storeId)));
+    }
+  }
 
   async function watchdogAction(action, storeId) {
     if (!supabaseOk) {
@@ -289,9 +307,9 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
       setMsgType('error');
       return;
     }
-    const ids = filtered.map((s) => s.storeId);
+    const ids = Array.from(selected);
     if (ids.length === 0) {
-      setMsg('沒有店點可操作');
+      setMsg('請先勾選要操作的店點');
       setMsgType('error');
       return;
     }
@@ -423,32 +441,41 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
             <span className="badge badge-gray">{filtered.length} / {stores.length}</span>
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <input
+                type="checkbox"
+                checked={filtered.length > 0 && selected.size === filtered.length}
+                onChange={selectAll}
+                title="全選/取消全選目前篩選的店點"
+              />
+              全選
+            </label>
             <button
               type="button"
               className="primary"
-              style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem' }}
+              style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem', minWidth: '124px' }}
               onClick={() => bulkWatchdog('install')}
               disabled={watchdogBusy[`bulk:install`]}
               title="批量安裝/更新 Network Watchdog"
             >
               {watchdogBusy[`bulk:install`] ? <Loader2 size={14} className="spin" /> : <ShieldCheck size={14} />}
-              批量安裝看門狗
+              批量安裝
             </button>
             <button
               type="button"
               className="ghost"
-              style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem' }}
+              style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem', minWidth: '124px' }}
               onClick={() => bulkWatchdog('disable')}
               disabled={watchdogBusy[`bulk:disable`]}
               title="批量停用 Network Watchdog"
             >
               {watchdogBusy[`bulk:disable`] ? <Loader2 size={14} className="spin" /> : <ShieldOff size={14} />}
-              批量停用看門狗
+              批量停用
             </button>
             <button
               type="button"
               className="ghost"
-              style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem' }}
+              style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem', minWidth: '96px' }}
               onClick={() => setShowWatchdogConfig((s) => !s)}
               title="設定看門狗參數"
             >
@@ -507,6 +534,7 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
           <table className="list-table" style={{ marginBottom: editing ? '1rem' : 0 }}>
             <thead>
               <tr>
+                <th style={{ width: '1%', whiteSpace: 'nowrap' }}>選取</th>
                 <th>店點</th>
                 <th>Broker</th>
                 <th>使用者</th>
@@ -518,6 +546,14 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
             <tbody>
               {filtered.map((s) => (
                 <tr key={s.storeId}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(s.storeId)}
+                      onChange={() => toggleSelect(s.storeId)}
+                      title="加入批量選取"
+                    />
+                  </td>
                   <td>
                     <div style={{ fontWeight: 600 }}>{s.storeName}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{s.storeId}</div>

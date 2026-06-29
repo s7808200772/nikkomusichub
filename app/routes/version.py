@@ -16,13 +16,13 @@ templates = Jinja2Templates(directory="app/templates")
 
 CHANGELOG = [
     {
-        "version": "v2026.06.30",
-        "date": "2026-06-30",
+        "version": "v0.3.0",
+        "date": "2026-06-29",
         "items": [
             "首頁維護操作移除「測試音訊輸出」按鈕",
             "音樂庫刪除改為標題列「刪除選取」，支援批次刪除",
             "shuffle/loop 勾選狀態改以持久化設定為準，避免自動跳掉",
-            "版本更新頁面：目前版本卡片改為橫式並置於更新紀錄上方，修復 object Object 顯示問題，統一中英文格式",
+            "版本更新頁面：目前版本卡片改為橫式並置於更新紀錄上方，顯示真實 Git Commit 與 Commit 日期",
             "系統設定頁面卡片位置調整：MQTT 上移、網路設定上移，減少空白",
             "WebDAV「測試同步」改為「測試連線」，僅驗證連線能力；修正 dry-run 訊息邏輯",
             "同步進度卡片移除，進度與狀態直接顯示於「操作狀態」",
@@ -44,29 +44,19 @@ CHANGELOG = [
         ],
     },
     {
-        "version": "v2026.06.29",
-        "date": "2026-06-29",
-        "items": [
-            "MQTT 預設值改為 114.55.1.51:1883 / admin / topup30%off，並移除 Topic Prefix、Command Secret 欄位",
-            "WebDAV 設定移除 Remote Name，Remote Music Path 改為顯示形式",
-            "店家資訊簡化為店名 + store- 前綴 Store ID",
-            "首頁狀態卡片改為無閃爍更新，綠燈加入脈衝動畫",
-            "播放控制台改為 lucide 風格圖示按鈕",
-            "側邊欄對齊，新增版本更新入口，版權年份改為 2026",
-            "Cloud 端修復 MQTT 預設帳密顯示、OTA/Library 店點卡片排版、音樂庫 NAS 設定與清單持久化",
-        ],
-    },
-    {
-        "version": "v2026.06.19",
+        "version": "v0.2.0",
         "date": "2026-06-19",
         "items": [
             "新增 MQTT 指令簽章、DANGEROUS_KEYS 確認機制與 replay 防護",
             "Cloud 新增總覽控制台、OTA、音樂庫、店點管理",
             "Pi 新增 WebDAV 同步、播放器控制、系統監控與日誌",
+            "MQTT 預設值改為 114.55.1.51:1883 / admin / topup30%off",
+            "WebDAV 設定移除 Remote Name，Remote Music Path 改為顯示形式",
+            "店家資訊簡化為店名 + store- 前綴 Store ID",
         ],
     },
     {
-        "version": "v2026.05.10",
+        "version": "v0.1.0",
         "date": "2026-05-10",
         "items": [
             "完成 install.sh 一鍵安裝腳本，自動建立目錄、安裝相依、設定 systemd 服務與定時同步",
@@ -127,6 +117,7 @@ async def version_page(request: Request):
         "version": {
             "commit": git.get("commit", "unknown"),
             "branch": git.get("branch", "unknown"),
+            "date": git.get("date") or None,
             "store_id": get_setting("store_id", ""),
             "store_name": get_setting("store_name", "未命名店鋪"),
         },

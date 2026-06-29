@@ -76,10 +76,13 @@ async function runUpdate(btn) {
   setBusy(btn, true);
   try {
     const res = await apiPost('/api/system/update', null);
-    document.getElementById('v-output').textContent = (res.ok ? '更新指令已執行' : '更新失敗') + '\n' + (res.stdout || '') + '\n' + (res.stderr || '');
-    showToast(res.ok ? '更新指令已執行' : '更新失敗', res.ok ? 'success' : 'error');
+    const summary = res.ok
+      ? '更新指令已在背景執行：正在拉取最新程式碼、安裝相依套件並重啟服務，約需 1–2 分鐘。'
+      : '更新失敗：' + (res.stderr || '請檢查網路與 git 設定');
+    document.getElementById('v-output').textContent = summary + '\n' + (res.stdout || '') + '\n' + (res.stderr || '');
+    showToast(summary, res.ok ? 'success' : 'error');
   } catch (e) {
-    showToast('更新請求失敗', 'error');
+    showToast('更新請求失敗：' + e, 'error');
   } finally {
     setBusy(btn, false);
   }
@@ -89,10 +92,13 @@ async function rollback(btn) {
   setBusy(btn, true);
   try {
     const res = await apiPost('/api/system/rollback', null);
-    document.getElementById('v-output').textContent = (res.ok ? '回滾完成' : '回滾失敗') + '\n' + (res.stderr || '');
-    showToast(res.ok ? '回滾完成' : '回滾失敗', res.ok ? 'success' : 'error');
+    const summary = res.ok
+      ? '回滾指令已在背景執行：正在還原到上一個標記版本並重啟服務，約需 1–2 分鐘。'
+      : '回滾失敗：' + (res.stderr || '無法切換到標記版本');
+    document.getElementById('v-output').textContent = summary + '\n' + (res.stderr || '');
+    showToast(summary, res.ok ? 'success' : 'error');
   } catch (e) {
-    showToast('回滾請求失敗', 'error');
+    showToast('回滾請求失敗：' + e, 'error');
   } finally {
     setBusy(btn, false);
   }

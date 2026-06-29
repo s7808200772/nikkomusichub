@@ -180,42 +180,44 @@ export default function DashboardClient({ initialStores, supabaseOk, children })
           </div>
         )}
 
-        {jobs.length > 0 && (
-          <div style={{ marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '0.9rem', color: 'var(--muted)', margin: '0 0 0.5rem' }}>最近批量任務</h3>
-            <div className="list-table-wrap">
-              <table className="list-table">
-                <thead>
-                  <tr>
-                    <th>指令</th>
-                    <th>時間</th>
-                    <th>成功</th>
-                    <th>失敗</th>
-                    <th>無回應</th>
-                    <th>總計</th>
+        <div style={{ marginBottom: '1rem' }}>
+          <h3 style={{ fontSize: '0.9rem', color: 'var(--muted)', margin: '0 0 0.5rem' }}>最近批量任務</h3>
+          <div className="list-table-wrap">
+            <table className="list-table">
+              <thead>
+                <tr>
+                  <th>指令</th>
+                  <th>時間</th>
+                  <th>成功</th>
+                  <th>失敗</th>
+                  <th>無回應</th>
+                  <th>總計</th>
+                </tr>
+              </thead>
+              <tbody>
+                {jobs.length > 0 ? jobs.slice(0, 5).map((job) => (
+                  <tr key={job.id}>
+                    <td>
+                      {job.pending > 0 ? <Loader2 size={14} className="spin" color="var(--accent-2)" style={{ marginRight: 6, verticalAlign: 'middle' }} /> :
+                       job.failed === 0 && job.noResponse === 0 ? <CheckCircle2 size={14} color="var(--success)" style={{ marginRight: 6, verticalAlign: 'middle' }} /> :
+                       <AlertCircle size={14} color="var(--danger)" style={{ marginRight: 6, verticalAlign: 'middle' }} />}
+                      {job.commandKey}
+                    </td>
+                    <td>{new Date(job.createdAt).toLocaleTimeString('zh-TW')}</td>
+                    <td>{job.success}</td>
+                    <td>{job.failed}</td>
+                    <td>{job.noResponse}</td>
+                    <td>{job.total}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {jobs.slice(0, 5).map((job) => (
-                    <tr key={job.id}>
-                      <td>
-                        {job.pending > 0 ? <Loader2 size={14} className="spin" color="var(--accent-2)" style={{ marginRight: 6, verticalAlign: 'middle' }} /> :
-                         job.failed === 0 && job.noResponse === 0 ? <CheckCircle2 size={14} color="var(--success)" style={{ marginRight: 6, verticalAlign: 'middle' }} /> :
-                         <AlertCircle size={14} color="var(--danger)" style={{ marginRight: 6, verticalAlign: 'middle' }} />}
-                        {job.commandKey}
-                      </td>
-                      <td>{new Date(job.createdAt).toLocaleTimeString('zh-TW')}</td>
-                      <td>{job.success}</td>
-                      <td>{job.failed}</td>
-                      <td>{job.noResponse}</td>
-                      <td>{job.total}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                )) : (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', color: 'var(--muted)', padding: '1rem' }}>尚無批量任務紀錄</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
+        </div>
 
         {latestAlerts.length > 0 && (
           <div>

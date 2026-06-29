@@ -9,6 +9,32 @@ import {
 import ResponseFormatter from '@/components/ResponseFormatter';
 import { fetchWithTimeout, humanizeCommandError } from '@/lib/fetchUtils';
 
+class PageErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="card" style={{ borderLeft: '4px solid var(--danger)' }}>
+          <h2 style={{ color: 'var(--danger)', margin: '0 0 0.5rem' }}>指令控制台發生錯誤</h2>
+          <p style={{ margin: 0, color: 'var(--muted)' }}>
+            請重新整理頁面。若問題持續，請回報以下訊息：
+          </p>
+          <pre style={{ marginTop: '0.75rem', fontSize: '0.8rem', background: 'var(--bg-2)', padding: '0.75rem', borderRadius: '0.5rem' }}>
+            {this.state.error?.message || '未知錯誤'}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const CATEGORIES = [
   {
     key: 'playback',
@@ -216,7 +242,7 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
       }, 30000);
       const data = await res.json();
       if (data.jobId) {
-        setBatchJob({ id: data.jobId, polling: true });
+        setBatchJob({ id: data.jobId, polling: true, commandKey, stores: [], success: 0, failed: 0, noResponse: 0, pending: selected.size });
         pollJob(data.jobId);
       }
     } catch (e) {
@@ -273,6 +299,7 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
   }
 
   return (
+    <PageErrorBoundary>
     <>
       {batchJob && (
         <div className="card" style={{ borderLeft: '4px solid var(--accent-2)' }}>
@@ -291,7 +318,7 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
             </div>
           </div>
           <div style={{ display: 'grid', gap: '0.4rem', marginTop: '0.75rem' }}>
-            {batchJob.stores.map((s) => (
+            {(batchJob.stores || []).map((s) => (
               <div key={s.storeId} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem' }}>
                 {s.status === 'success' ? <CheckCircle2 size={14} color="var(--success)" /> :
                  s.status === 'failed' ? <AlertCircle size={14} color="var(--danger)" /> :
@@ -454,5 +481,6 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
         )}
       </div>
     </>
+    </PageErrorBoundary>
   );
 }

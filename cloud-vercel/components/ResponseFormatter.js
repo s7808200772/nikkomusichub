@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Play, Pause, CircleStop, Volume2, Shuffle, Repeat, Music2, Activity, Server, Wifi, Thermometer, HardDrive, Cpu, Clock, AlertCircle, CheckCircle2, Terminal } from 'lucide-react';
+import { Play, Pause, CircleStop, Volume2, Shuffle, Repeat, Music2, Activity, Server, Wifi, Thermometer, HardDrive, Cpu, Clock, AlertCircle, CheckCircle2, Terminal, RefreshCw } from 'lucide-react';
 
 function formatSeconds(sec) {
   if (sec === null || sec === undefined || Number.isNaN(Number(sec))) return '-';
@@ -233,6 +233,36 @@ function SystemFormatter({ data }) {
   );
 }
 
+function humanizeSyncOutput(data) {
+  const d = data || {};
+  if (d.message && typeof d.message === 'string') return d.message;
+  const out = (d.stdout || '') + '\n' + (d.stderr || '');
+  if (out.includes('There was nothing to transfer')) {
+    return '同步 NAS WebDAV 完成：本地與 NAS 內容一致，無需更新。';
+  }
+  if (out.includes('Transferred:') && /(\d+)\s*\/\s*(\d+)/.test(out)) {
+    return '同步 NAS WebDAV 完成：已更新音樂檔案到本機。';
+  }
+  if (out.includes('ERROR') || out.includes('Failed')) {
+    return '同步 NAS WebDAV 失敗：' + (out.split('\n').find((l) => l.includes('ERROR') || l.includes('Failed')) || '請檢查 WebDAV 設定與網路連線');
+  }
+  return d.ok ? '同步 NAS WebDAV 完成' : '同步 NAS WebDAV 失敗';
+}
+
+function SyncFormatter({ data }) {
+  const d = data || {};
+  const message = humanizeSyncOutput(d);
+  const error = d.error != null ? fmt(d.error) : (d.stderr != null ? fmt(d.stderr) : null);
+  return (
+    <div className="resp-card">
+      <Section title="同步 NAS WebDAV" icon={RefreshCw}>
+        <Row icon={CheckCircle2} label="結果" value={message} />
+        {error && <Row icon={AlertCircle} label="錯誤" value={error} color="danger" />}
+      </Section>
+    </div>
+  );
+}
+
 function SimpleMessageFormatter({ data, commandKey }) {
   const d = data || {};
   const message = d.message != null ? fmt(d.message) : (d.stdout != null ? fmt(d.stdout) : (d.ok ? '指令已執行' : null));
@@ -359,7 +389,8 @@ function ResponseFormatterInner({ commandKey, data, error }) {
   if (commandKey === 'network_watchdog_status' || commandKey === 'network_watchdog_logs' || commandKey === 'network_watchdog_install' || commandKey === 'network_watchdog_disable') {
     return <WatchdogFormatter data={data} />;
   }
-  if (['player_play', 'player_pause', 'player_resume', 'player_next', 'player_mute', 'player_unmute', 'sync', 'rescan', 'restart_player', 'reboot', 'ota_update', 'rollback'].includes(commandKey)) {
+  if (commandKey === 'sync') return <SyncFormatter data={data} />;
+  if (['player_play', 'player_pause', 'player_resume', 'player_next', 'player_mute', 'player_unmute', 'rescan', 'restart_player', 'reboot', 'ota_update', 'rollback'].includes(commandKey)) {
     return <SimpleMessageFormatter data={data} commandKey={commandKey} />;
   }
 

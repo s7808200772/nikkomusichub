@@ -137,8 +137,8 @@ async def install_service(request: Request):
 async def install_watchdog_route(
     request: Request,
     target: str = Form("8.8.8.8"),
-    interval: int = Form(60),
-    retries: int = Form(3),
+    interval: int = Form(300),
+    retries: int = Form(5),
 ):
     user = get_current_user_or_local(request)
     from app.services.watchdog import install_watchdog

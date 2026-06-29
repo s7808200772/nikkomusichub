@@ -37,38 +37,31 @@
   <!-- Player console -->
   <div class="card player-console dash-player">
     <h2><span class="icon">🎛️</span>播放控制台</h2>
-    <div class="player-body">
-      <div class="player-left">
-        <div class="player-main-row">
-          <div class="cover waveform" id="waveform" aria-hidden="true">
-            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+    <div class="player-layout">
+      <div class="player-main">
+        <div class="player-now-card">
+          <div class="player-cover">
+            <div class="waveform" id="waveform" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
           </div>
-          <div class="player-info">
-            <div class="label">目前播放</div>
+          <div class="player-meta">
+            <span class="now-badge">目前播放</span>
             <div class="track-title" id="p-track">-</div>
-            <div class="volume-slider-wrap">
-              <input type="range" min="0" max="150" id="volume-slider" onchange="setVolume(this.value)" title="調整音量">
-              <div class="volume-label-below">
-                <span>播放音量</span>
-                <span id="volume-val">100</span>
-                <span style="color:var(--muted-2)">0 - 150</span>
+            <div class="player-progress">
+              <input type="range" id="seek-slider" min="0" max="0" value="0" step="1" class="seek-slider" oninput="seekSlider(this.value)" title="拖曳調整播放進度">
+              <div class="time-row">
+                <span id="p-curtime">0:00</span>
+                <span id="p-duration">0:00</span>
               </div>
-            </div>
-            <input type="range" id="seek-slider" min="0" max="0" value="0" step="1" class="seek-slider" oninput="seekSlider(this.value)" title="拖曳調整播放進度">
-            <div class="seek-label-below">
-              <span>播放進度</span>
-            </div>
-            <div class="time-row">
-              <span id="p-curtime">0:00</span>
-              <span id="p-duration">0:00</span>
             </div>
           </div>
         </div>
-        <div class="player-controls">
+        <div class="player-controls-card">
           <button onclick="runAction(this, '/api/player/prev', null, null)" title="上一首"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
           <button class="play" onclick="runAction(this, '/api/player/play', null, null)" id="btn-play" title="播放 / 繼續"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
           <button onclick="runAction(this, '/api/player/pause', null, null)" id="btn-pause" title="暫停"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button>
@@ -77,15 +70,35 @@
           <button onclick="runAction(this, '/api/player/reload', null, null)" title="重新載入播放清單"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg></button>
           <button onclick="toggleMute()" id="btn-mute" title="靜音 / 取消靜音"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></button>
         </div>
+        <div class="player-volume-card">
+          <span class="vol-icon">🔊</span>
+          <span class="vol-label">播放音量</span>
+          <input type="range" min="0" max="150" id="volume-slider" onchange="setVolume(this.value)" title="調整音量">
+          <span class="vol-value" id="volume-val">100</span>
+          <span class="vol-range">0 - 150</span>
+        </div>
       </div>
-      <div class="player-settings-mini">
-        <h3 style="margin:0 0 .5rem; color:var(--accent-2); font-size:.9rem;">播放設定</h3>
-        <label class="setting-row"><input type="checkbox" id="shuffle-toggle" onchange="toggleShuffleFromCheckbox()"> 隨機播放</label>
-        <label class="setting-row"><input type="checkbox" id="loop-toggle" onchange="toggleLoopFromCheckbox()"> 循環播放</label>
-        <label class="setting-row"><input type="checkbox" id="autoload-toggle" checked disabled> 重新載入播放清單</label>
-        <label class="switch-label" title="開機自動啟動播放器服務">
+      <div class="player-settings-card">
+        <h3>⚙️ 播放設定</h3>
+        <label class="setting-row">
+          <span class="setting-icon">🔀</span>
+          <span class="setting-text">隨機播放</span>
+          <span class="switch"><input type="checkbox" id="shuffle-toggle" onchange="toggleShuffleFromCheckbox()"><span class="slider"></span></span>
+        </label>
+        <label class="setting-row">
+          <span class="setting-icon">🔁</span>
+          <span class="setting-text">循環播放</span>
+          <span class="switch"><input type="checkbox" id="loop-toggle" onchange="toggleLoopFromCheckbox()"><span class="slider"></span></span>
+        </label>
+        <label class="setting-row">
+          <span class="setting-icon">🔄</span>
+          <span class="setting-text">重新載入播放清單</span>
+          <span class="switch"><input type="checkbox" id="autoload-toggle" checked disabled><span class="slider"></span></span>
+        </label>
+        <label class="setting-row">
+          <span class="setting-icon">⏻</span>
+          <span class="setting-text">開機自動播放</span>
           <span class="switch"><input type="checkbox" id="autostart-toggle" onchange="toggleAutostart()"><span class="slider"></span></span>
-          開機自動播放
         </label>
       </div>
     </div>
@@ -126,7 +139,7 @@
         <div class="status-row"><span class="label">mpv</span><span class="value" id="ss-mpv"><span class="dot {{ 'green' if data.mpv_installed else 'gray' }}"></span> <span class="skeleton" id="ss-mpv-text">已{{ '安裝' if data.mpv_installed else '未安裝' }}</span></span></div>
         <div class="status-row"><span class="label">mpv 版本</span><span class="value small skeleton" id="ss-mpv-ver" style="font-size:.7rem;">{{ data.mpv_version or '-' }}</span></div>
         <div class="status-row"><span class="label">音樂服務</span><span class="value" id="ss-player-svc"><span class="dot {{ 'green' if data.player_service_status == 'active' else 'gray' }}"></span> <span class="skeleton" id="ss-player-svc-text">{{ data.player_service_status or 'inactive' }}</span></span></div>
-        <div class="hint" id="ss-player-svc-hint" style="margin-top:.3rem;">音樂服務 = systemd 播放器服務。若正在播放，狀態會顯示「播放中」；若為 inactive，按首頁「播放」或維護區「啟動播放服務」即可喚醒。</div>
+        <div class="hint" id="ss-player-svc-hint" style="margin-top:.3rem; font-size:0.78rem; line-height:1.4; color:var(--text-secondary);">音樂服務 = systemd 播放器服務。若正在播放，狀態會顯示「播放中」；若為 inactive，按首頁「播放」或維護區「啟動播放服務」即可喚醒。</div>
       </div>
 
       <div class="status-card">
@@ -342,6 +355,7 @@ async function loadDashboardData() {
   try {
     const data = await apiGet('/api/dashboard');
     dashData = data;
+    window.dashboardData = data;
     lastDashboardVersion = data.dashboard_version || lastDashboardVersion;
     updateStatusCards(data);
   } catch (e) {
@@ -354,6 +368,7 @@ async function listenEvents() {
     const ev = await apiGet('/api/events?version=' + lastDashboardVersion);
     if (ev && ev.changed && ev.data) {
       dashData = ev.data;
+      window.dashboardData = ev.data;
       lastDashboardVersion = ev.data.dashboard_version || ev.version;
       updateStatusCards(ev.data);
       loadConnectivity();
@@ -624,10 +639,16 @@ function coloredDot(ok) {
 function updateConnRow(rowId, textId, ok, text) {
   const row = document.getElementById(rowId);
   const txt = document.getElementById(textId);
-  if (txt) txt.textContent = text;
+  if (txt) {
+    txt.textContent = text;
+    txt.classList.remove('skeleton');
+  }
   if (row) {
     const dot = row.querySelector('.dot');
-    if (dot) dot.style.background = ok ? 'var(--success)' : 'var(--danger)';
+    if (dot) {
+      dot.classList.remove('skeleton');
+      dot.style.background = ok ? 'var(--success)' : 'var(--danger)';
+    }
   }
 }
 
@@ -645,37 +666,49 @@ async function loadConnectivity() {
     }
   };
 
+  // Use the WebDAV URL already loaded in dashboard data to decide if QNAP check is meaningful
+  const hasWebdavUrl = !!(window.dashboardData && window.dashboardData.webdav_url);
+
   let ts = { up: false };
-  let qnap = { ok: false, webdav_ok: false, tailscale_ping_ok: undefined };
   try {
-    ts = await fetchJson('/api/health/tailscale', 10000);
+    ts = await fetchJson('/api/health/tailscale', 8000);
   } catch (e) {
     console.warn('tailscale health failed', e);
   }
-  try {
-    qnap = await fetchJson('/api/health/qnap', 15000);
-  } catch (e) {
-    console.warn('qnap health failed', e);
-  }
-
   const tsUp = !!ts.up;
   updateConnRow('ss-tailscale', 'ss-tailscale-text', tsUp, tsUp ? '上線' : '未上線');
 
-  let qnapText = '檢查中…';
+  let qnap = { ok: false, webdav_ok: false, tailscale_ping_ok: undefined };
+  if (hasWebdavUrl) {
+    try {
+      qnap = await fetchJson('/api/health/qnap', 12000);
+    } catch (e) {
+      console.warn('qnap health failed', e);
+    }
+  }
+
+  let qnapText = '未設定';
   const qnapReachable = !!(qnap.ok && qnap.webdav_ok);
-  if (qnapReachable) qnapText = 'QNAP 可連線';
-  else if (qnap.tailscale_ping_ok === false) qnapText = 'Tailscale 不通';
-  else if (qnap.webdav_ok === false) qnapText = 'WebDAV 失敗';
-  else if (qnap.ok === false) qnapText = 'QNAP 連線失敗';
-  else qnapText = '未設定';
+  if (!hasWebdavUrl) {
+    qnapText = '未設定 WebDAV URL';
+  } else if (qnapReachable) {
+    qnapText = 'QNAP 可連線';
+  } else if (qnap.tailscale_ping_ok === false) {
+    qnapText = 'Tailscale 無法連到 QNAP';
+  } else if (qnap.webdav_ok === false) {
+    qnapText = 'WebDAV 連線失敗';
+  } else if (qnap.ok === false) {
+    qnapText = 'QNAP 連線檢查失敗';
+  }
   updateConnRow('ss-webdav', 'ss-webdav-text', qnapReachable, qnapText);
 }
 
-loadDashboardData();
+loadDashboardData().then(() => {
+  loadConnectivity();
+});
 loadLibrary();
 loadPlaylist();
 refreshPlayer();
-loadConnectivity();
 listenEvents();
 setInterval(loadDashboardData, 30000);
 setInterval(refreshPlayer, 3000);

@@ -636,7 +636,8 @@ button .spinner, .btn .spinner { border-color: rgba(255,255,255,0.3); border-top
 
 /* Count badge next to headings */
 .count {
-  font-size: 0.75rem; color: var(--muted); font-weight: 500; margin-left: 0.4rem;
+  font-size: 0.75rem; color: #fff; font-weight: 600; margin-left: 0.4rem;
+  background: var(--text); padding: 0.05rem 0.35rem; border-radius: 999px;
 }
 
 /* Search input inside cards */
@@ -904,7 +905,7 @@ button.icon-left span { font-size: 1rem; }
 .dash-warning a { color: var(--warning); text-decoration: underline; }
 
 /* Count badge */
-.count { font-size: 0.75rem; color: var(--muted); font-weight: 500; margin-left: 0.4rem; }
+.count { font-size: 0.75rem; color: #fff; font-weight: 600; margin-left: 0.4rem; background: var(--text); padding: 0.05rem 0.35rem; border-radius: 999px; }
 
 /* ---------- Dashboard (image 3) ---------- */
 .dashboard-shell {
@@ -1254,4 +1255,239 @@ button.loading, .btn.loading {
   .lib-toolbar { flex-direction: column; align-items: stretch; }
   .lib-toolbar .search { width: 100%; }
   .lib-toolbar button { width: 100%; }
+}
+
+/* ---------- New Player Console (image reference) ---------- */
+.player-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1rem;
+  align-items: stretch;
+}
+.player-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.player-now-card {
+  position: relative;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #60a5fa 100%);
+  color: #fff;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  overflow: hidden;
+  min-height: 170px;
+}
+.player-now-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><filter id="blur"><feGaussianBlur stdDeviation="8"/></filter><circle cx="160" cy="160" r="70" fill="rgba(255,255,255,0.12)" filter="url(%23blur)"/></svg>');
+  background-size: cover;
+  opacity: 0.4;
+  pointer-events: none;
+}
+.player-cover {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  border-radius: 1rem;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.player-cover .waveform {
+  height: 70px;
+  gap: 2px;
+  opacity: 1;
+}
+.player-cover .waveform span {
+  width: 3px;
+  background: rgba(255,255,255,0.95);
+  border-radius: 2px;
+}
+.player-meta {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.now-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.2);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.now-badge::before {
+  content: "🎵";
+  font-size: 0.7rem;
+}
+.player-meta .track-title {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0.2rem 0 0.4rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.player-progress {
+  margin-top: auto;
+}
+.player-progress input[type="range"] {
+  width: 100%;
+  accent-color: #fff;
+  cursor: pointer;
+  height: 4px;
+}
+.player-progress .time-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.85);
+  margin-top: 0.25rem;
+}
+.player-controls-card,
+.player-volume-card,
+.player-settings-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+}
+.player-controls-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+}
+.player-controls-card button {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.65rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+.player-controls-card button:hover:not(:disabled) {
+  background: var(--panel-hover);
+  transform: translateY(-1px);
+}
+.player-controls-card button.play {
+  width: 3.4rem;
+  height: 3.4rem;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-size: 1.3rem;
+}
+.player-controls-card button.stop {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.player-volume-card {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.player-volume-card .vol-icon { font-size: 1.1rem; }
+.player-volume-card .vol-label { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); }
+.player-volume-card input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.player-volume-card .vol-value { font-size: 0.9rem; font-weight: 700; color: var(--accent); min-width: 2rem; text-align: right; }
+.player-volume-card .vol-range { font-size: 0.75rem; color: var(--muted); }
+.player-settings-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.player-settings-card h3 {
+  margin: 0 0 0.2rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.player-settings-card .setting-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+.player-settings-card .setting-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 0.45rem;
+  background: var(--panel-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+}
+.player-settings-card .setting-text { flex: 1; }
+.player-settings-card .switch {
+  position: relative;
+  display: inline-block;
+  width: 2.6rem;
+  height: 1.4rem;
+}
+.player-settings-card .switch input { opacity: 0; width: 0; height: 0; }
+.player-settings-card .slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--panel-3);
+  border-radius: 999px;
+  transition: 0.2s;
+}
+.player-settings-card .slider::before {
+  content: "";
+  position: absolute;
+  height: 1.1rem;
+  width: 1.1rem;
+  left: 0.15rem;
+  bottom: 0.15rem;
+  background: #fff;
+  border-radius: 50%;
+  transition: 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.player-settings-card .switch input:checked + .slider { background: var(--accent); }
+.player-settings-card .switch input:checked + .slider::before { transform: translateX(1.2rem); }
+.player-settings-card .switch input:disabled + .slider { opacity: 0.6; cursor: not-allowed; }
+@media (max-width: 1024px) {
+  .player-layout { grid-template-columns: 1fr; }
+  .player-now-card { min-height: auto; }
+}
+@media (max-width: 640px) {
+  .player-cover { width: 90px; height: 90px; }
+  .player-meta .track-title { font-size: 1.1rem; }
+  .player-controls-card button { width: 2.2rem; height: 2.2rem; }
+  .player-controls-card button.play { width: 2.8rem; height: 2.8rem; }
 }

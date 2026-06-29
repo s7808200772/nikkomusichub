@@ -203,7 +203,7 @@
         <div class="form-group">
           <label>Password</label>
           <div class="password-wrap">
-            <input type="password" name="password" id="webdav-password" autocomplete="off" value="{{ '********' if settings.webdav_password_set else '' }}" placeholder="請輸入 Password" title="WebDAV 密碼（首次設定必填，之後留空可保留現有密碼）">
+            <input type="password" name="password" id="webdav-password" autocomplete="off" value="{{ '********' if settings.password_set else '' }}" placeholder="{{ '已設定（留空不變）' if settings.password_set else '請輸入 Password' }}" title="WebDAV 密碼（首次設定必填，之後留空可保留現有密碼）">
             <button type="button" class="eye-btn" onclick="togglePwd('webdav-password', this)" title="顯示 / 隱藏密碼">👁</button>
           </div>
         </div>
@@ -281,6 +281,14 @@ async function loadWebDAV() {
   const s = await apiGet('/api/webdav/settings');
   document.getElementById('url').value = s.url || '';
   document.getElementById('username').value = s.username || '';
+  const pwdInput = document.getElementById('webdav-password');
+  if (s.password_set) {
+    pwdInput.value = '********';
+    pwdInput.placeholder = '已設定（留空不變）';
+  } else {
+    pwdInput.value = '';
+    pwdInput.placeholder = '請輸入 Password';
+  }
   document.getElementById('remote_path').value = s.remote_path_raw || s.remote_path_display || '';
   document.getElementById('local_path').value = s.local_path || '';
 

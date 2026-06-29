@@ -166,11 +166,15 @@ async function runAction(btn, url, body, outputId, timeoutMs = 60000) {
     }
     if (out) {
       let text = '';
-      if (typeof res.stdout === 'string' && res.stdout.trim()) text += res.stdout;
-      if (typeof res.stderr === 'string' && res.stderr.trim()) text += (text ? '\n' : '') + res.stderr;
-      if (res.error) text += (text ? '\n' : '') + (typeof res.error === 'string' ? res.error : JSON.stringify(res.error, null, 2));
-      if (res.data && !text.trim()) text = JSON.stringify(res.data, null, 2);
-      if (!text.trim() && res.message) text = res.message;
+      // Prefer server-provided human-readable message when available
+      if (res.message) {
+        text = typeof res.message === 'string' ? res.message : JSON.stringify(res.message, null, 2);
+      } else {
+        if (typeof res.stdout === 'string' && res.stdout.trim()) text += res.stdout;
+        if (typeof res.stderr === 'string' && res.stderr.trim()) text += (text ? '\n' : '') + res.stderr;
+        if (res.error) text += (text ? '\n' : '') + (typeof res.error === 'string' ? res.error : JSON.stringify(res.error, null, 2));
+        if (res.data && !text.trim()) text = JSON.stringify(res.data, null, 2);
+      }
       out.textContent = text.trim() || (res.ok ? '執行完成' : '執行失敗，無詳細訊息');
     }
     const message = res.message || (res.ok ? '執行成功' : '執行失敗');

@@ -54,6 +54,7 @@ async def webdav_settings(request: Request):
         "boot_delay_min": int(get_setting("sync_boot_delay_min", "2")),
         "auto_restart_player": bool(int(get_setting("auto_restart_player", "1"))),
         "configured": rclone.get_rclone_config_exists(),
+        "password_set": bool(get_setting("webdav_password", "")),
     }
 
 
@@ -82,6 +83,11 @@ async def save_webdav_settings(
     if password == "********":
         password = ""
 
+    existing_password = get_setting("webdav_password", "")
+    # If user left the password blank on an existing setup, keep the stored password.
+    if not password and existing_password:
+        password = existing_password
+
     # Only rewrite rclone config if a password was provided; otherwise keep existing config
     if password:
         try:
@@ -94,6 +100,7 @@ async def save_webdav_settings(
     set_setting("webdav_remote", remote_name)
     set_setting("webdav_url", url)
     set_setting("webdav_username", username)
+    set_setting("webdav_password", password)
     set_setting("webdav_remote_path", stored_remote_path)
     set_setting("webdav_remote_path_raw", remote_path_raw)
     set_setting("local_music_path", local_path)

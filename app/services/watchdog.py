@@ -70,8 +70,17 @@ MAX_FAIL_BEFORE_REBOOT={max(3, max_fail + 4)}
         if not cp_config.get("ok"):
             errors.append(f"copy config failed: {cp_config.get('stderr')}")
 
-        shutil.copy2(SCRIPT_SRC, SCRIPT_DST)
-        shutil.copy2(SERVICE_SRC, SERVICE_DST)
+        # Copy script/service/timer to system directories using sudo
+        tmp_script = Path("/tmp/nikko-network-watchdog.sh")
+        tmp_service = Path("/tmp/nikko-network-watchdog.service")
+        shutil.copy2(SCRIPT_SRC, tmp_script)
+        shutil.copy2(SERVICE_SRC, tmp_service)
+        cp_script = run(["sudo", "cp", str(tmp_script), str(SCRIPT_DST)], timeout=10)
+        if not cp_script.get("ok"):
+            errors.append(f"copy script failed: {cp_script.get('stderr')}")
+        cp_service = run(["sudo", "cp", str(tmp_service), str(SERVICE_DST)], timeout=10)
+        if not cp_service.get("ok"):
+            errors.append(f"copy service failed: {cp_service.get('stderr')}")
 
         # Generate timer with configured interval
         timer_content = f"""[Unit]
