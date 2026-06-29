@@ -1,15 +1,15 @@
-# NikkoMusicHub Cloud (Vercel 版)
+# NikkoMusicHub Cloud（Vercel 版）
 
 中央管理平台，透過 MQTT 管理各地 Raspberry Pi 音樂節點。
 
 ## 功能
 
 - 登入頁面與 JWT 認證
-- 店點管理（Store ID、店名、MQTT broker 設定）
-- Dashboard 查看各店狀態
+- 左側側邊欄導航（參考 Pi 端介面風格）
+- **總覽控制台 `/`**：各店狀態、統計卡片、遠端指令控制台
+- **店點管理 `/stores`**：店點列表、MQTT 設定、音樂庫同步、OTA 更新、預設 Broker
+- **監控與紀錄 `/monitoring`**：告警中心、遠端 Log
 - 遠端執行預定義指令（播放控制、同步、重啟、重開機）
-- Commands 頁面以圖示卡片列出所有店點
-- 全域設定：預設 MQTT broker
 
 ## 運作方式
 
@@ -44,6 +44,7 @@ npx vercel --prod
 - `NIKKO_CLOUD_SECRET`：JWT 簽章金鑰
 - `NIKKO_MQTT_COMMAND_SECRET`：與 Pi 相同的 HMAC 密鑰
 - `NIKKO_MQTT_CA`、`NIKKO_MQTT_TLS_SERVERNAME`：私有 broker Root CA 與憑證名稱
+- `NIKKO_MQTT_TLS_VERIFY`：設 `0` 可暫時關閉 broker 憑證驗證（測試用）
 - `NIKKO_MQTT_TOPIC_PREFIX`：與 Pi 相同的私有 topic prefix
 - `SUPABASE_URL`、`NIKKO_SUPABASE_PROXY_SECRET`：透過受保護 Edge Function 存取正式資料庫
 
@@ -70,26 +71,25 @@ npx vercel --prod
 ```
 cloud-vercel/
 ├── app/
-│   ├── api/
-│   │   ├── auth/route.js
-│   │   ├── command/route.js
-│   │   ├── settings/route.js
-│   │   ├── stores/route.js
-│   │   └── test-connection/route.js
-│   ├── commands/
+│   ├── api/              # 後端 API（auth、command、stores、settings、ota、logs、alerts...）
+│   ├── commands/         # CommandsClient（現由總覽控制台引用）
 │   ├── login/
-│   ├── settings/
-│   ├── stores/
+│   ├── monitoring/       # 告警 + Log 整合頁面
+│   ├── stores/           # 店點 + Library + OTA + Settings 整合頁面
 │   ├── DashboardClient.js
 │   ├── globals.css
 │   ├── layout.js
-│   └── page.js
-├── components/Navbar.js
+│   └── page.js           # 總覽控制台
+├── components/
+│   ├── AppShell.js       # 側邊欄外殼
+│   ├── Sidebar.js        # 左側導航
+│   ├── Tabs.js           # 分頁元件
+│   └── SupabaseWarning.js
 ├── lib/
 │   ├── auth.js
 │   ├── db.js
 │   └── mqtt.js
-├── next.config.js
+├── next.config.mjs
 ├── package.json
 └── README.md
 ```

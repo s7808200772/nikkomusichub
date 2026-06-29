@@ -10,7 +10,11 @@
 ## 技術決策
 
 - Python 3.12+ on Pi；FastAPI + Jinja2 SSR 模板（`app/templates/`）。
-- `cloud-vercel/` 使用 Next.js App Router + Serverless Function。
+- `cloud-vercel/` 使用 Next.js App Router + Serverless Function；介面採用左側側邊欄，與 Pi 端風格一致。
+- Cloud 主要頁面：
+  - `/`：總覽控制台（含 Dashboard 與遠端指令）
+  - `/stores`：店點管理（含 Store 列表、Library 同步、OTA、預設 Broker）
+  - `/monitoring`：監控與紀錄（含告警與遠端 Log）
 - MQTT topic：
   - 指令：`nikko/<storeId>/cmd`
   - 回應：`nikko/<storeId>/resp`
