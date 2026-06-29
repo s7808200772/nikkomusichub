@@ -44,6 +44,13 @@ fi
 log "Copying application files..."
 rsync -a --delete --exclude='.git' --exclude='venv' --exclude='cloud-vercel' --exclude='node_modules' "${SOURCE_DIR}/" "${APP_DIR}/"
 
+# Also expose repair script at the documented top-level path for convenience.
+if [ -f "${SOURCE_DIR}/scripts/repair-pi.sh" ]; then
+  mkdir -p "${INSTALL_DIR}/scripts"
+  cp "${SOURCE_DIR}/scripts/repair-pi.sh" "${INSTALL_DIR}/scripts/repair-pi.sh"
+  chmod +x "${INSTALL_DIR}/scripts/repair-pi.sh"
+fi
+
 # Sanity check: mqtt client must exist after copy (inside app package)
 if [ ! -f "${APP_DIR}/app/mqtt_client.py" ]; then
   log "ERROR: app/mqtt_client.py not found after copy. Source dir may be incomplete."
