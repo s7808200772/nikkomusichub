@@ -58,6 +58,10 @@ def _persisted_bool(key: str) -> bool:
 
 
 def get_status():
+    # Persisted settings are the source of truth; live mpv properties override them only when successfully read.
+    persisted_shuffle = _persisted_bool("player_shuffle")
+    persisted_loop = _persisted_bool("player_loop")
+
     res = _ipc_send({"command": ["get_property", "playback-time"]})
     if not res["ok"]:
         return {
@@ -66,8 +70,8 @@ def get_status():
             "position": 0,
             "duration": 0,
             "volume": 100,
-            "shuffle": _persisted_bool("player_shuffle"),
-            "loop": _persisted_bool("player_loop"),
+            "shuffle": persisted_shuffle,
+            "loop": persisted_loop,
             "playlist_count": 0,
         }
 
@@ -78,14 +82,14 @@ def get_status():
         "media-title": "",
         "volume": 100,
         "mute": False,
-        "shuffle": False,
-        "loop-playlist": "no",
+        "shuffle": persisted_shuffle,
+        "loop-playlist": "inf" if persisted_loop else "no",
         "playlist-count": 0,
         "playlist-pos": -1,
     }
     for key in props:
         r = _ipc_send({"command": ["get_property", key]}, timeout=1.5)
-        if r["ok"] and "data" in r["data"]:
+        if r["ok"] and "data" in r["data"] and r["data"]["data"] is not None:
             props[key] = r["data"]["data"]
 
     state = "paused" if props["pause"] else "playing"

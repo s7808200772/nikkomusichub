@@ -7,19 +7,47 @@ import { fetchWithTimeout, humanizeCommandError } from '@/lib/fetchUtils';
 
 const STORES_CHANGED_EVENT = 'nikko-stores-changed';
 
+function isUnknown(value) {
+  if (!value) return true;
+  const text = String(value).toLowerCase().trim();
+  return text === '' || text === 'unknown' || text === '未知' || text === 'n/a' || text === 'none';
+}
+
 function formatVersion(data) {
-  if (!data) return null;
-  const parsed = data.parsed || data.result || {};
-  if (parsed.git) {
-    const short = parsed.git.commit && parsed.git.commit.length > 7 ? parsed.git.commit.slice(0, 7) : parsed.git.commit;
-    if (short && parsed.git.branch && parsed.git.branch !== 'unknown') {
-      return { value: `${short} (${parsed.git.branch})`, ok: true };
-    }
-    if (short) return { value: short, ok: true };
+  if (!data) {
+    return { value: '尚未取得版本', ok: false, help: 'Pi 未回報版本資訊' };
   }
-  const version = parsed.version || parsed.git_version;
-  if (version && version !== '未知') return { value: version, ok: true };
-  if (data.ok === false) return { value: humanizeCommandError(data.error, 25000), ok: false };
+  if (data.ok === false) {
+    return { value: humanizeCommandError(data.error, 25000), ok: false };
+  }
+  const parsed = data.parsed || data.result || {};
+
+  // Handle git object: { commit, branch }
+  if (parsed.git && typeof parsed.git === 'object') {
+    const commit = String(parsed.git.commit || '').trim();
+    const branch = String(parsed.git.branch || '').trim();
+    const shortCommit = commit.length > 7 ? commit.slice(0, 7) : commit;
+    if (!isUnknown(commit)) {
+      if (!isUnknown(branch)) return { value: `${shortCommit} (${branch})`, ok: true };
+      return { value: shortCommit, ok: true };
+    }
+  }
+
+  // Handle git as string (fallback)
+  if (parsed.git && typeof parsed.git === 'string' && !isUnknown(parsed.git)) {
+    const text = parsed.git.trim();
+    return { value: text.length > 7 ? text.slice(0, 7) : text, ok: true };
+  }
+
+  // Generic version fields
+  const candidates = [parsed.version, parsed.git_version, parsed.git_commit, parsed.commit, parsed.sha, parsed.ref].filter(Boolean);
+  for (const candidate of candidates) {
+    const text = String(candidate).trim();
+    if (!isUnknown(text)) {
+      return { value: text.length > 7 ? text.slice(0, 7) : text, ok: true };
+    }
+  }
+
   return { value: '無法取得', ok: false, help: 'Pi 未回報版本資訊，請確認 Pi 端已上線且狀態正常' };
 }
 

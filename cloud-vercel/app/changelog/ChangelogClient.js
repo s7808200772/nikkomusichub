@@ -8,6 +8,12 @@ const CHANGELOG = [
     version: 'v2026.06.29',
     date: '2026-06-29',
     items: [
+      '修復 Pi 音樂庫刪除按鈕改為「刪除選取」並移至標題列，支援批次刪除',
+      '修復 Pi shuffle/loop 勾選後自動跳掉：以持久化設定為準並延長前端同步寬限期',
+      '修復 Cloud OTA 頁面版本顯示「未知」：強化 git/version 解析與未知值過濾',
+      'Cloud 指令控制台非狀態指令（sync、rescan、reboot、OTA、rollback、log、library_list、watchdog）輸出翻譯為中文人話',
+      '雙端按鈕新增 loading、progress、timeout、錯誤處理與 transition 狀態回饋',
+      '雙端 UI 強化 RWD、Toast 類型樣式、focus ring、清單 fade-in 與進度條',
       '修復 Settings MQTT 預設 broker 使用者/密碼儲存後仍顯示 placeholder 的問題',
       'OTA 與音樂庫店點卡片 checkbox 排版強化，避免文字被擠壓',
       '音樂庫新增 NAS WebDAV 設定並將載入清單持久化到 localStorage',

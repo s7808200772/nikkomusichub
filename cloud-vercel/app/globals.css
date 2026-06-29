@@ -800,6 +800,40 @@ input::placeholder, textarea::placeholder { color: var(--muted-2); }
 .status-dot.offline { background: var(--danger); }
 .status-dot.pending { background: var(--warning); }
 
+/* Button loading progress bar */
+button.progress {
+  position: relative;
+  overflow: hidden;
+}
+button.progress::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: 0; height: 3px;
+  background: rgba(255,255,255,0.5);
+  width: var(--progress, 0%);
+  transition: width 0.3s ease;
+}
+
+/* Toast type colors */
+.toast.success { border-left-color: var(--success); }
+.toast.error { border-left-color: var(--danger); }
+.toast.warning { border-left-color: var(--warning); }
+
+/* Improved focus states */
+button:focus-visible, .btn:focus-visible, input:focus, select:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* Smooth page transitions */
+.page-transition {
+  animation: pageFadeIn 0.25s ease;
+}
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 768px) {
   .content-area { margin-left: 0; }
   .sidebar { transform: translateX(-100%); transition: transform 0.25s ease; }

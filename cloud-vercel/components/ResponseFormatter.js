@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Play, Pause, CircleStop, Volume2, Shuffle, Repeat, Music2, Activity, Server, Wifi, Thermometer, HardDrive, Cpu, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Play, Pause, CircleStop, Volume2, Shuffle, Repeat, Music2, Activity, Server, Wifi, Thermometer, HardDrive, Cpu, Clock, AlertCircle, CheckCircle2, Terminal } from 'lucide-react';
 
 function formatSeconds(sec) {
   if (sec === null || sec === undefined || Number.isNaN(Number(sec))) return '-';
@@ -25,6 +25,58 @@ function fmt(value) {
   if (typeof value === 'boolean') return value ? '是' : '否';
   if (typeof value === 'number') return Number.isFinite(value) ? value : String(value);
   return String(value);
+}
+
+const KEY_LABELS = {
+  ok: '執行結果',
+  success: '執行結果',
+  message: '訊息',
+  error: '錯誤',
+  stdout: '標準輸出',
+  stderr: '錯誤輸出',
+  count: '數量',
+  files: '檔案列表',
+  lines: '內容',
+  log_type: 'Log 類型',
+  version: '版本',
+  git_version: 'Git 版本',
+  git_commit: 'Git Commit',
+  commit: 'Commit',
+  branch: '分支',
+  status: '狀態',
+  state: '狀態',
+  uptime_seconds: '運行時間',
+  cpu_percent: 'CPU 使用率',
+  ram: 'RAM',
+  disk: '磁碟',
+  mp3_count: '曲目數',
+  current: '目前曲目',
+  current_track: '目前曲目',
+  title: '曲名',
+  volume: '音量',
+  position: '播放位置',
+  duration: '總長度',
+  shuffle: '隨機播放',
+  loop: '循環播放',
+  mute: '靜音',
+  playlist_count: '播放清單數量',
+  store_name: '店名',
+  hostname: '主機名稱',
+  tailscale_ip: 'Tailscale IP',
+  lan_ip: 'LAN IP',
+  webdav_connected: 'WebDAV 連線',
+  last_sync_at: '上次同步時間',
+  last_sync_status: '上次同步狀態',
+  last_sync_message: '同步訊息',
+  player_active: '播放服務狀態',
+  web_service_status: 'Web 服務狀態',
+  player_service_status: '播放服務狀態',
+  sync_timer_status: '同步 Timer 狀態',
+  mqtt_service_status: 'MQTT 服務狀態',
+};
+
+function labelKey(k) {
+  return KEY_LABELS[k] || k;
 }
 
 function Badge({ children, color = 'gray' }) {
@@ -167,6 +219,89 @@ function SystemFormatter({ data }) {
   );
 }
 
+function SimpleMessageFormatter({ data, commandKey }) {
+  const d = data || {};
+  const message = d.message || d.stdout || (d.ok ? '指令已執行' : null);
+  const error = d.error || d.stderr;
+  return (
+    <div className="resp-card">
+      <Section title={commandLabel(commandKey)} icon={CheckCircle2}>
+        {message && <Row icon={CheckCircle2} label="訊息" value={message} />}
+        {error && <Row icon={AlertCircle} label="錯誤" value={error} color="danger" />}
+        {d.count !== undefined && <Row icon={Activity} label="數量" value={d.count} />}
+      </Section>
+    </div>
+  );
+}
+
+function commandLabel(commandKey) {
+  const map = {
+    player_play: '播放 / 繼續',
+    player_pause: '暫停',
+    player_resume: '繼續',
+    player_next: '下一首',
+    player_mute: '靜音',
+    player_unmute: '取消靜音',
+    sync: '同步 NAS WebDAV',
+    rescan: '重新掃描音樂庫',
+    restart_player: '重啟播放服務',
+    reboot: '重新開機',
+    library_list: '音樂庫列表',
+    get_log: '系統 Log',
+    ota_update: 'OTA 更新',
+    rollback: 'Rollback',
+    network_watchdog_install: '安裝網路看門狗',
+    network_watchdog_disable: '停用網路看門狗',
+    network_watchdog_status: '看門狗狀態',
+    network_watchdog_logs: '看門狗 Log',
+  };
+  return map[commandKey] || commandKey;
+}
+
+function LogFormatter({ data }) {
+  const d = data || {};
+  const lines = d.lines || d.log || d.content || '';
+  return (
+    <div className="resp-card">
+      <Section title={`Log：${d.log_type || 'system'}`} icon={Terminal}>
+        <div className="resp-pre" style={{ maxHeight: '320px', overflow: 'auto' }}>{typeof lines === 'string' ? lines : JSON.stringify(lines, null, 2)}</div>
+      </Section>
+    </div>
+  );
+}
+
+function FileListFormatter({ data }) {
+  const d = data || {};
+  const files = Array.isArray(d.files) ? d.files : [];
+  return (
+    <div className="resp-card">
+      <Section title="音樂庫列表" icon={Music2}>
+        <Row icon={Activity} label="總數" value={`${d.count ?? files.length} 首`} />
+        {files.length > 0 && (
+          <div className="resp-pre" style={{ maxHeight: '240px', overflow: 'auto' }}>
+            {files.map((f, i) => (
+              <div key={i}>{typeof f === 'string' ? f : (f.path || f.filename || f.name || JSON.stringify(f))}</div>
+            ))}
+          </div>
+        )}
+      </Section>
+    </div>
+  );
+}
+
+function WatchdogFormatter({ data }) {
+  const d = data || {};
+  return (
+    <div className="resp-card">
+      <Section title="網路看門狗" icon={Server}>
+        {Object.entries(d).map(([k, v]) => (
+          <Row key={k} icon={CheckCircle2} label={labelKey(k)} value={fmt(v)} />
+        ))}
+      </Section>
+    </div>
+  );
+}
+
 export default function ResponseFormatter({ commandKey, data, error }) {
   if (error) {
     return (
@@ -182,12 +317,23 @@ export default function ResponseFormatter({ commandKey, data, error }) {
   if (commandKey === 'status_player') return <PlayerFormatter data={data} />;
   if (commandKey === 'status_dashboard') return <DashboardFormatter data={data} />;
   if (commandKey === 'status_system') return <SystemFormatter data={data} />;
+
+  // Non-status commands with human-readable formatting
+  if (commandKey === 'get_log') return <LogFormatter data={data} />;
+  if (commandKey === 'library_list') return <FileListFormatter data={data} />;
+  if (commandKey === 'network_watchdog_status' || commandKey === 'network_watchdog_logs' || commandKey === 'network_watchdog_install' || commandKey === 'network_watchdog_disable') {
+    return <WatchdogFormatter data={data} />;
+  }
+  if (['player_play', 'player_pause', 'player_resume', 'player_next', 'player_mute', 'player_unmute', 'sync', 'rescan', 'restart_player', 'reboot', 'ota_update', 'rollback'].includes(commandKey)) {
+    return <SimpleMessageFormatter data={data} commandKey={commandKey} />;
+  }
+
   if (typeof data === 'object') {
     return (
       <div className="resp-section">
         <div className="resp-grid">
           {Object.entries(data).map(([k, v]) => (
-            <Row key={k} label={k} value={fmt(v)} />
+            <Row key={k} label={labelKey(k)} value={fmt(v)} />
           ))}
         </div>
       </div>

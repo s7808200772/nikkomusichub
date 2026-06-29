@@ -1,11 +1,17 @@
-async function apiGet(url) {
-  const r = await fetch(url);
-  if (r.status === 401) { window.location.href = '/login'; return undefined; }
-  if (!r.ok) { throw new Error(`HTTP ${r.status}`); }
-  return await r.json();
+async function apiGet(url, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { signal: controller.signal });
+    if (r.status === 401) { window.location.href = '/login'; return undefined; }
+    if (!r.ok) { throw new Error(`HTTP ${r.status}`); }
+    return await r.json();
+  } finally {
+    clearTimeout(id);
+  }
 }
 
-async function apiPost(url, body) {
+async function apiPost(url, body, timeoutMs = 30000) {
   const opts = { method: 'POST' };
   if (body instanceof FormData || body instanceof URLSearchParams) {
     opts.body = body;
@@ -13,13 +19,19 @@ async function apiPost(url, body) {
     opts.headers = { 'Content-Type': 'application/json' };
     opts.body = JSON.stringify(body);
   }
-  const r = await fetch(url, opts);
-  if (r.status === 401) { window.location.href = '/login'; return undefined; }
-  const text = await r.text();
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return JSON.parse(text);
-  } catch (e) {
-    return { ok: r.ok, stdout: text, stderr: '' };
+    const r = await fetch(url, { ...opts, signal: controller.signal });
+    if (r.status === 401) { window.location.href = '/login'; return undefined; }
+    const text = await r.text();
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      return { ok: r.ok, stdout: text, stderr: '' };
+    }
+  } finally {
+    clearTimeout(id);
   }
 }
 
@@ -68,23 +80,26 @@ function showToast(message, type='info') {
   const t = document.getElementById('toast');
   if (!t) return;
   t.textContent = message;
+  t.classList.remove('success', 'error', 'warning');
+  t.classList.add(type);
   const color = type === 'success' ? 'var(--success)' : (type === 'error' ? 'var(--danger)' : (type === 'warning' ? 'var(--warning)' : 'var(--accent)'));
   t.style.borderLeftColor = color;
   t.classList.add('show');
   if (_toastTimer) clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => { t.classList.remove('show'); }, 4000);
+  _toastTimer = setTimeout(() => { t.classList.remove('show'); }, 4500);
 }
 
-function setBusy(btn, busy) {
+function setBusy(btn, busy, label = '執行中…') {
   if (!btn) return;
   btn.disabled = busy;
   if (busy) {
     if (!btn.dataset.original) btn.dataset.original = btn.innerHTML;
     btn.classList.add('loading');
-    btn.innerHTML = '<span class="spinner" style="width:.9em;height:.9em;border-width:2px;"></span> 執行中…';
+    btn.innerHTML = '<span class="spinner" style="width:.9em;height:.9em;border-width:2px;"></span> ' + label;
   } else {
     btn.classList.remove('loading');
     btn.innerHTML = btn.dataset.original || btn.textContent;
+    delete btn.dataset.original;
   }
 }
 
@@ -138,12 +153,12 @@ async function pollDeviceStatus() {
   }
 }
 
-async function runAction(btn, url, body, outputId) {
+async function runAction(btn, url, body, outputId, timeoutMs = 60000) {
   setBusy(btn, true);
   const out = document.getElementById(outputId);
   if (out) out.textContent = '執行中…';
   try {
-    const res = await apiPost(url, body);
+    const res = await apiPost(url, body, timeoutMs);
     if (!res) {
       if (out) out.textContent = '未登入或網路中斷';
       showToast('未登入或網路中斷', 'error');
@@ -151,9 +166,9 @@ async function runAction(btn, url, body, outputId) {
     }
     if (out) {
       let text = '';
-      if (typeof res.stdout === 'string') text += res.stdout;
-      if (typeof res.stderr === 'string') text += '\n' + res.stderr;
-      if (res.error) text += '\n' + (typeof res.error === 'string' ? res.error : JSON.stringify(res.error));
+      if (typeof res.stdout === 'string' && res.stdout.trim()) text += res.stdout;
+      if (typeof res.stderr === 'string' && res.stderr.trim()) text += (text ? '\n' : '') + res.stderr;
+      if (res.error) text += (text ? '\n' : '') + (typeof res.error === 'string' ? res.error : JSON.stringify(res.error, null, 2));
       if (res.data && !text.trim()) text = JSON.stringify(res.data, null, 2);
       if (!text.trim() && res.message) text = res.message;
       out.textContent = text.trim() || (res.ok ? '執行完成' : '執行失敗，無詳細訊息');
@@ -162,8 +177,11 @@ async function runAction(btn, url, body, outputId) {
     showToast(message, res.ok ? 'success' : 'error');
     return res;
   } catch (e) {
-    showToast('網路或系統錯誤: ' + e, 'error');
-    return { ok: false };
+    const isTimeout = e.name === 'AbortError';
+    const msg = isTimeout ? '操作逾時，請檢查 Pi 網路連線或稍後再試' : '網路或系統錯誤: ' + e;
+    if (out) out.textContent = msg;
+    showToast(msg, 'error');
+    return { ok: false, error: msg };
   } finally {
     setBusy(btn, false);
   }

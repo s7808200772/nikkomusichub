@@ -151,7 +151,12 @@
         <button class="tab" onclick="showMusicTab('playlist')" id="tab-playlist" title="播放清單">播放清單 <span id="pl-count" class="count">0</span></button>
       </div>
     </div>
-    <div class="form-group"><input type="text" class="search" placeholder="搜尋音樂檔案…" onkeyup="filterLibrary(this.value)" title="搜尋音樂"></div>
+    <div class="lib-toolbar">
+      <div class="form-group" style="flex:1;min-width:180px;margin:0;"><input type="text" class="search" placeholder="搜尋音樂檔案…" onkeyup="filterLibrary(this.value)" title="搜尋音樂"></div>
+      <button id="btn-delete-selected" class="danger btn-sm" onclick="deleteSelectedFiles(this)" disabled title="刪除選取的音樂檔案">
+        <span>🗑</span> 刪除選取
+      </button>
+    </div>
     <div id="music-library-pane" class="tab-pane active">
       <div id="file-list" class="list-area"><div class="empty-state"><div class="big-icon">⏳</div><div>載入中…</div></div></div>
     </div>
@@ -191,7 +196,7 @@ let lastDashboardVersion = 0;
 let previousVolume = 100;
 let shufflePendingUntil = 0;
 let loopPendingUntil = 0;
-const TOGGLE_GRACE_MS = 1500;
+const TOGGLE_GRACE_MS = 3500;
 
 function ring(label, pct, color) {
   const r = 24;
@@ -403,27 +408,37 @@ async function loadLibrary() {
   }
 }
 
+function getSelectedFilePaths() {
+  return Array.from(document.querySelectorAll('.file-check:checked')).map(cb => cb.dataset.path);
+}
+
+function updateDeleteSelectedButton() {
+  const btn = document.getElementById('btn-delete-selected');
+  if (!btn) return;
+  const count = getSelectedFilePaths().length;
+  btn.disabled = count === 0;
+  btn.innerHTML = `<span>🗑</span> 刪除選取${count > 0 ? ' (' + count + ')' : ''}`;
+}
+
 function renderLibrary(files) {
   const list = document.getElementById('file-list');
   document.getElementById('lib-count').textContent = files.length;
+  updateDeleteSelectedButton();
   if (!files.length) {
     list.innerHTML = '<div class="empty-state"><div class="big-icon">🎵</div><div>無音樂檔案</div><div class="hint">請將 MP3 檔案上傳至音樂目錄</div><button onclick="runAction(this,\'/api/system/rescan\',null,\'global-log\')" style="margin-top:.5rem" title="重新掃描音樂">重新掃描音樂</button></div>';
     return;
   }
-  list.innerHTML = '<table class="table"><tr><th style="width:30px"><input type="checkbox" onclick="toggleSelectAll(this)" title="全選"></th><th>檔案名稱</th><th>時間</th><th>大小</th><th style="width:90px">操作</th></tr>' +
+  list.innerHTML = '<table class="table lib-table"><thead><tr><th style="width:40px"><input type="checkbox" id="select-all-lib" onclick="toggleSelectAll(this)" title="全選"></th><th>檔案名稱</th><th>時間</th><th>大小</th></tr></thead><tbody>' +
     files.map((f,i) => {
       const size = (f.size/1024/1024).toFixed(2);
       const mtime = new Date(f.mtime*1000).toLocaleString('zh-TW');
       return `<tr>
-        <td><input type="checkbox" class="file-check" data-path="${f.path}" title="選取"></td>
-        <td>${f.path}</td>
+        <td><input type="checkbox" class="file-check" data-path="${f.path}" title="選取" onchange="this.closest('tr').classList.toggle('selected', this.checked); updateDeleteSelectedButton();"></td>
+        <td class="filename-cell" title="${f.path}">${f.path}</td>
         <td style="color:var(--muted);font-size:.75rem; white-space:nowrap;">${mtime}</td>
         <td style="color:var(--muted);font-size:.75rem; white-space:nowrap;">${size} MB</td>
-        <td class="actions">
-          <button class="btn-icon danger" onclick="deleteFile('${f.path}')" title="刪除此曲">🗑</button>
-        </td>
       </tr>`;
-    }).join('') + '</table>';
+    }).join('') + '</tbody></table>';
 }
 
 function filterLibrary(q) {
@@ -470,18 +485,53 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-async function playFile(path) {
-  const res = await apiPost('/api/player/play-file', new URLSearchParams({path}));
-  showToast(res.ok ? '開始播放：' + path : '播放失敗：' + (res.stderr || res.error), res.ok ? 'success' : 'error');
-  refreshPlayer();
-}
-
-async function deleteFile(path) {
+async function deleteFile(path, btn) {
   if (!confirm('確定刪除 ' + path + '？')) return;
-  const res = await apiPost('/api/player/delete-file', new URLSearchParams({path}));
-  showToast(res.ok ? '已刪除' : '刪除失敗：' + (res.stderr || res.error), res.ok ? 'success' : 'error');
+  if (btn) setBusy(btn, true);
+  try {
+    const res = await apiPost('/api/player/delete-file', new URLSearchParams({path}));
+    showToast(res.ok ? '已刪除' : '刪除失敗：' + (res.stderr || res.error), res.ok ? 'success' : 'error');
+  } finally {
+    if (btn) setBusy(btn, false);
+  }
   loadLibrary();
   loadPlaylist();
+}
+
+async function deleteSelectedFiles(btn) {
+  const paths = getSelectedFilePaths();
+  if (!paths.length) return;
+  if (!confirm(`確定刪除 ${paths.length} 個檔案？此操作無法復原。`)) return;
+  setBusy(btn, true);
+  try {
+    let okCount = 0;
+    let failMsg = '';
+    for (const path of paths) {
+      const res = await apiPost('/api/player/delete-file', new URLSearchParams({path}));
+      if (res.ok) okCount++;
+      else failMsg += `${path}: ${res.stderr || res.error || '失敗'}\n`;
+    }
+    if (okCount === paths.length) {
+      showToast(`已刪除 ${okCount} 個檔案`, 'success');
+    } else {
+      showToast(`刪除完成：成功 ${okCount} / ${paths.length}`, 'error');
+      console.warn(failMsg);
+    }
+  } finally {
+    setBusy(btn, false);
+    updateDeleteSelectedButton();
+  }
+  loadLibrary();
+  loadPlaylist();
+}
+
+function toggleSelectAll(master) {
+  document.querySelectorAll('.file-check').forEach(cb => {
+    cb.checked = master.checked;
+    const tr = cb.closest('tr');
+    if (tr) tr.classList.toggle('selected', master.checked);
+  });
+  updateDeleteSelectedButton();
 }
 
 async function setVolume(v) {
@@ -515,17 +565,41 @@ async function toggleMute() {
 async function toggleShuffle() { await apiPost('/api/player/shuffle', new URLSearchParams({enabled: currentState.shuffle ? 0 : 1})); refreshPlayer(); }
 async function toggleLoop() { await apiPost('/api/player/loop', new URLSearchParams({enabled: currentState.loop ? 0 : 1})); refreshPlayer(); }
 async function toggleShuffleFromCheckbox() {
-  const enabled = document.getElementById('shuffle-toggle').checked;
+  const cb = document.getElementById('shuffle-toggle');
+  const enabled = cb.checked;
   shufflePendingUntil = Date.now() + TOGGLE_GRACE_MS;
-  const res = await apiPost('/api/player/shuffle', new URLSearchParams({enabled: enabled ? 1 : 0}));
-  showToast(res.ok ? (enabled ? '隨機播放已開啟' : '隨機播放已關閉') : '隨機播放設定失敗', res.ok ? 'success' : 'error');
+  try {
+    const res = await apiPost('/api/player/shuffle', new URLSearchParams({enabled: enabled ? 1 : 0}));
+    if (!res || !res.ok) {
+      cb.checked = !enabled;
+      showToast('隨機播放設定失敗：' + (res ? (res.stderr || res.error || '未知錯誤') : '未登入或網路中斷'), 'error');
+      return;
+    }
+    currentState.shuffle = enabled;
+    showToast(enabled ? '隨機播放已開啟' : '隨機播放已關閉', 'success');
+  } catch (e) {
+    cb.checked = !enabled;
+    showToast('隨機播放設定失敗：' + e, 'error');
+  }
   refreshPlayer();
 }
 async function toggleLoopFromCheckbox() {
-  const enabled = document.getElementById('loop-toggle').checked;
+  const cb = document.getElementById('loop-toggle');
+  const enabled = cb.checked;
   loopPendingUntil = Date.now() + TOGGLE_GRACE_MS;
-  const res = await apiPost('/api/player/loop', new URLSearchParams({enabled: enabled ? 1 : 0}));
-  showToast(res.ok ? (enabled ? '循環播放已開啟' : '循環播放已關閉') : '循環播放設定失敗', res.ok ? 'success' : 'error');
+  try {
+    const res = await apiPost('/api/player/loop', new URLSearchParams({enabled: enabled ? 1 : 0}));
+    if (!res || !res.ok) {
+      cb.checked = !enabled;
+      showToast('循環播放設定失敗：' + (res ? (res.stderr || res.error || '未知錯誤') : '未登入或網路中斷'), 'error');
+      return;
+    }
+    currentState.loop = enabled;
+    showToast(enabled ? '循環播放已開啟' : '循環播放已關閉', 'success');
+  } catch (e) {
+    cb.checked = !enabled;
+    showToast('循環播放設定失敗：' + e, 'error');
+  }
   refreshPlayer();
 }
 async function toggleAutostart() {
