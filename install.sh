@@ -86,7 +86,12 @@ fi
 # indicates this is either a fresh install or an upgrade from a version that did
 # not use the documented default password. This avoids resetting a password the
 # user already changed through the Settings UI.
-if [ "${PASSWORD_ENV_WAS_MISSING}" -eq 1 ]; then
+# Always make sure the initial password file exists. If the user has already
+# changed their password through the Settings UI, this file will just be
+# overwritten with the documented default again — which is acceptable during an
+# install/repair run. The application still prefers NIKKO_DEFAULT_PASSWORD from
+# nikko.env when available.
+if [ "${PASSWORD_ENV_WAS_MISSING}" -eq 1 ] || [ ! -f "${INSTALL_DIR}/data/initial-admin-password" ]; then
   echo "${DEFAULT_PASS}" > "${INSTALL_DIR}/data/initial-admin-password"
   chmod 600 "${INSTALL_DIR}/data/initial-admin-password"
 fi
@@ -135,6 +140,18 @@ systemctl enable nikko-music-watchdog.timer
 log "Starting services..."
 systemctl restart nikko-music-hub-web.service
 systemctl restart nikko-music-mqtt.service
+
+# Verify web service came up
+sleep 2
+if ! systemctl is-active --quiet nikko-music-hub-web.service; then
+  log "ERROR: nikko-music-hub-web.service did not start. Recent log:"
+  journalctl -u nikko-music-hub-web.service --no-pager -n 30 || true
+  log "You can retry after fixing the issue above."
+  exit 1
+fi
+
+# Ensure data ownership is correct for files created after chown
+chown -R "${USER_NAME}:${USER_NAME}" "${INSTALL_DIR}/data"
 
 # Get IP addresses for display
 IP_LINE=""
