@@ -195,7 +195,7 @@ export default function DashboardClient({ initialStores, supabaseOk, children })
                 </tr>
               </thead>
               <tbody>
-                {jobs.length > 0 ? jobs.slice(0, 5).map((job) => (
+                {jobs.length > 0 ? jobs.slice(0, 3).map((job) => (
                   <tr key={job.id}>
                     <td>
                       {job.pending > 0 ? <Loader2 size={14} className="spin" color="var(--accent-2)" style={{ marginRight: 6, verticalAlign: 'middle' }} /> :

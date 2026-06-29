@@ -642,9 +642,10 @@ input::placeholder, textarea::placeholder { color: var(--muted-2); }
 
 /* Response formatter */
 .resp-card {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1rem;
+  align-items: start;
 }
 .resp-section {
   background: var(--panel-2);

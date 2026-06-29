@@ -242,11 +242,21 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
       }, 30000);
       const data = await res.json();
       if (data.jobId) {
-        setBatchJob({ id: data.jobId, polling: true, commandKey, stores: [], success: 0, failed: 0, noResponse: 0, pending: selected.size });
+        const pendingStores = Array.from(selected).map((storeId) => ({
+          storeId,
+          status: 'pending',
+          result: null,
+          error: null,
+        }));
+        setBatchJob({ id: data.jobId, polling: true, commandKey, stores: pendingStores, success: 0, failed: 0, noResponse: 0, pending: selected.size, total: selected.size });
         pollJob(data.jobId);
+      } else {
+        setBatchLoading(false);
+        window.alert('批次指令啟動失敗：' + (data.error || '未知錯誤'));
       }
     } catch (e) {
       setBatchLoading(false);
+      window.alert('批次指令啟動失敗：' + e.message);
     }
   }
 
@@ -305,7 +315,7 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
         <div className="card" style={{ borderLeft: '4px solid var(--accent-2)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
-              <h2 style={{ margin: '0 0 0.3rem' }}>批次任務：{batchJob.commandKey}</h2>
+              <h2 style={{ margin: '0 0 0.3rem' }}>批次任務：{getCommandLabel(batchJob.commandKey)}（已對 {batchJob.total || batchJob.stores?.length || 0} 間店發送）</h2>
               <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>
                 成功 {batchJob.success} / 失敗 {batchJob.failed} / 無回應 {batchJob.noResponse} / 待處理 {batchJob.pending}
               </p>

@@ -5,7 +5,7 @@ import { Package, GitCommit } from 'lucide-react';
 
 const CHANGELOG = [
   {
-    version: 'v2026.06.29',
+    version: 'v0.3.0',
     date: '2026-06-29',
     items: [
       '修復 Pi 音樂庫刪除按鈕改為「刪除選取」並移至標題列，支援批次刪除',
@@ -28,7 +28,7 @@ const CHANGELOG = [
     ],
   },
   {
-    version: 'v2026.06.19',
+    version: 'v0.2.0',
     date: '2026-06-19',
     items: [
       '新增 MQTT 指令簽章、DANGEROUS_KEYS 確認機制與 replay 防護',

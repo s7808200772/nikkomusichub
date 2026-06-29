@@ -234,6 +234,14 @@ function SystemFormatter({ data }) {
 }
 
 function humanizeSyncOutput(data) {
+  if (typeof data === 'string') {
+    if (data.includes('There was nothing to transfer')) {
+      return '同步 NAS WebDAV 完成：本地與 NAS 內容一致，無需更新。';
+    }
+    if (data.includes('Transferred:')) return '同步 NAS WebDAV 完成：已更新音樂檔案到本機。';
+    if (data.includes('ERROR') || data.includes('Failed')) return '同步 NAS WebDAV 失敗：請檢查 WebDAV 設定與網路連線';
+    return data;
+  }
   const d = data || {};
   if (d.message && typeof d.message === 'string') return d.message;
   const out = (d.stdout || '') + '\n' + (d.stderr || '');
@@ -252,7 +260,7 @@ function humanizeSyncOutput(data) {
 function SyncFormatter({ data }) {
   const d = data || {};
   const message = humanizeSyncOutput(d);
-  const error = d.error != null ? fmt(d.error) : (d.stderr != null ? fmt(d.stderr) : null);
+  const error = d.ok ? null : (d.error != null ? fmt(d.error) : (d.stderr != null ? fmt(d.stderr) : null));
   return (
     <div className="resp-card">
       <Section title="同步 NAS WebDAV" icon={RefreshCw}>

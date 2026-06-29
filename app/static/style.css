@@ -636,8 +636,9 @@ button .spinner, .btn .spinner { border-color: rgba(255,255,255,0.3); border-top
 
 /* Count badge next to headings */
 .count {
-  font-size: 0.75rem; color: #fff; font-weight: 600; margin-left: 0.4rem;
-  background: var(--text); padding: 0.05rem 0.35rem; border-radius: 999px;
+  font-size: 0.75rem; color: var(--text); font-weight: 600; margin-left: 0.4rem;
+  background: #fff; padding: 0.05rem 0.35rem; border-radius: 999px;
+  border: 1px solid var(--border);
 }
 
 /* Search input inside cards */
@@ -787,7 +788,16 @@ button .spinner, .btn .spinner { border-color: rgba(255,255,255,0.3); border-top
 
 .init-stack { display: flex; flex-direction: column; gap: 0.5rem; }
 .init-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-.init-stack button { font-size: 0.8rem; padding: 0.55rem; }
+.init-stack button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  padding: 0.55rem 0.75rem;
+}
+.init-stack button span { font-size: 1rem; }
 .watchdog-config { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem; }
 .watchdog-config > .form-group:first-child > label { color: var(--accent-2); font-weight: 600; }
 .watchdog-fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 0.6rem; }
@@ -905,7 +915,7 @@ button.icon-left span { font-size: 1rem; }
 .dash-warning a { color: var(--warning); text-decoration: underline; }
 
 /* Count badge */
-.count { font-size: 0.75rem; color: #fff; font-weight: 600; margin-left: 0.4rem; background: var(--text); padding: 0.05rem 0.35rem; border-radius: 999px; }
+.count { font-size: 0.75rem; color: var(--text); font-weight: 600; margin-left: 0.4rem; background: #fff; padding: 0.05rem 0.35rem; border-radius: 999px; border: 1px solid var(--border); }
 
 /* ---------- Dashboard (image 3) ---------- */
 .dashboard-shell {
@@ -1374,6 +1384,8 @@ button.loading, .btn.loading {
   align-items: center;
   justify-content: center;
   gap: 0.7rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 .player-controls-card button {
   width: 2.6rem;
@@ -1409,6 +1421,8 @@ button.loading, .btn.loading {
   display: flex;
   align-items: center;
   gap: 0.7rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 .player-volume-card .vol-icon { font-size: 1.1rem; }
 .player-volume-card .vol-label { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); }
@@ -1418,6 +1432,11 @@ button.loading, .btn.loading {
 }
 .player-volume-card .vol-value { font-size: 0.9rem; font-weight: 700; color: var(--accent); min-width: 2rem; text-align: right; }
 .player-volume-card .vol-range { font-size: 0.75rem; color: var(--muted); }
+
+#op-status-card h2 {
+  justify-content: flex-start;
+  text-align: left;
+}
 .player-settings-card {
   display: flex;
   flex-direction: column;
