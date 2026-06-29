@@ -106,8 +106,7 @@ export default function DashboardClient({ initialStores, supabaseOk, children })
       }
     });
     return Object.values(byStore)
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 5);
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }, [alerts]);
 
   return (

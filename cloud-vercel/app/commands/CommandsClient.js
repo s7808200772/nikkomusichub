@@ -27,7 +27,7 @@ const CATEGORIES = [
     label: '系統狀態',
     color: 'var(--accent-2)',
     commands: [
-      { key: 'status_dashboard', label: 'Dashboard', icon: Activity },
+      { key: 'status_dashboard', label: '儀表板', icon: Activity },
       { key: 'status_system', label: '系統資訊', icon: Cpu },
     ],
   },

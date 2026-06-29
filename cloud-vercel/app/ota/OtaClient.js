@@ -45,7 +45,9 @@ function formatVersion(data) {
   for (const candidate of candidates) {
     const text = String(candidate).trim();
     if (!isUnknown(text)) {
-      return { value: text.length > 7 ? text.slice(0, 7) : text, ok: true };
+      const date = parsed.date ? new Date(parsed.date).toLocaleDateString('zh-TW') : '';
+      const base = text.length > 7 ? text.slice(0, 7) : text;
+      return { value: date ? `${base} · ${date}` : base, ok: true };
     }
   }
 
