@@ -222,14 +222,14 @@ export async function publishCommandWithRetry(options) {
 }
 
 export async function publishBatch({ stores, commandKey, timeout = 25000, concurrency = 5 }) {
-  const job = createJob(
+  const job = await createJob(
     stores.map((s) => s.storeId),
     commandKey
   );
 
   // Run commands with a concurrency limit to avoid exhausting broker connections.
   const tasks = stores.map((store) => async () => {
-    updateStoreResult(job.id, store.storeId, 'pending', null, null);
+    await updateStoreResult(job.id, store.storeId, 'pending', null, null);
     const result = await publishCommandWithRetry({
       broker: store.mqttBroker,
       port: store.mqttPort || (store.mqttTls === true ? 8883 : 1883),
@@ -243,11 +243,11 @@ export async function publishBatch({ stores, commandKey, timeout = 25000, concur
       retries: 2,
     });
     if (result.ok) {
-      updateStoreResult(job.id, store.storeId, 'success', result.parsed || result.result || null, null);
+      await updateStoreResult(job.id, store.storeId, 'success', result.parsed || result.result || null, null);
     } else if (/timeout|no response|waiting for response/i.test(result.error || '')) {
-      updateStoreResult(job.id, store.storeId, 'no_response', null, result.error);
+      await updateStoreResult(job.id, store.storeId, 'no_response', null, result.error);
     } else {
-      updateStoreResult(job.id, store.storeId, 'failed', null, result.error);
+      await updateStoreResult(job.id, store.storeId, 'failed', null, result.error);
     }
   });
 

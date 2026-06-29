@@ -98,6 +98,7 @@
       <div class="status-card">
         <h3><span class="icon">🏪</span>店家資訊</h3>
         <div class="status-row"><span class="label">店名</span><span class="value" id="ss-store-name">{{ data.store_name or '-' }}</span></div>
+        <div class="status-row"><span class="label">Store ID</span><span class="value" id="ss-store-id">{{ data.store_id or config.MQTT_STORE_ID or '-' }}</span></div>
         <div class="status-row"><span class="label">Hostname</span><span class="value" id="ss-hostname">{{ data.hostname or '-' }}</span></div>
         <div class="status-row"><span class="label">Tailscale IP</span><span class="value" id="ss-tailscale-ip">{{ data.tailscale_ip or '-' }}</span></div>
         <div class="status-row"><span class="label">LAN IP</span><span class="value" id="ss-lan-ip">{{ data.lan_ip or '-' }}</span></div>
@@ -249,6 +250,7 @@ function updateStatusCards(data) {
   const diskColor = diskPct > 90 ? 'var(--danger)' : 'var(--success)';
 
   setText('ss-store-name', data.store_name || '-');
+  setText('ss-store-id', data.store_id || '-');
   setText('ss-hostname', data.hostname || '-');
   setText('ss-tailscale-ip', data.tailscale_ip || '-');
   setText('ss-lan-ip', data.lan_ip || '-');

@@ -281,7 +281,7 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
                 );
               })}
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: 'var(--text-2)', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: 'var(--text-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={selectAll} title="全選/取消全選目前篩選的店點" />
               全選
             </label>
@@ -302,14 +302,14 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
             <table className="list-table">
               <thead>
                 <tr>
-                  <th style={{ width: '1%' }}>選取</th>
+                  <th style={{ width: '1%', whiteSpace: 'nowrap', minWidth: '4.5em' }}>選取</th>
                   <th>店點</th>
-                  <th style={{ width: '1%' }}>狀態</th>
+                  <th style={{ width: '1%', whiteSpace: 'nowrap' }}>狀態</th>
                   <th>音樂播放</th>
                   <th>系統狀態</th>
                   <th>同步掃描</th>
                   <th>服務控制</th>
-                  <th style={{ width: '1%' }}>輸出</th>
+                  <th style={{ width: '1%', whiteSpace: 'nowrap' }}>輸出</th>
                 </tr>
               </thead>
               <tbody>

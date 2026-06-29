@@ -27,6 +27,38 @@ export async function GET(request) {
     };
   }
 
+  return await runLibraryCommand(stores, commandKey, payload);
+}
+
+export async function POST(request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ error: 'Supabase is required' }, { status: 503 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const storeId = searchParams.get('storeId');
+  const source = searchParams.get('source') || 'store';
+  const body = await request.json().catch(() => ({}));
+  const stores = storeId ? [await getStore(storeId)].filter(Boolean) : await listStores();
+  const commandKey = source === 'webdav' ? 'webdav_list_music' : 'library_list';
+
+  let payload = undefined;
+  if (source === 'webdav') {
+    const settings = await getSettings();
+    payload = {
+      url: body.url || settings?.webdavUrl,
+      remotePath: body.remotePath || settings?.webdavRemotePath,
+      username: body.username || settings?.webdavUsername,
+      password: body.password || settings?.webdavPassword,
+    };
+  }
+
+  return await runLibraryCommand(stores, commandKey, payload);
+}
+
+async function runLibraryCommand(stores, commandKey, payload) {
   const results = await Promise.all(
     stores.map(async (store) => {
       const result = await publishCommandWithRetry({

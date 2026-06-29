@@ -24,6 +24,14 @@ const FALLBACK = {
   defaultMqttTlsVerify: false,
 };
 
+const STORES_CHANGED_EVENT = 'nikko-stores-changed';
+
+function notifyStoresChanged() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(STORES_CHANGED_EVENT));
+  }
+}
+
 function applyDefaultSettings(form, settings) {
   return {
     ...form,
@@ -126,6 +134,7 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
       const next = [...stores, payload];
       saveLocalStores(next);
       setStores(next);
+      notifyStoresChanged();
       setForm(applyDefaultSettings({ ...DEFAULT_STORE }, initialSettings));
       setMsg('店點已儲存至瀏覽器；遠端 MQTT 功能需先設定 Supabase');
       setMsgType('success');
@@ -142,7 +151,8 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
       setForm(applyDefaultSettings({ ...DEFAULT_STORE }, initialSettings));
       setMsg('店點新增成功');
       setMsgType('success');
-      load();
+      await load();
+      notifyStoresChanged();
     } else {
       setMsg(data.error || '新增失敗');
       setMsgType('error');
@@ -158,6 +168,7 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
       const next = stores.map((s) => (s.storeId === editing.storeId ? editing : s));
       saveLocalStores(next);
       setStores(next);
+      notifyStoresChanged();
       setEditing(null);
       setMsg('店點已更新（瀏覽器本機）');
       setMsgType('success');
@@ -174,7 +185,8 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
       setEditing(null);
       setMsg('店點更新成功');
       setMsgType('success');
-      load();
+      await load();
+      notifyStoresChanged();
     } else {
       setMsg(data.error || '更新失敗');
       setMsgType('error');
@@ -188,10 +200,12 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
       const next = stores.filter((s) => s.storeId !== storeId);
       saveLocalStores(next);
       setStores(next);
+      notifyStoresChanged();
       return;
     }
     await fetch(`/api/stores?storeId=${storeId}`, { method: 'DELETE' });
-    load();
+    await load();
+    notifyStoresChanged();
   }
 
   async function testConnection(storeId) {

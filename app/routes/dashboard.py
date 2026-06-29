@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+import app.config as config
 from app.config import (
     MUSIC_DIR,
     PLAYER_LOG_PATH,
@@ -70,7 +71,7 @@ async def dashboard_page(request: Request):
     get_current_user_or_local(request)
     # Render status cards server-side to avoid the empty-then-pop layout shift.
     data = dashboard_data(request)
-    return templates.TemplateResponse("dashboard.html", {"request": request, "data": data})
+    return templates.TemplateResponse("dashboard.html", {"request": request, "data": data, "config": config})
 
 
 @router.get("/api/dashboard")
@@ -99,6 +100,7 @@ def dashboard_data(request: Request):
 
     return {
         "store_name": get_setting("store_name", "未命名店鋪"),
+        "store_id": get_setting("store_id", config.MQTT_STORE_ID or ""),
         "hostname": get_hostname(),
         "tailscale_ip": ips["tailscale_ip"],
         "lan_ip": ips["lan_ip"],

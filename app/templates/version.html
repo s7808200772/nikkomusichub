@@ -25,7 +25,7 @@
       <div class="changelog-entry">
         <div class="changelog-version">{{ entry.version }} <span class="changelog-date">{{ entry.date }}</span></div>
         <ul>
-          {% for item in entry.items %}
+          {% for item in entry['items'] %}
           <li>{{ item }}</li>
           {% endfor %}
         </ul>

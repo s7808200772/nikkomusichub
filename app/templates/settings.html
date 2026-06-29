@@ -64,7 +64,7 @@
     <p id="mqtt-msg" style="color: var(--muted); font-size: .8rem; margin-top: .75rem;"></p>
   </div>
 
-  <div class="card settings-col-3 row-span-2">
+  <div class="card settings-col-3">
     <h2><span class="icon">🔄</span>同步設定</h2>
     <form id="sync-form" onsubmit="saveSyncSettings(event)">
       <div class="form-group">
@@ -179,7 +179,7 @@
         <button type="button" class="outline icon-left" id="btn-network-test" onclick="testNetworkSettings(this)" title="先驗證 WiFi / 網路優先順序設定是否正確"><span>🔌</span> 測試連線</button>
         <button type="submit" class="primary icon-left" id="btn-network-save" disabled title="請先成功測試連線，再儲存並套用"><span>💾</span> 儲存並套用</button>
       </div>
-      <p id="network-msg" style="color: var(--muted); font-size: .8rem; margin-top: .75rem;"></p>
+      <div id="network-msg" class="network-msg"></div>
     </form>
   </div>
 </div>
@@ -326,7 +326,7 @@ async function testNetworkSettings(btn) {
   const res = await apiPost('/api/settings/network/test', fd);
   msg.style.color = res.ok ? 'var(--success)' : 'var(--danger)';
   msg.textContent = res.ok ? (res.message || '測試通過') : ('測試失敗：' + (res.error || ''));
-  showToast(res.ok ? '網路設定測試通過' : ('測試失敗：' + (res.error || '')), res.ok ? 'success' : 'error');
+  showToast(res.ok ? '網路設定測試通過' : '網路設定測試失敗，請見下方詳細訊息', res.ok ? 'success' : 'error');
   _setNetworkTested(res.ok);
   setBusy(btn, false);
 }
@@ -335,9 +335,18 @@ async function saveNetworkSettings(e) {
   e.preventDefault();
   const btn = e.target.querySelector('button[type="submit"]');
   const fd = new FormData(e.target);
+  const msg = document.getElementById('network-msg');
   setBusy(btn, true);
   const res = await apiPost('/api/settings/network', fd);
-  showToast(res.ok ? (res.warning || '網路設定已儲存') : ('失敗：' + (res.stderr || res.error || '')), res.ok ? 'success' : 'error');
+  if (res.ok && res.warning) {
+    msg.style.color = 'var(--warning)';
+    msg.textContent = '設定已儲存，但套用時發生警告：\n' + res.warning;
+    showToast('網路設定已儲存（有警告，請見下方詳細訊息）', 'warning');
+  } else {
+    msg.style.color = res.ok ? 'var(--success)' : 'var(--danger)';
+    msg.textContent = res.ok ? '網路設定已儲存並套用。' : ('失敗：' + (res.stderr || res.error || ''));
+    showToast(res.ok ? '網路設定已儲存' : '儲存失敗', res.ok ? 'success' : 'error');
+  }
   if (res.ok) {
     _setNetworkTested(false);
     await loadNetwork();
@@ -352,6 +361,40 @@ function parseDryRunSummary(stdout) {
   const delCount = (text.match(/Not deleting as --dry-run/g) || []).length;
   const errors = (text.match(/ERROR:/g) || []).length;
   return { copyCount, delCount, errors };
+}
+function buildDryRunMessage(stdout, status) {
+  const { copyCount, delCount, errors } = parseDryRunSummary(stdout);
+  const direction = '方向：NAS → 本地';
+  if (status === 'success' && errors === 0) {
+    if (copyCount === 0 && delCount === 0) {
+      return `測試完成：無需同步（0 個檔案變更）。${direction}。若本地檔案被刪除但 NAS 仍存在，實際同步時會重新下載。`;
+    }
+    return `測試完成：將從 NAS 同步 ${copyCount} 個檔案到本地${delCount > 0 ? '，並刪除本地 ' + delCount + ' 個檔案' : ''}，無錯誤。${direction}。`;
+  }
+  if (errors > 0) {
+    return `測試發現 ${errors} 個錯誤` + (copyCount > 0 ? `，仍將同步 ${copyCount} 個檔案` : '') + `。${direction}。`;
+  }
+  return '測試完成，但狀態異常。';
+}
+function syncDurationSeconds(startedAt, finishedAt) {
+  if (!startedAt || !finishedAt) return 0;
+  return Math.max(0, Math.round((new Date(finishedAt) - new Date(startedAt)) / 1000));
+}
+function buildSyncSummaryMessage(p) {
+  const total = p.mp3_after != null ? p.mp3_after : (p.transferred ? '?' : 0);
+  const newFiles = p.new_downloaded || 0;
+  const updated = p.updated || 0;
+  const deleted = p.deleted || 0;
+  const durationSec = syncDurationSeconds(p.started_at, p.finished_at);
+  const parts = [];
+  if (newFiles) parts.push(`新增 ${newFiles} 個`);
+  if (updated) parts.push(`更新 ${updated} 個`);
+  if (deleted) parts.push(`刪除 ${deleted} 個`);
+  let msg = `同步完成：本地現有 ${total} 首歌曲`;
+  if (parts.length) msg += '（' + parts.join('、') + '）';
+  msg += `，耗時 ${formatDuration(durationSec)}`;
+  if (p.speed) msg += `，平均速度 ${p.speed}`;
+  return msg;
 }
 async function startSync(btn, dryRun) {
   if (progressTimer) clearInterval(progressTimer);
@@ -381,16 +424,13 @@ async function startSync(btn, dryRun) {
       document.getElementById('btn-save-webdav').disabled = false;
       let message = p.message;
       if (dryRun) {
-        const { copyCount, delCount, errors } = parseDryRunSummary(p.stdout);
-        if (p.status === 'success' && errors === 0) {
-          message = `測試完成：將同步 ${copyCount} 個檔案${delCount > 0 ? '（將刪除 ' + delCount + ' 個）' : ''}，無錯誤`;
-        } else if (errors > 0) {
-          message = `測試發現錯誤：${errors} 個錯誤` + (copyCount > 0 ? `，將同步 ${copyCount} 個檔案` : '');
-        } else {
-          message = '測試發現錯誤';
-        }
-        document.getElementById('sync-progress-message').textContent = message;
+        message = buildDryRunMessage(p.stdout, p.status);
+      } else if (p.status === 'success') {
+        message = buildSyncSummaryMessage(p);
+      } else {
+        message = p.message || '同步失敗';
       }
+      document.getElementById('sync-progress-message').textContent = message;
       showToast(message, p.status === 'success' ? 'success' : 'error');
     }
   }, 1000);

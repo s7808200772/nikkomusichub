@@ -117,3 +117,23 @@ export async function finishUpdateLog(logId, log) {
   requireSupabase();
   return await databaseRequest('finishUpdateLog', { logId, log });
 }
+
+export async function createJobDb(job) {
+  requireSupabase();
+  return await databaseRequest('createJob', { job });
+}
+
+export async function getJobDb(jobId) {
+  requireSupabase();
+  return await databaseRequest('getJob', { jobId });
+}
+
+export async function updateJobDb(job) {
+  requireSupabase();
+  return await databaseRequest('updateJob', { job });
+}
+
+export async function listRecentJobsDb(limit = 20) {
+  requireSupabase();
+  return (await databaseRequest('listRecentJobs', { limit })) || [];
+}

@@ -100,6 +100,16 @@ _ensure_env() {
     echo "${key}=${value}" >> "${ENV_FILE}"
   fi
 }
+# Force-set a key to a value, replacing an existing line if present.
+_set_env() {
+  local key="$1"
+  local value="$2"
+  if grep -qE "^${key}=" "${ENV_FILE}" 2>/dev/null; then
+    sed -i "s/^${key}=.*/${key}=${value}/" "${ENV_FILE}"
+  else
+    echo "${key}=${value}" >> "${ENV_FILE}"
+  fi
+}
 if [ -f "${ENV_FILE}" ]; then
   if grep -qE '^NIKKO_MQTT_BROKER=broker\.hivemq\.com' "${ENV_FILE}" || \
      grep -qE '^NIKKO_MQTT_PORT=8883' "${ENV_FILE}"; then
@@ -112,11 +122,12 @@ if [ -f "${ENV_FILE}" ]; then
   fi
   _ensure_env NIKKO_MQTT_USERNAME admin
   _ensure_env NIKKO_MQTT_PASSWORD topup30%off
-  # Align command secret / topic prefix with the centralized Cloud defaults.
-  # If you intentionally changed these, set NIKKO_MQTT_COMMAND_SECRET / NIKKO_MQTT_TOPIC_PREFIX
-  # before running repair-pi.sh to preserve your custom values.
-  _ensure_env NIKKO_MQTT_COMMAND_SECRET topup30%off
-  _ensure_env NIKKO_MQTT_TOPIC_PREFIX nikko
+  # Force-align critical MQTT settings with the centralized Cloud defaults.
+  # The Cloud expects all Pis to share the same command secret and topic prefix.
+  _set_env NIKKO_MQTT_COMMAND_SECRET "${NIKKO_MQTT_COMMAND_SECRET:-topup30%off}"
+  _set_env NIKKO_MQTT_TOPIC_PREFIX "${NIKKO_MQTT_TOPIC_PREFIX:-nikko}"
+  _set_env NIKKO_MQTT_TLS 0
+  _set_env NIKKO_MQTT_TLS_VERIFY 0
 fi
 # Only rewrite the initial password file if the env variable was missing, which
 # indicates this is either a fresh install or an upgrade from a version that did
@@ -249,7 +260,7 @@ MQTT 服務：systemctl status nikko-music-mqtt.service
 
 後續操作：
 1. 用瀏覽器開啟上述網址並登入。
-2. 進入 Setup Wizard 安裝 rclone 與 mpv。
+2. 進入 Settings 頁面確認 rclone 與 mpv 設定正確（已無 Setup Wizard）。
 3. 進入 NAS WebDAV Sync 設定 QNAP WebDAV 帳號密碼並測試連線。
 4. 同步音樂後即可播放。
 

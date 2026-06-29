@@ -52,7 +52,8 @@ function showToast(message, type='info') {
   if (!t) return;
   t.innerHTML = message;
   t.style.display = 'block';
-  t.style.borderLeftColor = type === 'success' ? 'var(--success)' : (type === 'error' ? 'var(--danger)' : 'var(--accent)');
+  const color = type === 'success' ? 'var(--success)' : (type === 'error' ? 'var(--danger)' : (type === 'warning' ? 'var(--warning)' : 'var(--accent)'));
+  t.style.borderLeftColor = color;
   setTimeout(() => t.style.display = 'none', 4000);
 }
 

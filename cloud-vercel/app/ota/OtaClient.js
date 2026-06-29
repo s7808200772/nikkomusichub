@@ -1,34 +1,75 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, RotateCcw, Loader2, Server, CheckSquare, Square, GitCommit } from 'lucide-react';
+import { loadLocalStores } from '@/lib/localStorage';
+
+const STORES_CHANGED_EVENT = 'nikko-stores-changed';
 
 export default function OtaClient({ initialStores, supabaseOk }) {
-  const [stores] = useState(initialStores || []);
+  const [stores, setStores] = useState(initialStores || []);
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [latestVersion, setLatestVersion] = useState(null);
   const [versions, setVersions] = useState({});
+  const [versionError, setVersionError] = useState('');
+
+  const refreshStores = useCallback(async () => {
+    if (!supabaseOk) {
+      if (typeof window !== 'undefined') {
+        setStores(loadLocalStores() || initialStores || []);
+      }
+      return;
+    }
+    try {
+      const res = await fetch('/api/stores', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      setStores(data.stores || []);
+    } catch {
+      // keep existing stores on error
+    }
+  }, [supabaseOk, initialStores]);
 
   useEffect(() => {
-    const headers = {};
-    if (process.env.NIKKO_GITHUB_TOKEN) {
-      headers.Authorization = `Bearer ${process.env.NIKKO_GITHUB_TOKEN}`;
-    }
-    fetch('https://api.github.com/repos/s7808200772/nikkomusichub/commits?sha=security-final&per_page=1', { headers })
-      .then((r) => r.json())
+    refreshStores();
+  }, [refreshStores]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshStores();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener(STORES_CHANGED_EVENT, refreshStores);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener(STORES_CHANGED_EVENT, refreshStores);
+    };
+  }, [refreshStores]);
+
+  useEffect(() => {
+    setVersionError('');
+    fetch('/api/github-version')
+      .then(async (r) => {
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${r.status}`);
+        }
+        return r.json();
+      })
       .then((data) => {
-        const commit = Array.isArray(data) ? data[0] : null;
-        if (commit?.sha) {
+        if (data?.sha) {
           setLatestVersion({
-            sha: commit.sha.slice(0, 7),
-            message: commit.commit?.message?.split('\n')[0] || '',
-            date: commit.commit?.committer?.date || '',
+            sha: data.shortSha || data.sha.slice(0, 7),
+            message: data.message || '',
+            date: data.date || '',
           });
         }
       })
-      .catch(() => {});
+      .catch((e) => {
+        setVersionError(e.message || '取得 GitHub 版本失敗');
+      });
   }, []);
 
   useEffect(() => {
@@ -135,6 +176,8 @@ export default function OtaClient({ initialStores, supabaseOk }) {
               <GitCommit size={14} />
               {latestVersion ? (
                 <span>GitHub 最新版本：<strong style={{ color: 'var(--text)' }}>{latestVersion.sha}</strong> {latestVersion.message} {latestVersion.date && `(${new Date(latestVersion.date).toLocaleDateString('zh-TW')})`}</span>
+              ) : versionError ? (
+                <span style={{ color: 'var(--danger)' }}>取得 GitHub 版本失敗：{versionError}</span>
               ) : (
                 <span>正在取得 GitHub 最新版本…</span>
               )}

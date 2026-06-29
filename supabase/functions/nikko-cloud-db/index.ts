@@ -205,6 +205,73 @@ Deno.serve(async (req: Request) => {
         return Response.json({ data }, { headers: corsHeaders });
       }
 
+      case "createJob": {
+        const job = body.job || {};
+        const { data, error } = await supabase
+          .from("jobs")
+          .insert({
+            id: job.id,
+            command_key: job.commandKey,
+            total: job.total ?? 0,
+            pending: job.pending ?? 0,
+            success: job.success ?? 0,
+            failed: job.failed ?? 0,
+            no_response: job.noResponse ?? 0,
+            stores: job.stores ?? [],
+            created_at: new Date(job.createdAt || Date.now()).toISOString(),
+            updated_at: new Date(job.updatedAt || Date.now()).toISOString(),
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        return Response.json({ data }, { headers: corsHeaders });
+      }
+
+      case "getJob": {
+        const { data, error } = await supabase
+          .from("jobs")
+          .select("*")
+          .eq("id", body.jobId)
+          .maybeSingle();
+        if (error) throw error;
+        return Response.json(
+          { data: data || null },
+          { headers: corsHeaders },
+        );
+      }
+
+      case "updateJob": {
+        const job = body.job || {};
+        const { data, error } = await supabase
+          .from("jobs")
+          .update({
+            command_key: job.commandKey,
+            total: job.total ?? 0,
+            pending: job.pending ?? 0,
+            success: job.success ?? 0,
+            failed: job.failed ?? 0,
+            no_response: job.noResponse ?? 0,
+            stores: job.stores ?? [],
+            updated_at: new Date(job.updatedAt || Date.now()).toISOString(),
+          })
+          .eq("id", job.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return Response.json({ data }, { headers: corsHeaders });
+      }
+
+      case "listRecentJobs": {
+        const limit = Math.min(parseInt(body.limit || "20", 10), 200);
+        const { data, error } = await supabase
+          .from("jobs")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(limit);
+        if (error) throw error;
+        return Response.json({ data: data || [] }, { headers: corsHeaders });
+      }
+
       default:
         return Response.json(
           { error: "Unknown action" },

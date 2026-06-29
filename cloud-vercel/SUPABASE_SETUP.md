@@ -96,7 +96,7 @@ Edge Function 需要的環境變數（在 Supabase Dashboard → Functions → n
 | `NIKKO_SUPABASE_PROXY_SECRET` | Supabase Edge Function 與 Vercel 共用的隨機密鑰 | Production |
 | `NIKKO_CLOUD_SECRET` | 至少 32 字元的隨機值 | Production |
 | `NIKKO_ADMIN_USER` | 管理員帳號 | Production |
-| `NIKKO_ADMIN_PASS` | 至少 12 字元的強密碼 | Production |
+| `NIKKO_ADMIN_PASS` | 至少 8 字元的強密碼 | Production |
 | `NIKKO_MQTT_COMMAND_SECRET` | 與 Pi 完全相同的 HMAC 密鑰 | Production |
 | `NIKKO_MQTT_TOPIC_PREFIX` | 與 Pi 完全相同的私有 topic prefix | Production |
 | `NIKKO_MQTT_CA` | PEM 編碼的 broker Root CA | Production |

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { Music, RefreshCw, Loader2, AlertCircle, Server, HardDrive, Save, Eye, EyeOff } from 'lucide-react';
-import { loadLocalSettings, saveLocalSettings, stripSensitiveSettings } from '@/lib/localStorage';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Music, RefreshCw, Loader2, AlertCircle, Server, HardDrive, Save, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { loadLocalSettings, saveLocalSettings, stripSensitiveSettings, loadLocalStores } from '@/lib/localStorage';
 
 const LIBRARY_KEY = 'nikko_library_files';
 const LIBRARY_TS_KEY = 'nikko_library_files_ts';
+const STORES_CHANGED_EVENT = 'nikko-stores-changed';
 
 const DEFAULT_NAS = {
   webdavUrl: 'http://100.106.208.65:5005/',
@@ -60,12 +61,13 @@ function PasswordInput({ value, onChange, placeholder }) {
 }
 
 export default function LibraryClient({ initialStores, initialSettings, supabaseOk }) {
-  const [stores] = useState(initialStores || []);
+  const [stores, setStores] = useState(initialStores || []);
   const [selected, setSelected] = useState(new Set());
   const [files, setFiles] = useState(loadLibraryFiles);
   const [lastTs, setLastTs] = useState(loadLibraryTs);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchJob, setBatchJob] = useState(null);
   const [config, setConfig] = useState({
@@ -75,6 +77,39 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
     webdavPassword: initialSettings?.webdavPassword || DEFAULT_NAS.webdavPassword,
   });
   const [configMsg, setConfigMsg] = useState('');
+
+  const refreshStores = useCallback(async () => {
+    if (!supabaseOk) {
+      if (typeof window !== 'undefined') {
+        setStores(loadLocalStores() || initialStores || []);
+      }
+      return;
+    }
+    try {
+      const res = await fetch('/api/stores', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      setStores(data.stores || []);
+    } catch {
+      // keep existing stores on error
+    }
+  }, [supabaseOk, initialStores]);
+
+  useEffect(() => {
+    refreshStores();
+  }, [refreshStores]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshStores();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener(STORES_CHANGED_EVENT, refreshStores);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener(STORES_CHANGED_EVENT, refreshStores);
+    };
+  }, [refreshStores]);
 
   useEffect(() => {
     if (!supabaseOk && typeof window !== 'undefined') {
@@ -153,20 +188,38 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
   }
 
   async function loadNasLibrary() {
-    if (!supabaseOk) return;
+    if (!supabaseOk) {
+      setError('需先設定 Supabase 才能載入 NAS 音樂清單');
+      return;
+    }
     if (!config.webdavUrl || !config.webdavRemotePath) {
       setError('請先填寫 WebDAV URL 與 Remote Music Path');
       return;
     }
     setLoading(true);
     setError('');
+    setSuccessMsg('');
     try {
-      const res = await fetch('/api/library?source=webdav');
+      const res = await fetch('/api/library?source=webdav', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: config.webdavUrl,
+          remotePath: config.webdavRemotePath,
+          username: config.webdavUsername,
+          password: config.webdavPassword,
+        }),
+      });
       const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || `載入失敗（HTTP ${res.status}）`);
+        setLoading(false);
+        return;
+      }
       const okResults = (data.stores || []).filter((s) => s.ok && s.data);
       if (okResults.length === 0) {
         const firstError = (data.stores || []).find((s) => !s.ok)?.error || '沒有店點回傳 NAS 音樂清單';
-        setError(firstError);
+        setError(`載入失敗：${firstError}`);
       } else {
         const allFiles = new Set();
         okResults.forEach((s) => {
@@ -175,10 +228,12 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
         const list = Array.from(allFiles).sort();
         setFiles(list);
         saveLibraryFiles(list);
-        setLastTs(new Date().toISOString());
+        const ts = new Date().toISOString();
+        setLastTs(ts);
+        setSuccessMsg(`已載入 ${list.length} 首曲目`);
       }
     } catch (e) {
-      setError(e.message);
+      setError(`載入失敗：${e.message || '未知錯誤'}`);
     }
     setLoading(false);
   }
@@ -251,11 +306,17 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
             <button type="button" className="primary" onClick={loadNasLibrary} disabled={loading} title="從 NAS 載入音樂清單">
               {loading ? <Loader2 size={16} className="spin" /> : <RefreshCw size={16} />} 載入 NAS 音樂清單
             </button>
+            {loading && <span style={{ fontSize: '0.9rem', color: 'var(--muted)' }}><Loader2 size={14} className="spin" style={{ verticalAlign: 'middle', marginRight: 4 }} /> 載入中…</span>}
             {configMsg && <span style={{ fontSize: '0.9rem', color: configMsg.includes('失敗') ? 'var(--danger)' : 'var(--success)' }}>{configMsg}</span>}
           </div>
           {error && (
             <div className="badge badge-red" style={{ marginTop: '1rem', width: 'fit-content' }}>
               <AlertCircle size={14} /> {error}
+            </div>
+          )}
+          {successMsg && (
+            <div className="badge badge-green" style={{ marginTop: '1rem', width: 'fit-content' }}>
+              <CheckCircle2 size={14} /> {successMsg}
             </div>
           )}
         </form>

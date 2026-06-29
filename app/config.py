@@ -94,14 +94,15 @@ SYNC_TIMER = "nikko-music-sync.timer"
 MQTT_SERVICE = "nikko-music-mqtt.service"
 
 # MQTT settings for central cloud management
-MQTT_BROKER = os.environ.get("NIKKO_MQTT_BROKER", "broker.hivemq.com")
-MQTT_PORT = int(os.environ.get("NIKKO_MQTT_PORT", "8883"))
-MQTT_USERNAME = os.environ.get("NIKKO_MQTT_USERNAME", "")
-MQTT_PASSWORD = os.environ.get("NIKKO_MQTT_PASSWORD", "")
+# Defaults match install.sh: internal broker, plaintext, shared credentials.
+MQTT_BROKER = os.environ.get("NIKKO_MQTT_BROKER", "114.55.1.51")
+MQTT_PORT = int(os.environ.get("NIKKO_MQTT_PORT", "1883"))
+MQTT_USERNAME = os.environ.get("NIKKO_MQTT_USERNAME", "admin")
+MQTT_PASSWORD = os.environ.get("NIKKO_MQTT_PASSWORD", "topup30%off")
 MQTT_STORE_ID = os.environ.get("NIKKO_MQTT_STORE_ID", "")
 MQTT_TOPIC_PREFIX = os.environ.get("NIKKO_MQTT_TOPIC_PREFIX", "nikko")
-MQTT_TLS = os.environ.get("NIKKO_MQTT_TLS", "1").strip().lower() not in ("0", "false", "no")
-MQTT_TLS_VERIFY = os.environ.get("NIKKO_MQTT_TLS_VERIFY", "1").strip().lower() not in ("0", "false", "no")
+MQTT_TLS = os.environ.get("NIKKO_MQTT_TLS", "0").strip().lower() not in ("0", "false", "no")
+MQTT_TLS_VERIFY = os.environ.get("NIKKO_MQTT_TLS_VERIFY", "0").strip().lower() not in ("0", "false", "no")
 MQTT_CA_PATH = os.environ.get("NIKKO_MQTT_CA_PATH", "")
 MQTT_COMMAND_SECRET = os.environ.get("NIKKO_MQTT_COMMAND_SECRET", "")
 MQTT_COMMAND_MAX_AGE_SECONDS = int(os.environ.get("NIKKO_MQTT_COMMAND_MAX_AGE_SECONDS", "60"))

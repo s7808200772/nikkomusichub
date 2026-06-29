@@ -9,6 +9,12 @@
 
 讓 Cloud 管理者不必 SSH 即可查看任意門市最近 log，縮短故障排查時間。
 
+## 實作狀態
+
+- [x] Cloud `/monitoring` 頁面已整合遠端 Log UI。
+- [x] `/api/logs` API route 已實作。
+- [ ] 超過 500 行時提供「下載完整 log」連結（直接呼叫 Pi `/logs`）。
+
 ## 通訊協定
 
 ### Pi → Cloud（響應）
@@ -35,6 +41,7 @@
   "lines": 100,
   "timestamp": 1718810000000,
   "nonce": "uuid",
+  "confirm": true,
   "signature": "..."
 }
 ```
@@ -42,9 +49,9 @@
 - `log_type`: `player`, `sync`, `system`
 - `lines`: 1 ~ 500
 
-## Cloud 頁面規劃
+## Cloud 頁面
 
-1. `/logs` 列出所有店點。
+1. 進入 `/monitoring` 頁面的「遠端 Log」分頁。
 2. 選擇店點與 log 類型，點「載入」。
 3. 前端透過 `/api/logs?storeId=...&type=...&lines=...` 發送 MQTT 指令。
 4. 結果以 `<pre>` 顯示，每 10 秒可重新整理。
@@ -58,6 +65,4 @@
 
 ## 後續工作
 
-- [ ] Cloud `/logs` 頁面實作。
-- [ ] `/api/logs` API route 實作。
 - [ ] 超過 500 行時提供「下載完整 log」連結（直接呼叫 Pi `/logs`）。

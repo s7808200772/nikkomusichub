@@ -16,10 +16,10 @@
 Cloud 與 Pi 之間透過 MQTT 溝通：
 
 - Cloud 發布簽章指令到 `<private-prefix>/<storeId>/cmd`
-- Pi 訂閱指令、執行後回傳結果到 `nikko/<storeId>/resp`
-- Pi 定期發布狀態到 `nikko/<storeId>/status`
+- Pi 訂閱指令、執行後回傳結果到 `<private-prefix>/<storeId>/resp`
+- Pi 定期發布狀態到 `<private-prefix>/<storeId>/status`
 
-MQTT 使用 TLS、HMAC 簽章、時效檢查與 requestId 防重放；Pi 與 Cloud 必須設定相同的 command secret 與 topic prefix。
+MQTT 使用 HMAC 簽章、時效檢查與 requestId 防重放；Pi 與 Cloud 必須設定相同的 command secret 與 topic prefix。生產環境建議啟用 TLS。
 
 ## 本地開發
 
@@ -43,6 +43,7 @@ npx vercel --prod
 - `NIKKO_ADMIN_USER`、`NIKKO_ADMIN_PASS`：管理員帳密
 - `NIKKO_CLOUD_SECRET`：JWT 簽章金鑰
 - `NIKKO_MQTT_COMMAND_SECRET`：與 Pi 相同的 HMAC 密鑰
+- `NIKKO_MQTT_BROKER`、`NIKKO_MQTT_PORT`、`NIKKO_MQTT_USERNAME`、`NIKKO_MQTT_PASSWORD`：broker 連線資訊（預設 `114.55.1.51:1883` plaintext）
 - `NIKKO_MQTT_CA`、`NIKKO_MQTT_TLS_SERVERNAME`：私有 broker Root CA 與憑證名稱
 - `NIKKO_MQTT_TLS_VERIFY`：設 `0` 可暫時關閉 broker 憑證驗證（測試用）
 - `NIKKO_MQTT_TOPIC_PREFIX`：與 Pi 相同的私有 topic prefix
@@ -55,8 +56,8 @@ npx vercel --prod
 3. 登入 Cloud，到 `/stores` 填入：
    - Store ID（必須與 Pi 的 Store ID 一致）
    - 店名
-   - MQTT Broker（預設 `broker.hivemq.com`，生產環境請換成自己的 broker）
-   - MQTT Port（TLS 預設 `8883`）
+   - MQTT Broker（預設 `114.55.1.51`，生產環境請換成自己的 broker）
+   - MQTT Port（預設 `1883` plaintext；生產環境建議 `8883` TLS）
    - 私有 broker 使用者 / 密碼（若 broker 提供）
 4. 點「測試連線」確認 Pi 有回應
 

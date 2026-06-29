@@ -28,12 +28,12 @@ export async function POST(request) {
     status: 'started',
   });
 
-  const job = createJob([storeId], action);
+  const job = await createJob([storeId], action);
 
   // Run the long-running OTA command in the background so the API can return
   // immediately with a jobId. Clients poll GET /api/ota?jobId=<id> for status.
   (async () => {
-    updateStoreResult(job.id, storeId, 'pending', null, null);
+    await updateStoreResult(job.id, storeId, 'pending', null, null);
     const result = await publishCommandWithRetry({
       broker: store.mqttBroker,
       port: store.mqttPort || (store.mqttTls === true ? 8883 : 1883),
@@ -48,11 +48,11 @@ export async function POST(request) {
     });
 
     if (result.ok) {
-      updateStoreResult(job.id, storeId, 'success', result.parsed || result.result || null, null);
+      await updateStoreResult(job.id, storeId, 'success', result.parsed || result.result || null, null);
     } else if (/timeout|no response|waiting for response/i.test(result.error || '')) {
-      updateStoreResult(job.id, storeId, 'no_response', null, result.error);
+      await updateStoreResult(job.id, storeId, 'no_response', null, result.error);
     } else {
-      updateStoreResult(job.id, storeId, 'failed', null, result.error);
+      await updateStoreResult(job.id, storeId, 'failed', null, result.error);
     }
 
     await finishUpdateLog(log.id, {
@@ -75,7 +75,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const jobId = searchParams.get('jobId');
   if (jobId) {
-    const job = getJob(jobId);
+    const job = await getJob(jobId);
     if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     return NextResponse.json({ job });
   }

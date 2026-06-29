@@ -64,6 +64,6 @@ nikko-<store_id>-<device_id>-<random>
 
 ## 驗收標準
 
-- [ ] 每台 Pi 的 MQTT clientId 包含 store_id 與 device_id。
-- [ ] Command Secret 可在 Cloud 端一鍵輪替並通知所有在線 Pi。
+- [x] 每台 Pi 的 MQTT clientId 包含 store_id 與 device_id（已實作）。
+- [ ] Command Secret 可在 Cloud 端一鍵輪替並通知所有在線 Pi（規劃中 / 尚未實作）。
 - [ ] 文件化輪替步驟與緊急撤銷流程。

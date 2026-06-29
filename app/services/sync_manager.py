@@ -26,6 +26,11 @@ _current_sync = {
     "eta": "",
     "stdout": "",
     "stderr": "",
+    "mp3_before": 0,
+    "mp3_after": 0,
+    "new_downloaded": 0,
+    "deleted": 0,
+    "updated": 0,
 }
 _lock = threading.Lock()
 
@@ -48,6 +53,29 @@ def _count_mp3(path: Path) -> int:
     if not path.exists():
         return 0
     return sum(1 for p in path.rglob("*") if p.is_file() and p.suffix.lower() == ".mp3")
+
+
+def _mp3_relative_set(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    return {
+        p.relative_to(path).as_posix()
+        for p in path.rglob("*")
+        if p.is_file() and p.suffix.lower() == ".mp3"
+    }
+
+
+def _sync_counts(old_path: Path, new_path: Path) -> dict:
+    """Compare MP3 files before/after atomic swap for user-facing stats."""
+    old_set = _mp3_relative_set(old_path)
+    new_set = _mp3_relative_set(new_path)
+    return {
+        "mp3_before": len(old_set),
+        "mp3_after": len(new_set),
+        "new_downloaded": len(new_set - old_set),
+        "deleted": len(old_set - new_set),
+        "updated": len(old_set & new_set),
+    }
 
 
 def _set_progress(**kwargs):
@@ -79,8 +107,8 @@ def _parse_progress_line(line: str) -> dict:
     return out
 
 
-def _atomic_replace_staging(local_path: Path):
-    """Replace local_path with STAGING_DIR atomically."""
+def _atomic_replace_staging(local_path: Path) -> dict:
+    """Replace local_path with STAGING_DIR atomically and return MP3 stats."""
     local_path = Path(local_path).resolve()
     staging = STAGING_DIR.resolve()
     old = OLD_DIR.resolve()
@@ -92,7 +120,14 @@ def _atomic_replace_staging(local_path: Path):
     # If local_path doesn't exist yet, just rename staging into place
     if not local_path.exists():
         staging.rename(local_path)
-        return
+        count = _count_mp3(local_path)
+        return {
+            "mp3_before": 0,
+            "mp3_after": count,
+            "new_downloaded": count,
+            "deleted": 0,
+            "updated": 0,
+        }
 
     # Atomic-ish swap: music -> music.old, music.staging -> music
     local_path.rename(old)
@@ -103,13 +138,25 @@ def _atomic_replace_staging(local_path: Path):
         if old.exists():
             old.rename(local_path)
         raise
-    finally:
-        # Clean up old dir in background (mpv may still hold fds to old files)
-        if old.exists():
-            try:
-                shutil.rmtree(old)
-            except Exception:
-                pass
+
+    # Compute stats before cleaning up the old directory
+    stats = _sync_counts(old, local_path)
+
+    # Fallback: if the new folder is empty but the old folder had music,
+    # roll back so playback never stops.
+    if stats["mp3_after"] == 0 and stats["mp3_before"] > 0:
+        shutil.rmtree(local_path)
+        old.rename(local_path)
+        raise RuntimeError("Staging folder was empty; rolled back to previous music")
+
+    # Clean up old dir in background (mpv may still hold fds to old files)
+    if old.exists():
+        try:
+            shutil.rmtree(old)
+        except Exception:
+            pass
+
+    return stats
 
 
 def _run_sync(remote_path: str, local_path: str, dry_run: bool, use_staging: bool = True):
@@ -128,6 +175,11 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool, use_staging: boo
         eta="",
         stdout="",
         stderr="",
+        mp3_before=0,
+        mp3_after=0,
+        new_downloaded=0,
+        deleted=0,
+        updated=0,
     )
 
     # Disk space protection: do not start a sync if the root filesystem is nearly full.
@@ -221,22 +273,14 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool, use_staging: boo
 
     # Atomic swap only after successful rclone run
     swap_ok = True
+    swap_stats = {}
     if ok and use_staging and not dry_run:
         try:
-            _atomic_replace_staging(local_path_obj)
-            # Fallback: if the new folder is empty but the old folder had music,
-            # roll back so playback never stops.
-            new_count = _count_mp3(local_path_obj)
-            if new_count == 0 and OLD_DIR.exists() and _count_mp3(OLD_DIR) > 0:
-                shutil.rmtree(local_path_obj)
-                OLD_DIR.rename(local_path_obj)
-                stderr_lines.append("Staging folder was empty; rolled back to previous music")
-                swap_ok = False
-                ok = False
+            swap_stats = _atomic_replace_staging(local_path_obj)
         except Exception as e:
             ok = False
             swap_ok = False
-            stderr_lines.append(f"Staging swap failed: {e}")
+            stderr_lines.append(str(e))
 
     stdout = "\n".join(stdout_lines)
     stderr = "\n".join(stderr_lines)
@@ -260,6 +304,7 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool, use_staging: boo
         message=message,
         stdout=stdout,
         stderr=stderr,
+        **swap_stats,
     )
 
     add_sync_log(started_at, finished_at, status, message, stdout, stderr)
