@@ -54,12 +54,15 @@
             <div class="volume-slider-wrap">
               <input type="range" min="0" max="150" id="volume-slider" onchange="setVolume(this.value)" title="調整音量">
               <div class="volume-label-below">
-                <span>音量</span>
+                <span>播放音量</span>
                 <span id="volume-val">100</span>
                 <span style="color:var(--muted-2)">0 - 150</span>
               </div>
             </div>
             <input type="range" id="seek-slider" min="0" max="0" value="0" step="1" class="seek-slider" oninput="seekSlider(this.value)" title="拖曳調整播放進度">
+            <div class="seek-label-below">
+              <span>播放進度</span>
+            </div>
             <div class="time-row">
               <span id="p-curtime">0:00</span>
               <span id="p-duration">0:00</span>
@@ -119,10 +122,10 @@
       <div class="status-card">
         <h3><span class="icon">🧩</span>元件與版本</h3>
         <div class="status-row"><span class="label">rclone</span><span class="value" id="ss-rclone"><span class="dot {{ 'green' if data.rclone_installed else 'gray' }}"></span> <span id="ss-rclone-text">已{{ '安裝' if data.rclone_installed else '未安裝' }}</span></span></div>
-        <div class="status-row"><span class="label">mpv</span><span class="value" id="ss-mpv"><span class="dot {{ 'green' if data.mpv_installed else 'gray' }}"></span> <span id="ss-mpv-text">已{{ '安裝' if data.mpv_installed else '未安裝' }}</span></span></div>
-        <div class="status-row"><span class="label">音樂服務</span><span class="value" id="ss-player-svc"><span class="dot {{ 'green' if data.player_service_status == 'active' else 'gray' }}"></span> <span id="ss-player-svc-text">{{ data.player_service_status or 'inactive' }}</span></span></div>
         <div class="status-row"><span class="label">rclone 版本</span><span class="value small" id="ss-rclone-ver" style="font-size:.7rem;">{{ data.rclone_version or '-' }}</span></div>
+        <div class="status-row"><span class="label">mpv</span><span class="value" id="ss-mpv"><span class="dot {{ 'green' if data.mpv_installed else 'gray' }}"></span> <span id="ss-mpv-text">已{{ '安裝' if data.mpv_installed else '未安裝' }}</span></span></div>
         <div class="status-row"><span class="label">mpv 版本</span><span class="value small" id="ss-mpv-ver" style="font-size:.7rem;">{{ data.mpv_version or '-' }}</span></div>
+        <div class="status-row"><span class="label">音樂服務</span><span class="value" id="ss-player-svc"><span class="dot {{ 'green' if data.player_service_status == 'active' else 'gray' }}"></span> <span id="ss-player-svc-text">{{ data.player_service_status or 'inactive' }}</span></span></div>
       </div>
 
       <div class="status-card">
@@ -468,15 +471,19 @@ async function toggleMute() {
   if (!res) return;
   if (res.mute) {
     previousVolume = currentState.volume || previousVolume;
+    currentState.volume = 0;
+    currentState.mute = true;
     document.getElementById('volume-slider').value = 0;
     document.getElementById('volume-val').textContent = 0;
   } else {
     const vol = previousVolume || res.volume || 100;
+    currentState.volume = vol;
+    currentState.mute = false;
     document.getElementById('volume-slider').value = vol;
     document.getElementById('volume-val').textContent = vol;
   }
   updateMuteButton(res.mute);
-  refreshPlayer();
+  updateWaveform(currentState.state, currentState.mute ? 0 : currentState.volume);
 }
 async function toggleShuffle() { await apiPost('/api/player/shuffle', new URLSearchParams({enabled: currentState.shuffle ? 0 : 1})); refreshPlayer(); }
 async function toggleLoop() { await apiPost('/api/player/loop', new URLSearchParams({enabled: currentState.loop ? 0 : 1})); refreshPlayer(); }

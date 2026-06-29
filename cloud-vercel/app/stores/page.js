@@ -8,7 +8,7 @@ import StoresHubClient from './StoresHubClient';
 
 export default async function StoresPage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('nikko_cloud_token')?.value;
+  const token = cookieStore.get('__Host-nikko_cloud_token')?.value;
   if (!token || !(await verifyToken(token))) {
     redirect('/login');
   }

@@ -39,9 +39,10 @@ export async function POST(request) {
 
   const token = await createToken(username);
   const response = NextResponse.json({ ok: true });
-  response.cookies.set('nikko_cloud_token', token, {
+  // __Host- prefix requires Secure, Path=/, and no Domain attribute.
+  response.cookies.set('__Host-nikko_cloud_token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: true,
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 7,
     path: '/',
@@ -51,6 +52,6 @@ export async function POST(request) {
 
 export async function DELETE() {
   const response = NextResponse.json({ ok: true });
-  response.cookies.delete('nikko_cloud_token');
+  response.cookies.delete('__Host-nikko_cloud_token');
   return response;
 }

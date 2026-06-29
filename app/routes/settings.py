@@ -37,6 +37,9 @@ async def settings_page(request: Request):
     store_id = get_setting("store_id", "")
     store_id_suffix = store_id.replace("store-", "") if store_id.startswith("store-") else store_id
     remote_path = get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT)
+    remote_path_raw = get_setting("webdav_remote_path_raw", "")
+    if not remote_path_raw:
+        remote_path_raw = "/" + remote_path.split(":", 1)[-1].lstrip("/")
     mqtt_settings = await get_mqtt_settings(request)
     settings = {
         "store_name": get_setting("store_name", "未命名店鋪"),
@@ -46,6 +49,7 @@ async def settings_page(request: Request):
         "username": get_setting("webdav_username", ""),
         "remote_path": remote_path,
         "remote_path_display": "/" + remote_path.split(":", 1)[-1].lstrip("/"),
+        "remote_path_raw": remote_path_raw,
         "local_path": get_setting("local_music_path", str(MUSIC_DIR)),
         "sync_mode": get_setting("sync_mode", "sync"),
         "daily_sync_enabled": bool(int(get_setting("daily_sync_enabled", "1"))),

@@ -38,11 +38,15 @@ def _remote_path_display(remote_path: str) -> str:
 async def webdav_settings(request: Request):
     get_current_user_or_local(request)
     remote_path = get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT)
+    remote_path_raw = get_setting("webdav_remote_path_raw", "")
+    if not remote_path_raw:
+        remote_path_raw = _remote_path_display(remote_path)
     return {
         "url": get_setting("webdav_url", RCLONE_WEBDAV_URL_DEFAULT),
         "username": get_setting("webdav_username", ""),
         "remote_path": remote_path,
         "remote_path_display": _remote_path_display(remote_path),
+        "remote_path_raw": remote_path_raw,
         "local_path": get_setting("local_music_path", str(MUSIC_DIR)),
         "sync_mode": get_setting("sync_mode", "sync"),
         "daily_sync_enabled": bool(int(get_setting("daily_sync_enabled", "1"))),
@@ -70,7 +74,8 @@ async def save_webdav_settings(
         return {"ok": False, "stderr": "Username is required"}
 
     # Normalize remote path display (/NikkoMusic) to rclone format (qnapmusic:NikkoMusic)
-    clean_path = remote_path.strip().lstrip("\\").lstrip("/").replace("\\", "/")
+    remote_path_raw = remote_path.strip().replace("\\", "/")
+    clean_path = remote_path_raw.lstrip("/")
     stored_remote_path = f"{remote_name}:{clean_path}" if clean_path else RCLONE_REMOTE_PATH_DEFAULT
 
     # Only rewrite rclone config if a password was provided; otherwise keep existing config
@@ -86,6 +91,7 @@ async def save_webdav_settings(
     set_setting("webdav_url", url)
     set_setting("webdav_username", username)
     set_setting("webdav_remote_path", stored_remote_path)
+    set_setting("webdav_remote_path_raw", remote_path_raw)
     set_setting("local_music_path", local_path)
 
     audit(user, "save_webdav_settings", {

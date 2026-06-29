@@ -8,7 +8,7 @@ import CommandsClient from './commands/CommandsClient';
 
 export default async function DashboardPage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('nikko_cloud_token')?.value;
+  const token = cookieStore.get('__Host-nikko_cloud_token')?.value;
   if (!token || !(await verifyToken(token))) {
     redirect('/login');
   }
@@ -21,8 +21,9 @@ export default async function DashboardPage() {
         <p>即時掌握所有店點狀態，並直接下達遠端指令</p>
       </div>
       {!supabaseOk && <SupabaseWarning />}
-      <DashboardClient initialStores={stores} supabaseOk={supabaseOk} />
-      <CommandsClient initialStores={stores} supabaseOk={supabaseOk} />
+      <DashboardClient initialStores={stores} supabaseOk={supabaseOk}>
+        <CommandsClient initialStores={stores} supabaseOk={supabaseOk} />
+      </DashboardClient>
     </main>
   );
 }

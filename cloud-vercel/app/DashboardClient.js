@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Music, RefreshCw, Wifi, WifiOff, HelpCircle, Loader2, Store, CheckCircle2, AlertCircle, Bell } from 'lucide-react';
+import { Wifi, WifiOff, Store, CheckCircle2, AlertCircle, Bell, Loader2 } from 'lucide-react';
 import { loadLocalStores } from '@/lib/localStorage';
 
-export default function DashboardClient({ initialStores, supabaseOk }) {
+export default function DashboardClient({ initialStores, supabaseOk, children }) {
   const [stores, setStores] = useState(initialStores || []);
   const [status, setStatus] = useState({});
   const [jobs, setJobs] = useState([]);
@@ -112,6 +112,8 @@ export default function DashboardClient({ initialStores, supabaseOk }) {
           </div>
         </div>
       </div>
+
+      {children}
 
       <div className="card">
         <div className="page-header" style={{ marginBottom: '1rem' }}>

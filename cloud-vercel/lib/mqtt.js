@@ -109,16 +109,16 @@ export function publishCommand({ broker, port, username, password, tls = false, 
           return resolve({ ok: false, error: `Subscribe error: ${err.message}`, requestId });
         }
         const command = {
+          ...(payload || {}),
           requestId,
           commandKey,
           timestamp: Date.now(),
           nonce: randomUUID(),
           confirm: DANGEROUS_KEYS.has(commandKey),
-          ...(payload ? { payload } : {}),
         };
         command.signature = signCommand(command, storeId, COMMAND_SECRET);
-        const payload = JSON.stringify(command);
-        client.publish(topics.cmd, payload, { qos: 1 }, (err) => {
+        const message = JSON.stringify(command);
+        client.publish(topics.cmd, message, { qos: 1 }, (err) => {
           if (err) {
             clearTimeout(timer);
             finished = true;
@@ -173,6 +173,20 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function runWithConcurrency(tasks, limit) {
+  const results = new Array(tasks.length);
+  let index = 0;
+  async function worker() {
+    while (index < tasks.length) {
+      const i = index++;
+      results[i] = await tasks[i]();
+    }
+  }
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, worker);
+  await Promise.all(workers);
+  return results;
+}
+
 export async function publishCommandWithRetry(options) {
   const retries = options.retries ?? 2; // initial + 2 retries = up to 3 attempts
   const baseDelayMs = options.baseDelayMs ?? 2000;
@@ -207,43 +221,43 @@ export async function publishCommandWithRetry(options) {
   };
 }
 
-export async function publishBatch({ stores, commandKey, timeout = 25000 }) {
+export async function publishBatch({ stores, commandKey, timeout = 25000, concurrency = 5 }) {
   const job = createJob(
     stores.map((s) => s.storeId),
     commandKey
   );
 
-  // Run commands concurrently; each has its own retry logic.
-  await Promise.all(
-    stores.map(async (store) => {
-      updateStoreResult(job.id, store.storeId, 'pending', null, null);
-      const result = await publishCommandWithRetry({
-        broker: store.mqttBroker,
-        port: store.mqttPort || (store.mqttTls === true ? 8883 : 1883),
-        username: store.mqttUsername,
-        password: store.mqttPassword,
-        tls: store.mqttTls === true,
-        tlsVerify: store.tlsVerify === true,
-        storeId: store.storeId,
-        commandKey,
-        timeout,
-        retries: 2,
-      });
-      if (result.ok) {
-        updateStoreResult(job.id, store.storeId, 'success', result.parsed || result.result || null, null);
-      } else if (/timeout|no response|waiting for response/i.test(result.error || '')) {
-        updateStoreResult(job.id, store.storeId, 'no_response', null, result.error);
-      } else {
-        updateStoreResult(job.id, store.storeId, 'failed', null, result.error);
-      }
-    })
-  );
+  // Run commands with a concurrency limit to avoid exhausting broker connections.
+  const tasks = stores.map((store) => async () => {
+    updateStoreResult(job.id, store.storeId, 'pending', null, null);
+    const result = await publishCommandWithRetry({
+      broker: store.mqttBroker,
+      port: store.mqttPort || (store.mqttTls === true ? 8883 : 1883),
+      username: store.mqttUsername,
+      password: store.mqttPassword,
+      tls: store.mqttTls === true,
+      tlsVerify: store.tlsVerify === true,
+      storeId: store.storeId,
+      commandKey,
+      timeout,
+      retries: 2,
+    });
+    if (result.ok) {
+      updateStoreResult(job.id, store.storeId, 'success', result.parsed || result.result || null, null);
+    } else if (/timeout|no response|waiting for response/i.test(result.error || '')) {
+      updateStoreResult(job.id, store.storeId, 'no_response', null, result.error);
+    } else {
+      updateStoreResult(job.id, store.storeId, 'failed', null, result.error);
+    }
+  });
+
+  await runWithConcurrency(tasks, concurrency);
 
   return { jobId: job.id };
 }
 
-export function testMQTT({ broker, port, username, password, tls = false, tlsVerify = false, storeId, timeout = 20000 }) {
-  return publishCommand({
+export async function testMQTT({ broker, port, username, password, tls = false, tlsVerify = false, storeId, timeout = 30000 }) {
+  const result = await publishCommand({
     broker,
     port,
     username,
@@ -251,7 +265,23 @@ export function testMQTT({ broker, port, username, password, tls = false, tlsVer
     tls,
     tlsVerify,
     storeId,
-    commandKey: 'status_dashboard',
+    commandKey: 'status_system',
     timeout,
   });
+
+  if (!result.ok) {
+    const baseError = result.error || 'Unknown error';
+    let help = '';
+    if (/timeout|waiting for response/i.test(baseError)) {
+      help = `Pi did not respond on ${getTopics(storeId).resp}. Check that the Pi's MQTT_STORE_ID / storeId matches '${storeId}', the broker address/port/TLS settings are correct, and the nikko-music-mqtt.service is running.`;
+    } else if (/ECONNREFUSED|connection refused|not authorized/i.test(baseError)) {
+      help = `Cannot reach the MQTT broker. Verify broker host, port, TLS settings, and credentials for store '${storeId}'.`;
+    }
+    return {
+      ...result,
+      error: help ? `${baseError} (${help})` : baseError,
+    };
+  }
+
+  return result;
 }

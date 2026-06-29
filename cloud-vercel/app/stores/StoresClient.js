@@ -37,9 +37,15 @@ function applyDefaultSettings(form, settings) {
 }
 
 function ensureStorePrefix(value) {
-  const v = value || '';
-  if (v.toLowerCase().startsWith('store-')) return v;
-  if (v.toLowerCase().startsWith('store')) return `store-${v.slice(5)}`;
+  const v = (value || '').trim();
+  if (!v) return '';
+  const lower = v.toLowerCase();
+  if (lower.startsWith('store-')) {
+    const suffix = v.slice(6).trim();
+    return suffix ? v : '';
+  }
+  if (lower === 'store') return '';
+  if (lower.startsWith('store')) return `store-${v.slice(5).trim()}`;
   return `store-${v}`;
 }
 
@@ -100,6 +106,12 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
     setMsg('');
     setBusy(true);
     const storeId = ensureStorePrefix(form.storeId);
+    if (!storeId) {
+      setMsg('Store ID 不得為空，請輸入 store- 後的編號（例如 001）');
+      setMsgType('error');
+      setBusy(false);
+      return;
+    }
     const payload = {
       storeId,
       storeName: form.storeName.trim(),

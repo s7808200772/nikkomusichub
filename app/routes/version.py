@@ -21,6 +21,12 @@ CHANGELOG = [
             "MQTT 設定改為預填白值（114.55.1.51:1883 / admin / topup30%off），開箱即可直接儲存",
             "WebDAV 設定移除廠商欄位，Remote Music Path 改為 /NikkoMusic 顯示，後端自動轉為 qnapmusic:NikkoMusic",
             "設定頁按鈕加入固定最小寬度與提示文字，避免儲存時文字縮水；登出連結改為中文「登出系統」",
+            "網路設定新增「測試連線」按鈕，先驗證 WiFi / 優先順序再儲存，並將 nmcli 錯誤明確顯示在畫面上",
+            "網路優先順序套用失敗時不再靜默忽略，會回傳警告讓使用者知道哪個連線設定失敗",
+            "修改密碼頁面的前端驗證改為與後端一致：至少 12 個字元且包含大小寫英文與數字",
+            "install.sh 新增 sudoers 規則，讓服務帳號可免密執行必要的 systemctl 指令",
+            "install.sh 會一併安裝並啟用 backup service / timer",
+            ".env.example 更新為與 install.sh 一致的預設值（broker 114.55.1.51:1883、TLS 關閉、預設帳密與 topic prefix）",
         ],
     },
     {

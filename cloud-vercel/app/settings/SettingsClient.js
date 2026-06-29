@@ -79,7 +79,7 @@ export default function SettingsClient({ initialSettings, supabaseOk }) {
     setMsg('');
     if (!supabaseOk) {
       saveLocalSettings(settings);
-      setMsg('設定已儲存至瀏覽器（未偵測到 Supabase，資料不會同步到雲端）');
+      setMsg('設定已儲存至瀏覽器（密碼未儲存，未偵測到 Supabase 時資料不會同步到雲端）');
       setMsgType('success');
       setBusy(false);
       return;

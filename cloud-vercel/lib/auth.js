@@ -36,7 +36,7 @@ export async function verifyToken(token) {
 
 export async function getCurrentUser() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('nikko_cloud_token')?.value;
+  const token = cookieStore.get('__Host-nikko_cloud_token')?.value;
   if (!token) return null;
   const payload = await verifyToken(token);
   return payload?.username || null;

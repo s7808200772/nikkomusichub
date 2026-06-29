@@ -123,7 +123,7 @@ export default function LogsClient({ initialStores, supabaseOk }) {
     <>
       <div className="card">
         <div className="form-row" style={{ alignItems: 'flex-end' }}>
-          <div className="form-group" style={{ minWidth: '220px' }}>
+          <div className="form-group" style={{ minWidth: '220px', marginBottom: 0 }}>
             <label>店點</label>
             <select value={selected} onChange={(e) => setSelected(e.target.value)}>
               <option value="">選擇店點</option>
@@ -132,19 +132,22 @@ export default function LogsClient({ initialStores, supabaseOk }) {
               ))}
             </select>
           </div>
-          <div className="form-group" style={{ width: '120px' }}>
+          <div className="form-group" style={{ width: '120px', marginBottom: 0 }}>
             <label>行數</label>
             <input type="number" min={10} max={500} value={linesCount} onChange={(e) => setLinesCount(Number(e.target.value))} />
           </div>
-          <button
-            className="primary"
-            onClick={refresh}
-            disabled={loading || !selected}
-            title="載入所選店點的遠端 Log"
-            style={{ height: '2.55rem' }}
-          >
-            {loading ? <Loader2 size={16} className="spin" /> : <Terminal size={16} />} 載入 Log
-          </button>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>&nbsp;</label>
+            <button
+              className="primary"
+              onClick={refresh}
+              disabled={loading || !selected}
+              title="載入所選店點的遠端 Log"
+              style={{ height: '2.55rem' }}
+            >
+              {loading ? <Loader2 size={16} className="spin" /> : <Terminal size={16} />} 載入 Log
+            </button>
+          </div>
         </div>
       </div>
 

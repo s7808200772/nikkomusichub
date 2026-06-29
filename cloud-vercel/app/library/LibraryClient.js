@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { Music, RefreshCw, Loader2, AlertCircle, Server, HardDrive, Save, Eye, EyeOff } from 'lucide-react';
-import { loadLocalSettings, saveLocalSettings } from '@/lib/localStorage';
+import { loadLocalSettings, saveLocalSettings, stripSensitiveSettings } from '@/lib/localStorage';
 
-const NAS_KEY = 'nikko_nas_files';
-const NAS_TS_KEY = 'nikko_nas_files_ts';
+const LIBRARY_KEY = 'nikko_library_files';
+const LIBRARY_TS_KEY = 'nikko_library_files_ts';
 
 const DEFAULT_NAS = {
   webdavUrl: 'http://100.106.208.65:5005/',
@@ -14,25 +14,25 @@ const DEFAULT_NAS = {
   webdavPassword: '',
 };
 
-function loadNasFiles() {
+function loadLibraryFiles() {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(NAS_KEY);
+    const raw = localStorage.getItem(LIBRARY_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch { return []; }
 }
 
-function saveNasFiles(files) {
+function saveLibraryFiles(files) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(NAS_KEY, JSON.stringify(files));
-    localStorage.setItem(NAS_TS_KEY, new Date().toISOString());
+    localStorage.setItem(LIBRARY_KEY, JSON.stringify(files));
+    localStorage.setItem(LIBRARY_TS_KEY, new Date().toISOString());
   } catch {}
 }
 
-function loadNasTs() {
+function loadLibraryTs() {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(NAS_TS_KEY);
+  return localStorage.getItem(LIBRARY_TS_KEY);
 }
 
 function PasswordInput({ value, onChange, placeholder }) {
@@ -62,8 +62,8 @@ function PasswordInput({ value, onChange, placeholder }) {
 export default function LibraryClient({ initialStores, initialSettings, supabaseOk }) {
   const [stores] = useState(initialStores || []);
   const [selected, setSelected] = useState(new Set());
-  const [files, setFiles] = useState(loadNasFiles);
-  const [lastTs, setLastTs] = useState(loadNasTs);
+  const [files, setFiles] = useState(loadLibraryFiles);
+  const [lastTs, setLastTs] = useState(loadLibraryTs);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [batchLoading, setBatchLoading] = useState(false);
@@ -136,8 +136,8 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
     setConfigMsg('');
     if (!supabaseOk) {
       const local = loadLocalSettings();
-      saveLocalSettings({ ...local, ...config });
-      setConfigMsg('已儲存至瀏覽器');
+      saveLocalSettings({ ...local, ...stripSensitiveSettings(config) });
+      setConfigMsg('已儲存至瀏覽器（密碼未儲存，需重新輸入）');
       return;
     }
     const res = await fetch('/api/settings', {
@@ -174,7 +174,7 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
         });
         const list = Array.from(allFiles).sort();
         setFiles(list);
-        saveNasFiles(list);
+        saveLibraryFiles(list);
         setLastTs(new Date().toISOString());
       }
     } catch (e) {

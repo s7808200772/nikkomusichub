@@ -51,6 +51,17 @@ const CATEGORIES = [
 
 const ALL_COMMANDS = CATEGORIES.flatMap((c) => c.commands);
 
+const DANGEROUS_COMMANDS = new Set(['reboot', 'restart_player', 'sync', 'ota_update', 'rollback']);
+
+function getCommandLabel(key) {
+  return ALL_COMMANDS.find((c) => c.key === key)?.label || key;
+}
+
+function confirmDangerous(commandKey, target) {
+  const label = getCommandLabel(commandKey);
+  return confirm(`確定要對 ${target} 執行「${label}」嗎？此操作可能影響店點運行。`);
+}
+
 function statusTooltip(st) {
   if (!st) return '尚未取得狀態';
   if (st.loading) return '正在取得狀態…';
@@ -105,6 +116,9 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
       }));
       return { ok: false };
     }
+    if (DANGEROUS_COMMANDS.has(commandKey) && !confirmDangerous(commandKey, storeId)) {
+      return { ok: false };
+    }
     setResults((prev) => ({
       ...prev,
       [storeId]: { ...(prev[storeId] || {}), [commandKey]: { loading: true } },
@@ -119,6 +133,7 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
       ...prev,
       [storeId]: { ...(prev[storeId] || {}), [commandKey]: { ...data, loading: false } },
     }));
+    setExpanded((prev) => ({ ...prev, [storeId]: true }));
     return data;
   }
 
@@ -159,6 +174,9 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
 
   async function runBatch(commandKey) {
     if (!supabaseOk || selected.size === 0) return;
+    if (DANGEROUS_COMMANDS.has(commandKey) && !confirmDangerous(commandKey, `${selected.size} 個店點`)) {
+      return;
+    }
     setBatchLoading(true);
     const res = await fetch('/api/command/batch', {
       method: 'POST',
@@ -361,7 +379,13 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
                         <tr>
                           <td colSpan={8} style={{ background: 'var(--bg-2)', padding: 0 }}>
                             <div className="log-output" style={{ maxHeight: '200px', margin: '0.75rem', border: 'none' }}>
-                              {last ? JSON.stringify(last.parsed || last.result || {}, null, 2) : '尚未執行指令'}
+                              {last ? (
+                                last.error && !last.ok ? (
+                                  <span style={{ color: 'var(--danger)' }}>{last.error}</span>
+                                ) : (
+                                  JSON.stringify(last.result ?? last.parsed ?? null, null, 2)
+                                )
+                              ) : '尚未執行指令'}
                             </div>
                           </td>
                         </tr>

@@ -12,7 +12,11 @@ export default function OtaClient({ initialStores, supabaseOk }) {
   const [versions, setVersions] = useState({});
 
   useEffect(() => {
-    fetch('https://api.github.com/repos/s7808200772/nikkomusichub/commits?sha=security-final&per_page=1')
+    const headers = {};
+    if (process.env.NIKKO_GITHUB_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.NIKKO_GITHUB_TOKEN}`;
+    }
+    fetch('https://api.github.com/repos/s7808200772/nikkomusichub/commits?sha=security-final&per_page=1', { headers })
       .then((r) => r.json())
       .then((data) => {
         const commit = Array.isArray(data) ? data[0] : null;
@@ -67,12 +71,32 @@ export default function OtaClient({ initialStores, supabaseOk }) {
     }
   }
 
+  async function pollJob(jobId, maxWaitMs = 180000, intervalMs = 3000) {
+    const start = Date.now();
+    while (Date.now() - start < maxWaitMs) {
+      try {
+        const res = await fetch(`/api/ota?jobId=${encodeURIComponent(jobId)}`);
+        const data = await res.json();
+        const job = data.job;
+        if (!job) return { ok: false, error: 'Job not found' };
+        const store = job.stores?.[0];
+        if (store && store.status !== 'pending') {
+          return { ok: store.status === 'success', error: store.error, job };
+        }
+      } catch (e) {
+        return { ok: false, error: e.message || 'Polling failed' };
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+    return { ok: false, error: 'Polling timed out' };
+  }
+
   async function runAction(action) {
     if (!supabaseOk || selected.size === 0) return;
     setLoading(true);
     setMsg('');
     const ids = Array.from(selected);
-    const results = await Promise.all(
+    const jobs = await Promise.all(
       ids.map(async (storeId) => {
         const res = await fetch('/api/ota', {
           method: 'POST',
@@ -82,6 +106,15 @@ export default function OtaClient({ initialStores, supabaseOk }) {
         return { storeId, ...(await res.json()) };
       })
     );
+
+    const results = await Promise.all(
+      jobs.map(async ({ storeId, jobId, error }) => {
+        if (error) return { storeId, ok: false, error };
+        if (!jobId) return { storeId, ok: false, error: 'No jobId returned' };
+        return { storeId, ...(await pollJob(jobId)) };
+      })
+    );
+
     setLoading(false);
     const failed = results.filter((r) => !r.ok);
     if (failed.length === 0) {

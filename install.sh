@@ -132,6 +132,25 @@ if [ "${PASSWORD_ENV_WAS_MISSING}" -eq 1 ] || [ ! -f "${INSTALL_DIR}/data/initia
   chmod 600 "${INSTALL_DIR}/data/initial-admin-password"
 fi
 
+# Allow the service user to run the specific systemctl commands the app needs.
+log "Configuring passwordless sudo for ${USER_NAME}..."
+SYSTEMCTL_BIN="$(command -v systemctl || echo /usr/bin/systemctl)"
+NIKKO_SUDOERS="/etc/sudoers.d/nikko-music"
+umask 077
+cat > "${NIKKO_SUDOERS}.tmp" <<EOF
+# NikkoMusicHub service user: passwordless sudo for app-managed systemd units.
+Cmnd_Alias NIKKO_SYSTEMCTL = ${SYSTEMCTL_BIN} restart nikko-music-hub-web.service, ${SYSTEMCTL_BIN} restart nikko-music-player.service, ${SYSTEMCTL_BIN} start nikko-music-player.service, ${SYSTEMCTL_BIN} stop nikko-music-player.service, ${SYSTEMCTL_BIN} enable nikko-music-player.service, ${SYSTEMCTL_BIN} disable nikko-music-player.service, ${SYSTEMCTL_BIN} restart nikko-music-mqtt.service, ${SYSTEMCTL_BIN} restart nikko-music-sync.timer, ${SYSTEMCTL_BIN} start nikko-music-sync.timer, ${SYSTEMCTL_BIN} stop nikko-music-sync.timer, ${SYSTEMCTL_BIN} daemon-reload, ${SYSTEMCTL_BIN} restart nikko-music-boot-sync.service, ${SYSTEMCTL_BIN} restart nikko-music-watchdog.service, ${SYSTEMCTL_BIN} restart nikko-music-watchdog.timer, ${SYSTEMCTL_BIN} restart nikko-music-backup.service, ${SYSTEMCTL_BIN} restart nikko-music-backup.timer
+
+${USER_NAME} ALL=(ALL) NOPASSWD: NIKKO_SYSTEMCTL
+EOF
+if visudo -cf "${NIKKO_SUDOERS}.tmp" >/dev/null 2>&1; then
+  chmod 440 "${NIKKO_SUDOERS}.tmp"
+  mv "${NIKKO_SUDOERS}.tmp" "${NIKKO_SUDOERS}"
+else
+  log "WARNING: generated sudoers file failed validation; leaving existing sudoers unchanged."
+  rm -f "${NIKKO_SUDOERS}.tmp"
+fi
+
 log "Installing scripts..."
 chmod +x "${APP_DIR}/scripts/"*.sh
 ln -sf "${APP_DIR}/scripts/nikko-test-audio.sh" "${INSTALL_DIR}/scripts/nikko-test-audio.sh"
@@ -156,7 +175,7 @@ set_setting('store_name', 'NikkoMusicHub 店點')
 
 SYSTEMD_SRC_DIR="${APP_DIR}/app/systemd"
 log "Installing systemd services from ${SYSTEMD_SRC_DIR}..."
-for unit in nikko-music-hub-web.service nikko-music-player.service nikko-music-sync.service nikko-music-sync.timer nikko-music-mqtt.service nikko-music-boot-sync.service nikko-music-watchdog.service nikko-music-watchdog.timer; do
+for unit in nikko-music-hub-web.service nikko-music-player.service nikko-music-sync.service nikko-music-sync.timer nikko-music-mqtt.service nikko-music-boot-sync.service nikko-music-watchdog.service nikko-music-watchdog.timer nikko-music-backup.service nikko-music-backup.timer; do
   if [ ! -f "${SYSTEMD_SRC_DIR}/${unit}" ]; then
     log "ERROR: systemd unit ${unit} missing in ${SYSTEMD_SRC_DIR}/"
     exit 1
@@ -182,6 +201,7 @@ systemctl enable nikko-music-sync.timer
 systemctl enable nikko-music-mqtt.service
 systemctl enable nikko-music-boot-sync.service
 systemctl enable nikko-music-watchdog.timer
+systemctl enable nikko-music-backup.timer
 
 log "Starting services..."
 systemctl restart nikko-music-hub-web.service
@@ -225,6 +245,7 @@ Web 服務：systemctl status nikko-music-hub-web.service
 MQTT 服務：systemctl status nikko-music-mqtt.service
 播放服務：systemctl status nikko-music-player.service
 同步排程：systemctl status nikko-music-sync.timer
+備份排程：systemctl status nikko-music-backup.timer
 
 後續操作：
 1. 用瀏覽器開啟上述網址並登入。

@@ -7,6 +7,25 @@ const KEYS = {
   settings: "nikko_cloud_settings",
 };
 
+const SENSITIVE_SETTINGS_FIELDS = ["defaultMqttPassword", "webdavPassword"];
+const SENSITIVE_STORE_FIELDS = ["mqttPassword"];
+
+export function stripSensitiveSettings(settings) {
+  if (!settings || typeof settings !== "object") return {};
+  const copy = { ...settings };
+  SENSITIVE_SETTINGS_FIELDS.forEach((k) => delete copy[k]);
+  return copy;
+}
+
+export function stripSensitiveStores(stores) {
+  if (!Array.isArray(stores)) return [];
+  return stores.map((s) => {
+    const copy = { ...s };
+    SENSITIVE_STORE_FIELDS.forEach((k) => delete copy[k]);
+    return copy;
+  });
+}
+
 export function loadLocalStores() {
   if (typeof window === "undefined") return [];
   try {
@@ -20,7 +39,7 @@ export function loadLocalStores() {
 export function saveLocalStores(stores) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(KEYS.stores, JSON.stringify(stores));
+    localStorage.setItem(KEYS.stores, JSON.stringify(stripSensitiveStores(stores)));
   } catch {}
 }
 
@@ -37,6 +56,6 @@ export function loadLocalSettings() {
 export function saveLocalSettings(settings) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(KEYS.settings, JSON.stringify(settings));
+    localStorage.setItem(KEYS.settings, JSON.stringify(stripSensitiveSettings(settings)));
   } catch {}
 }

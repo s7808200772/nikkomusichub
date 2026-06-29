@@ -95,18 +95,18 @@
       </div>
       <button type="submit" class="primary block icon-left" title="儲存同步相關設定"><span>💾</span> 儲存同步設定</button>
     </form>
+  </div>
 
-    <div style="margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border);">
-      <h3 style="margin:0 0 .6rem; font-size:.9rem; color:var(--accent-2);">系統初始化</h3>
-      <div class="init-stack">
-        <button class="block icon-left" onclick="runAction(this, '/api/setup/apt-update', null, 'op-status')" title="執行 apt update + upgrade"><span>🔄</span> 系統更新（apt update + upgrade）</button>
-        <div class="init-row">
-          <button class="block icon-left" onclick="runAction(this, '/api/setup/install-rclone', null, 'op-status')" title="安裝 rclone 同步工具"><span>📦</span> 安裝 rclone</button>
-          <button class="block icon-left" onclick="runAction(this, '/api/setup/install-mpv', null, 'op-status')" title="安裝 mpv 音樂播放器"><span>🎵</span> 安裝 mpv</button>
-        </div>
-        <button class="block icon-left" onclick="runAction(this, '/api/setup/create-folders', null, 'op-status')" title="建立音樂與 log 資料夾"><span>📁</span> 建立音樂資料夾</button>
-        <button class="block icon-left" onclick="runAction(this, '/api/setup/install-service', null, 'op-status')" title="重新載入 systemd 設定"><span>⚙️</span> 重新載入 systemd</button>
+  <div class="card settings-col-init">
+    <h2><span class="icon">🛠️</span>系統初始化</h2>
+    <div class="init-stack">
+      <button class="block icon-left" onclick="runAction(this, '/api/setup/apt-update', null, 'op-status')" title="執行 apt update + upgrade"><span>🔄</span> 系統更新（apt update + upgrade）</button>
+      <div class="init-row">
+        <button class="block icon-left" onclick="runAction(this, '/api/setup/install-rclone', null, 'op-status')" title="安裝 rclone 同步工具"><span>📦</span> 安裝 rclone</button>
+        <button class="block icon-left" onclick="runAction(this, '/api/setup/install-mpv', null, 'op-status')" title="安裝 mpv 音樂播放器"><span>🎵</span> 安裝 mpv</button>
       </div>
+      <button class="block icon-left" onclick="runAction(this, '/api/setup/create-folders', null, 'op-status')" title="建立音樂與 log 資料夾"><span>📁</span> 建立音樂資料夾</button>
+      <button class="block icon-left" onclick="runAction(this, '/api/setup/install-service', null, 'op-status')" title="重新載入 systemd 設定"><span>⚙️</span> 重新載入 systemd</button>
     </div>
   </div>
 
@@ -131,22 +131,17 @@
         </div>
         <div class="form-group">
           <label>Remote Music Path</label>
-          <div style="display:flex;align-items:center;gap:.4rem;">
-            <span style="color:var(--muted);font-size:.9rem;">/</span>
-            <input name="remote_path" id="remote_path" value="{{ settings.remote_path_display }}" required placeholder="NikkoMusic" style="flex:1;" title="NAS 上的音樂路徑，例如 /NikkoMusic">
-          </div>
+          <input name="remote_path" id="remote_path" value="{{ settings.remote_path_raw }}" required placeholder="/NikkoMusic" title="NAS 上的音樂路徑，例如 /NikkoMusic">
         </div>
         <div class="form-group">
           <label>Local Music Path</label>
           <input name="local_path" id="local_path" value="{{ settings.local_path }}" required placeholder="/volume1/music" title="本地音樂儲存路徑">
         </div>
       </div>
-      <div class="webdav-actions">
-        <button type="submit" class="primary icon-left" title="儲存 WebDAV 連線設定"><span>💾</span> 儲存 WebDAV 設定</button>
-      </div>
     </form>
-    <div class="sync-actions" style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border); display:flex; gap:.5rem;">
-      <button class="primary icon-left" onclick="startSync(this, true)" id="btn-dryrun" title="模擬同步，不會真正下載或刪除檔案"><span>📡</span> Dry-run 測試同步</button>
+    <div class="webdav-btn-row">
+      <button type="submit" form="webdav-form" id="btn-save-webdav" class="primary icon-left" title="儲存 WebDAV 連線設定"><span>💾</span> 儲存設定</button>
+      <button class="primary icon-left" onclick="startSync(this, true)" id="btn-dryrun" title="模擬同步，不會真正下載或刪除檔案"><span>📡</span> 測試同步</button>
       <button class="success icon-left" onclick="startSync(this, false)" id="btn-sync" title="立即執行 NAS 到本地的音樂同步"><span>▶</span> 立即同步</button>
     </div>
   </div>
@@ -180,7 +175,11 @@
           </div>
         </div>
       </div>
-      <button type="submit" class="primary icon-left" title="儲存網路設定並嘗試套用優先順序"><span>💾</span> 儲存網路設定</button>
+      <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <button type="button" class="outline icon-left" id="btn-network-test" onclick="testNetworkSettings(this)" title="先驗證 WiFi / 網路優先順序設定是否正確"><span>🔌</span> 測試連線</button>
+        <button type="submit" class="primary icon-left" id="btn-network-save" disabled title="請先成功測試連線，再儲存並套用"><span>💾</span> 儲存並套用</button>
+      </div>
+      <p id="network-msg" style="color: var(--muted); font-size: .8rem; margin-top: .75rem;"></p>
     </form>
   </div>
 </div>
@@ -262,7 +261,7 @@ async function loadWebDAV() {
   const s = await apiGet('/api/webdav/settings');
   document.getElementById('url').value = s.url || '';
   document.getElementById('username').value = s.username || '';
-  document.getElementById('remote_path').value = s.remote_path_display || '';
+  document.getElementById('remote_path').value = s.remote_path_raw || s.remote_path_display || '';
   document.getElementById('local_path').value = s.local_path || '';
 
   document.getElementById('sync_mode').value = s.sync_mode || 'sync';
@@ -274,7 +273,7 @@ async function loadWebDAV() {
 
 async function saveWebDAV(e) {
   e.preventDefault();
-  const btn = e.target.querySelector('button[type="submit"]');
+  const btn = document.getElementById('btn-save-webdav');
   const fd = new FormData(e.target);
   setBusy(btn, true);
   const res = await apiPost('/api/webdav/settings', fd);
@@ -304,6 +303,32 @@ async function loadNetwork() {
   document.querySelectorAll('input[name="network_priority"]').forEach(r => {
     r.checked = r.value === priority;
   });
+  _setNetworkTested(false);
+}
+
+document.getElementById('network-form').querySelectorAll('input').forEach(input => {
+  input.addEventListener('input', () => _setNetworkTested(false));
+});
+
+function _setNetworkTested(tested) {
+  const saveBtn = document.getElementById('btn-network-save');
+  if (saveBtn) {
+    saveBtn.disabled = !tested;
+    saveBtn.title = tested ? '儲存網路設定並套用優先順序' : '請先成功測試連線，再儲存並套用';
+  }
+}
+
+async function testNetworkSettings(btn) {
+  const form = document.getElementById('network-form');
+  const fd = new FormData(form);
+  const msg = document.getElementById('network-msg');
+  setBusy(btn, true);
+  const res = await apiPost('/api/settings/network/test', fd);
+  msg.style.color = res.ok ? 'var(--success)' : 'var(--danger)';
+  msg.textContent = res.ok ? (res.message || '測試通過') : ('測試失敗：' + (res.error || ''));
+  showToast(res.ok ? '網路設定測試通過' : ('測試失敗：' + (res.error || '')), res.ok ? 'success' : 'error');
+  _setNetworkTested(res.ok);
+  setBusy(btn, false);
 }
 
 async function saveNetworkSettings(e) {
@@ -312,12 +337,22 @@ async function saveNetworkSettings(e) {
   const fd = new FormData(e.target);
   setBusy(btn, true);
   const res = await apiPost('/api/settings/network', fd);
-  showToast(res.ok ? (res.warning || '網路設定已儲存') : ('失敗：' + (res.stderr || '')), res.ok ? 'success' : 'error');
-  if (res.ok) await loadNetwork();
+  showToast(res.ok ? (res.warning || '網路設定已儲存') : ('失敗：' + (res.stderr || res.error || '')), res.ok ? 'success' : 'error');
+  if (res.ok) {
+    _setNetworkTested(false);
+    await loadNetwork();
+  }
   setBusy(btn, false);
 }
 
 let progressTimer = null;
+function parseDryRunSummary(stdout) {
+  const text = stdout || '';
+  const copyCount = (text.match(/Not copying as --dry-run/g) || []).length;
+  const delCount = (text.match(/Not deleting as --dry-run/g) || []).length;
+  const errors = (text.match(/ERROR:/g) || []).length;
+  return { copyCount, delCount, errors };
+}
 async function startSync(btn, dryRun) {
   if (progressTimer) clearInterval(progressTimer);
   const res = await apiPost(dryRun ? '/api/webdav/dry-run' : '/api/webdav/sync', null);
@@ -326,9 +361,10 @@ async function startSync(btn, dryRun) {
     return;
   }
   document.getElementById('sync-progress-card').style.display = 'block';
-  document.getElementById('sync-progress-message').textContent = dryRun ? 'Dry-run 進行中…' : '同步進行中…';
+  document.getElementById('sync-progress-message').textContent = dryRun ? '測試同步進行中…' : '同步進行中…';
   document.getElementById('btn-dryrun').disabled = true;
   document.getElementById('btn-sync').disabled = true;
+  document.getElementById('btn-save-webdav').disabled = true;
   progressTimer = setInterval(async () => {
     const p = await apiGet('/api/webdav/sync-progress');
     if (!p) return;
@@ -342,7 +378,20 @@ async function startSync(btn, dryRun) {
       progressTimer = null;
       document.getElementById('btn-dryrun').disabled = false;
       document.getElementById('btn-sync').disabled = false;
-      showToast(p.message, p.status === 'success' ? 'success' : 'error');
+      document.getElementById('btn-save-webdav').disabled = false;
+      let message = p.message;
+      if (dryRun) {
+        const { copyCount, delCount, errors } = parseDryRunSummary(p.stdout);
+        if (p.status === 'success' && errors === 0) {
+          message = `測試完成：將同步 ${copyCount} 個檔案${delCount > 0 ? '（將刪除 ' + delCount + ' 個）' : ''}，無錯誤`;
+        } else if (errors > 0) {
+          message = `測試發現錯誤：${errors} 個錯誤` + (copyCount > 0 ? `，將同步 ${copyCount} 個檔案` : '');
+        } else {
+          message = '測試發現錯誤';
+        }
+        document.getElementById('sync-progress-message').textContent = message;
+      }
+      showToast(message, p.status === 'success' ? 'success' : 'error');
     }
   }, 1000);
 }

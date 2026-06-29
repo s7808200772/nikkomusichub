@@ -4,6 +4,8 @@ import { getStore, isSupabaseConfigured } from '@/lib/db';
 import { publishCommand, listCommands } from '@/lib/mqtt';
 import { evaluateStoreStatus } from '@/lib/alertRules';
 
+const VALID_COMMANDS = new Set(listCommands().map((c) => c.key));
+
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,6 +20,10 @@ export async function POST(request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const data = await request.json();
+  if (!VALID_COMMANDS.has(data.commandKey)) {
+    return NextResponse.json({ error: 'Invalid commandKey' }, { status: 400 });
+  }
+
   const store = await getStore(data.storeId);
   if (!store) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
 
