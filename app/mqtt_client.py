@@ -219,6 +219,12 @@ def handle_command(command_key, payload=None):
         if command_key == "status_player":
             return True, mpv.get_status()
         if command_key == "player_play":
+            if mpv.mpv_is_running():
+                status = mpv.get_status()
+                if status.get("state") == "paused":
+                    res = mpv.resume()
+                    return res.get("ok", False), {**res, "message": "已繼續播放"}
+                return True, {"ok": True, "message": "播放服務已在運作中"}
             res = mpv.start_player()
             return res.get("ok", False), res
         if command_key == "player_pause":

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Wifi, WifiOff, Store, CheckCircle2, AlertCircle, Bell, Loader2 } from 'lucide-react';
-import { loadLocalStores } from '@/lib/localStorage';
+import { loadLocalStores, loadLocalJobs, saveLocalJobs } from '@/lib/localStorage';
 import { fetchWithTimeout, humanizeCommandError } from '@/lib/fetchUtils';
 
 export default function DashboardClient({ initialStores, supabaseOk, children }) {
@@ -63,21 +63,73 @@ export default function DashboardClient({ initialStores, supabaseOk, children })
     return () => clearInterval(id);
   }, [stores, supabaseOk, fetchStatus]);
 
+  const [localJobs, setLocalJobs] = useState([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setLocalJobs(loadLocalJobs());
+    }
+  }, []);
+
+  const displayedJobs = useMemo(() => {
+    const map = new Map();
+    [...jobs, ...localJobs].forEach((j) => {
+      if (!j || !j.id) return;
+      const existing = map.get(j.id);
+      const incomingUpdated = j.updatedAt || j.createdAt || 0;
+      const existingUpdated = existing?.updatedAt || existing?.createdAt || 0;
+      if (!existing || incomingUpdated > existingUpdated) {
+        map.set(j.id, j);
+      }
+    });
+    return Array.from(map.values())
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .slice(0, 3);
+  }, [jobs, localJobs]);
+
   useEffect(() => {
     if (!supabaseOk) return;
     async function loadJobs() {
       try {
         const res = await fetch('/api/command/batch');
         const data = await res.json();
-        setJobs(data.jobs || []);
+        const fetched = data.jobs || [];
+        setJobs((prev) => fetched);
+        if (fetched.length > 0) {
+          saveLocalJobs(fetched);
+        }
       } catch {
-        setJobs([]);
+        // Keep previous jobs to avoid flicker/disappear on transient errors.
+        setJobs((prev) => prev);
       }
     }
     loadJobs();
     const id = setInterval(loadJobs, 10000);
     return () => clearInterval(id);
   }, [supabaseOk]);
+
+  useEffect(() => {
+    function handleJobsUpdated(e) {
+      if (e.detail) {
+        setLocalJobs((prev) => {
+          const map = new Map(prev.map((j) => [j.id, j]));
+          const list = Array.isArray(e.detail) ? e.detail : [e.detail];
+          list.forEach((j) => { if (j && j.id) map.set(j.id, j); });
+          const next = Array.from(map.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 3);
+          saveLocalJobs(next);
+          return next;
+        });
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('nikko-recent-jobs-updated', handleJobsUpdated);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('nikko-recent-jobs-updated', handleJobsUpdated);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!supabaseOk) return;
@@ -195,7 +247,7 @@ export default function DashboardClient({ initialStores, supabaseOk, children })
                 </tr>
               </thead>
               <tbody>
-                {jobs.length > 0 ? jobs.slice(0, 3).map((job) => (
+                {displayedJobs.length > 0 ? displayedJobs.map((job) => (
                   <tr key={job.id}>
                     <td>
                       {job.pending > 0 ? <Loader2 size={14} className="spin" color="var(--accent-2)" style={{ marginRight: 6, verticalAlign: 'middle' }} /> :

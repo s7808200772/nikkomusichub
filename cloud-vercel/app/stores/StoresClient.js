@@ -534,19 +534,19 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
           <table className="list-table" style={{ marginBottom: editing ? '1rem' : 0 }}>
             <thead>
               <tr>
-                <th style={{ width: '1%', whiteSpace: 'nowrap' }}>選取</th>
-                <th>店點</th>
-                <th>Broker</th>
-                <th>使用者</th>
-                <th>連線</th>
-                <th>看門狗</th>
-                <th style={{ textAlign: 'right' }}>操作</th>
+                <th style={{ width: '1%', whiteSpace: 'nowrap', textAlign: 'center' }}>選取</th>
+                <th style={{ textAlign: 'center' }}>店點</th>
+                <th style={{ textAlign: 'center' }}>Broker</th>
+                <th style={{ textAlign: 'center' }}>使用者</th>
+                <th style={{ textAlign: 'center' }}>連線</th>
+                <th style={{ textAlign: 'center' }}>看門狗</th>
+                <th style={{ textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((s) => (
                 <tr key={s.storeId}>
-                  <td>
+                  <td style={{ textAlign: 'center' }}>
                     <input
                       type="checkbox"
                       checked={selected.has(s.storeId)}
@@ -554,22 +554,22 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
                       title="加入批量選取"
                     />
                   </td>
-                  <td>
+                  <td style={{ textAlign: 'center' }}>
                     <div style={{ fontWeight: 600 }}>{s.storeName}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{s.storeId}</div>
                   </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <td style={{ textAlign: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
                       {s.mqttTls === true && <span className="badge badge-blue">TLS</span>}
                       <span>{s.mqttBroker}:{s.mqttPort}</span>
                     </div>
                   </td>
-                  <td style={{ color: s.mqttUsername ? 'var(--text)' : 'var(--muted)' }}>
+                  <td style={{ textAlign: 'center', color: s.mqttUsername ? 'var(--text)' : 'var(--muted)' }}>
                     {s.mqttUsername || '-'}
                   </td>
-                  <td>
+                  <td style={{ textAlign: 'center' }}>
                     {testStatus[s.storeId] && !testStatus[s.storeId].loading ? (
-                      <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: testStatus[s.storeId].ok ? 'var(--success)' : 'var(--danger)' }}>
+                      <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: testStatus[s.storeId].ok ? 'var(--success)' : 'var(--danger)' }}>
                         {testStatus[s.storeId].ok ? <Wifi size={14} /> : <WifiOff size={14} />}
                         {testStatus[s.storeId].error || 'MQTT 連線成功'}
                       </div>
@@ -577,8 +577,8 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
                       <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>未測試</span>
                     )}
                   </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                  <td style={{ textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                       <button
                         className="icon-btn"
                         onClick={() => watchdogAction('install', s.storeId)}
@@ -613,8 +613,8 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
                       </button>
                     </div>
                   </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                  <td style={{ textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
                       <button className="icon-btn" onClick={() => testConnection(s.storeId)} title="測試 MQTT 連線" disabled={testStatus[s.storeId]?.loading}>
                         {testStatus[s.storeId]?.loading ? <Loader2 size={16} className="spin" /> : <Activity size={16} />}
                       </button>

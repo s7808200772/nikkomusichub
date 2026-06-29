@@ -14,7 +14,7 @@ const DEFAULT_USERNAME = process.env.NIKKO_MQTT_USERNAME || 'admin';
 const DEFAULT_PASSWORD = process.env.NIKKO_MQTT_PASSWORD || 'topup30%off';
 
 const COMMANDS = [
-  { key: 'player_play', label: '播放' },
+  { key: 'player_play', label: '播放 / 繼續' },
   { key: 'player_pause', label: '暫停' },
   { key: 'player_resume', label: '繼續' },
   { key: 'player_next', label: '下一首' },

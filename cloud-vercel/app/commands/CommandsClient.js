@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import ResponseFormatter from '@/components/ResponseFormatter';
 import { fetchWithTimeout, humanizeCommandError } from '@/lib/fetchUtils';
+import { saveLocalJobs } from '@/lib/localStorage';
 
 class PageErrorBoundary extends React.Component {
   constructor(props) {
@@ -211,6 +212,14 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
     return { key: lastKey, ...map[lastKey] };
   }
 
+  function syncRecentJob(job) {
+    if (!job || !job.id) return;
+    saveLocalJobs([job]);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nikko-recent-jobs-updated', { detail: job }));
+    }
+  }
+
   function toggleSelect(storeId) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -248,7 +257,9 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
           result: null,
           error: null,
         }));
-        setBatchJob({ id: data.jobId, polling: true, commandKey, stores: pendingStores, success: 0, failed: 0, noResponse: 0, pending: selected.size, total: selected.size });
+        const initialJob = { id: data.jobId, polling: true, commandKey, stores: pendingStores, success: 0, failed: 0, noResponse: 0, pending: selected.size, total: selected.size, createdAt: Date.now(), updatedAt: Date.now() };
+        setBatchJob(initialJob);
+        syncRecentJob(initialJob);
         pollJob(data.jobId);
       } else {
         setBatchLoading(false);
@@ -267,6 +278,7 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
         const data = await res.json();
         if (data.job) {
           setBatchJob(data.job);
+          syncRecentJob(data.job);
           if (data.job.pending === 0) {
             clearInterval(interval);
             setBatchLoading(false);

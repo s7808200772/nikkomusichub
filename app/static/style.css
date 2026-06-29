@@ -809,6 +809,7 @@ button .spinner, .btn .spinner { border-color: rgba(255,255,255,0.3); border-top
 
 button.icon-left { justify-content: center; padding-left: 0.85rem; }
 button.icon-left span { font-size: 1rem; }
+.init-stack button.icon-left { justify-content: flex-start; text-align: left; }
 
 .form-group { margin-bottom: 0.85rem; }
 .form-group label { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.35rem; }
@@ -1277,6 +1278,7 @@ button.loading, .btn.loading {
 .player-main {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 0.85rem;
 }
 .player-now-card {
@@ -1290,6 +1292,8 @@ button.loading, .btn.loading {
   gap: 1.25rem;
   overflow: hidden;
   min-height: 170px;
+  width: 100%;
+  box-sizing: border-box;
 }
 .player-now-card::before {
   content: "";
@@ -1436,6 +1440,9 @@ button.loading, .btn.loading {
 #op-status-card h2 {
   justify-content: flex-start;
   text-align: left;
+}
+#op-status-card {
+  margin-bottom: 1rem;
 }
 .player-settings-card {
   display: flex;
