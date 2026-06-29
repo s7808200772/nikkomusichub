@@ -319,8 +319,11 @@ def tailscale_ping(host: str) -> dict:
     return res
 
 
-def qnap_connectivity_check(webdav_url: str = "") -> dict:
-    """Check if QNAP WebDAV is reachable via Tailscale and rclone."""
+def webdav_connectivity_check(webdav_url: str = "") -> dict:
+    """Check if the WebDAV music source is reachable via Tailscale and rclone."""
+    from app.config import RCLONE_REMOTE_NAME_DEFAULT
+    from app.db import get_setting
+
     host = _extract_host_from_url(webdav_url) if webdav_url else ""
     tailscale_res = tailscale_ping(host) if host else {"ok": False, "stderr": "no url"}
     if not tailscale_res["ok"]:
@@ -329,17 +332,18 @@ def qnap_connectivity_check(webdav_url: str = "") -> dict:
             "tailscale_ping_ok": False,
             "webdav_ok": False,
             "host": host,
-            "message": "Tailscale 無法連到 QNAP",
+            "message": "Tailscale 無法連到 WebDAV 主機",
             "stderr": tailscale_res.get("stderr", ""),
         }
     from app.services import rclone
-    webdav_res = rclone.test_remote("qnapmusic")
+    remote = get_setting("webdav_remote", RCLONE_REMOTE_NAME_DEFAULT)
+    webdav_res = rclone.test_remote(remote)
     return {
         "ok": webdav_res.get("ok", False),
         "tailscale_ping_ok": True,
         "webdav_ok": webdav_res.get("ok", False),
         "host": host,
-        "message": "QNAP WebDAV 可連線" if webdav_res.get("ok") else "Tailscale 通但 WebDAV 失敗",
+        "message": "WebDAV 可連線" if webdav_res.get("ok") else "Tailscale 通但 WebDAV 失敗",
         "stderr": webdav_res.get("stderr", ""),
     }
 

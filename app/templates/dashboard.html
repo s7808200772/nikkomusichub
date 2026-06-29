@@ -148,7 +148,7 @@
         <div class="status-row"><span class="label">Sync Timer</span><span class="value" id="ss-sync-svc"><span class="dot {{ 'green' if data.sync_timer_status == 'active' else 'gray' }}"></span> <span class="skeleton" id="ss-sync-svc-text">{{ data.sync_timer_status or 'inactive' }}</span></span></div>
         <div class="status-row"><span class="label">MQTT</span><span class="value" id="ss-mqtt-svc"><span class="dot {{ 'green' if data.mqtt_service_status == 'active' else 'gray' }}"></span> <span class="skeleton" id="ss-mqtt-svc-text">{{ data.mqtt_service_status or 'inactive' }}</span></span></div>
         <div class="status-row"><span class="label">WebDAV 設定</span><span class="value" id="ss-webdav-cfg"><span class="dot {{ 'green' if data.webdav_configured else 'gray' }}"></span> <span class="skeleton" id="ss-webdav-cfg-text">{{ '已設定' if data.webdav_configured else '未設定' }}</span></span></div>
-        <div class="status-row"><span class="label">QNAP 連線</span><span class="value" id="ss-webdav"><span class="dot {{ 'green' if data.webdav_connected else 'gray' }}"></span> <span class="skeleton" id="ss-webdav-text">檢查中…</span></span></div>
+        <div class="status-row"><span class="label">WebDAV 連線</span><span class="value" id="ss-webdav"><span class="dot {{ 'green' if data.webdav_connected else 'gray' }}"></span> <span class="skeleton" id="ss-webdav-text">檢查中…</span></span></div>
         <div class="status-row"><span class="label">Tailscale</span><span class="value" id="ss-tailscale"><span class="dot {{ 'green' if data.tailscale_up else 'gray' }}"></span> <span class="skeleton" id="ss-tailscale-text">{{ '上線' if data.tailscale_up else '未上線' }}</span></span></div>
         <div class="status-row"><span class="label">最近同步</span><span class="value small skeleton" id="ss-last-sync" style="font-size:.65rem;">{{ data.last_sync_at or '-' }} {{ data.last_sync_status or '' }}</span></div>
       </div>
@@ -666,7 +666,7 @@ async function loadConnectivity() {
     }
   };
 
-  // Use the WebDAV URL already loaded in dashboard data to decide if QNAP check is meaningful
+  // Use the WebDAV URL already loaded in dashboard data to decide if the check is meaningful
   const hasWebdavUrl = !!(window.dashboardData && window.dashboardData.webdav_url);
 
   let ts = { up: false };
@@ -678,29 +678,29 @@ async function loadConnectivity() {
   const tsUp = !!ts.up;
   updateConnRow('ss-tailscale', 'ss-tailscale-text', tsUp, tsUp ? '上線' : '未上線');
 
-  let qnap = { ok: false, webdav_ok: false, tailscale_ping_ok: undefined };
+  let webdav = { ok: false, webdav_ok: false, tailscale_ping_ok: undefined };
   if (hasWebdavUrl) {
     try {
-      qnap = await fetchJson('/api/health/qnap', 12000);
+      webdav = await fetchJson('/api/health/qnap', 12000);
     } catch (e) {
-      console.warn('qnap health failed', e);
+      console.warn('webdav health failed', e);
     }
   }
 
-  let qnapText = '未設定';
-  const qnapReachable = !!(qnap.ok && qnap.webdav_ok);
+  let webdavText = '未設定';
+  const webdavReachable = !!(webdav.ok && webdav.webdav_ok);
   if (!hasWebdavUrl) {
-    qnapText = '未設定 WebDAV URL';
-  } else if (qnapReachable) {
-    qnapText = 'QNAP 可連線';
-  } else if (qnap.tailscale_ping_ok === false) {
-    qnapText = 'Tailscale 無法連到 QNAP';
-  } else if (qnap.webdav_ok === false) {
-    qnapText = 'WebDAV 連線失敗';
-  } else if (qnap.ok === false) {
-    qnapText = 'QNAP 連線檢查失敗';
+    webdavText = '未設定 WebDAV URL';
+  } else if (webdavReachable) {
+    webdavText = 'WebDAV 可連線';
+  } else if (webdav.tailscale_ping_ok === false) {
+    webdavText = 'Tailscale 無法連到 WebDAV 主機';
+  } else if (webdav.webdav_ok === false) {
+    webdavText = 'WebDAV 連線失敗';
+  } else if (webdav.ok === false) {
+    webdavText = 'WebDAV 連線檢查失敗';
   }
-  updateConnRow('ss-webdav', 'ss-webdav-text', qnapReachable, qnapText);
+  updateConnRow('ss-webdav', 'ss-webdav-text', webdavReachable, webdavText);
 }
 
 loadDashboardData().then(() => {

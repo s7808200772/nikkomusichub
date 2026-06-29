@@ -4,7 +4,7 @@
 
 - `app/`：Pi 端 FastAPI 本機管理 + MQTT 客戶端。
 - `cloud-vercel/`：Vercel Next.js 中央管理後台。
-- Pi 與 Cloud 透過私有 MQTT broker（預設 EMQX 114.55.1.51:1883 plaintext；生產環境建議啟用 TLS 1.3；TLS 憑證驗證可透過環境變數關閉）溝通。
+- Pi 與 Cloud 透過私有 MQTT broker 溝通；repo 預設為 `114.55.1.51:1883` plaintext，生產環境建議啟用 TLS 1.3，並可透過環境變數關閉 TLS 憑證驗證（僅測試用）。
 - Cloud 與 Pi 之間的 MQTT 指令使用 HMAC 簽名、時效、防重放、白名單與危險指令二次確認。
 
 ## 技術決策
@@ -12,8 +12,8 @@
 - Python 3.12+ on Pi；FastAPI + Jinja2 SSR 模板（`app/templates/`）。
 - `cloud-vercel/` 使用 Next.js App Router + Serverless Function；介面採用左側側邊欄，與 Pi 端風格一致。
 - Cloud 主要頁面：
-  - `/`：總覽控制台（含 Dashboard 與遠端指令；`/commands` 已整合至此）
-  - `/stores`：店點管理（含 Store 列表、Library 同步、OTA、預設 Broker）
+  - `/`：總覽控制台（含 Dashboard 與遠端指令；原 `/commands` 已整合至此）
+  - `/stores`：店點管理（含 Store 列表、Library 同步、OTA、預設 Broker；原 `/library` 已整合至此）
   - `/monitoring`：監控與紀錄（含告警與遠端 Log）
   - `/changelog`：版本更新紀錄
 - MQTT topic：
@@ -21,7 +21,7 @@
   - 回應：`nikko/<storeId>/resp`
   - 狀態：`nikko/<storeId>/status`（retain）
 - Pi 本機 API 綁定 `0.0.0.0:8080`；建議透過 Tailscale 或防火牆限制存取，勿直接暴露於公開網路。
-- 音樂同步：rclone + QNAP NAS WebDAV over Tailscale；同步先寫入 `music.staging`，成功後原子替換 `music/`。
+- 音樂同步：rclone + WebDAV over Tailscale（預設以 QNAP 為例）；同步先寫入 `music.staging`，成功後原子替換 `music/`。
 - 播放器：mpv + IPC socket；音訊裝置可偵測與切換。
 - Cloud 資料：Supabase（stores、settings、alerts、update_log），透過 Edge Function `nikko-cloud-db` 存取。
 - 若未設定 Supabase，Cloud 僅允許瀏覽器 localStorage 預覽，遠端 MQTT 指令與連線測試停用。
@@ -41,3 +41,10 @@
 - 預設帳號：`nikkolh`。
 - Pi 初始密碼預設為 `topup30%off`（也會寫入 `/srv/nikko-music/data/initial-admin-password`），首次登入後請修改。
 - Cloud 帳密與 JWT secret 只允許從 Vercel encrypted environment variables 讀取。
+
+## 已知限制與接手注意
+
+- `device_id` / `role` 欄位目前僅存於設計文件，Pi `/api/settings/device` 與 Cloud `/api/stores` 尚未實作；如需多裝置區分，請補資料表與 UI。
+- Cloud `/library` 與 `/commands` 路由已 redirect 到 `/stores` 與 `/`。
+- 通知渠道目前為 LINE Messaging API + 通用 webhook，無 Email 通知。
+- Pi Dashboard 的「測試音訊輸出」按鈕已移至設定頁系統初始化區，API `/api/system/test-audio` 仍存在。

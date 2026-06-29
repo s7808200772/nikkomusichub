@@ -4,6 +4,7 @@
 
 - Pi 本地已有 `/logs` 頁面可查看 player / sync / system / audit log。
 - Pi MQTT command whitelist 已加入 `get_log`，可透過 MQTT 索取最近 N 行 log。
+- Cloud `/monitoring` 頁面已整合遠端 Log UI。
 
 ## 目標
 

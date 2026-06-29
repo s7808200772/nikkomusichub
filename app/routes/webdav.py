@@ -1,4 +1,4 @@
-"""QNAP NAS WebDAV sync settings page."""
+"""WebDAV music sync settings page."""
 import re
 
 from fastapi import APIRouter, Form, Request
@@ -29,7 +29,7 @@ async def webdav_page(request: Request):
 
 
 def _remote_path_display(remote_path: str) -> str:
-    # Convert stored rclone path like "qnapmusic:NikkoMusic/sub" to "/NikkoMusic/sub"
+    # Convert stored rclone path like "<remote>:<path>/sub" to "/<path>/sub"
     path = remote_path.split(":", 1)[-1].lstrip("/")
     return "/" + path if path else "/NikkoMusic"
 
@@ -74,7 +74,7 @@ async def save_webdav_settings(
     if not username:
         return {"ok": False, "stderr": "Username is required"}
 
-    # Normalize remote path display (/NikkoMusic) to rclone format (qnapmusic:NikkoMusic)
+    # Normalize remote path display (/NikkoMusic) to rclone format (<remote>:<path>)
     remote_path_raw = remote_path.strip().replace("\\", "/")
     clean_path = remote_path_raw.lstrip("/")
     stored_remote_path = f"{remote_name}:{clean_path}" if clean_path else RCLONE_REMOTE_PATH_DEFAULT

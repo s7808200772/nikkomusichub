@@ -1,4 +1,4 @@
-"""rclone configuration and sync helpers for QNAP WebDAV."""
+"""rclone configuration and sync helpers for WebDAV music source."""
 import os
 import re
 from datetime import datetime
@@ -61,7 +61,7 @@ def write_rclone_config(
     username: str,
     password: str,
 ):
-    """Write an rclone config file for a WebDAV remote (QNAP NAS)."""
+    """Write an rclone config file for a WebDAV remote."""
     if not username:
         raise ValueError("Username is required")
     if not password:
@@ -173,12 +173,12 @@ def sync_music(remote_path: str, local_path: str, dry_run: bool = False) -> dict
 
     status = "success" if result["ok"] else "failed"
     if dry_run:
-        message = "連線測試完成：可正常連線至 NAS WebDAV"
+        message = "連線測試完成：可正常連線至 WebDAV"
     elif result["ok"]:
-        message = "同步 NAS WebDAV 完成：音樂檔案已更新到本機"
+        message = "同步 WebDAV 完成：音樂檔案已更新到本機"
     else:
         err = (result.get("stderr") or result.get("stdout") or "未知錯誤").strip()
-        message = f"同步 NAS WebDAV 失敗：{err[:200]}"
+        message = f"同步 WebDAV 失敗：{err[:200]}"
 
     # Append to sync log file (sanitise password)
     SYNC_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)

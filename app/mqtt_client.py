@@ -38,6 +38,8 @@ from app.config import (
     PLAYER_LOG_PATH,
     PLAYER_SERVICE,
     RCLONE_CONFIG_PATH,
+    RCLONE_REMOTE_NAME_DEFAULT,
+    RCLONE_REMOTE_PATH_DEFAULT,
     SYNC_LOG_PATH,
 )
 from app.db import audit, get_setting, init_db
@@ -148,7 +150,7 @@ def build_dashboard():
     webdav_ok = False
     if rclone_installed and RCLONE_CONFIG_PATH.exists():
         try:
-            webdav_ok = rclone.test_remote(get_setting("webdav_remote", "qnapmusic")).get("ok", False)
+            webdav_ok = rclone.test_remote(get_setting("webdav_remote", RCLONE_REMOTE_NAME_DEFAULT)).get("ok", False)
         except Exception:
             webdav_ok = False
 
@@ -238,7 +240,7 @@ def handle_command(command_key, payload=None):
         if command_key == "player_unmute":
             return True, mpv.set_mute(False)
         if command_key == "sync":
-            remote_path = get_setting("webdav_remote_path", "qnapmusic:NikkoMusic")
+            remote_path = get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT)
             local = get_setting("local_music_path", str(MUSIC_DIR))
             res = rclone.sync_music(remote_path, local)
             if res.get("ok") and bool(int(get_setting("auto_restart_player", "1"))):
@@ -465,9 +467,8 @@ def main():
     logger.info("STATUS topic: %s", STATUS_TOPIC)
     logger.info("=" * 60)
 
-    device_id = get_setting("device_id", "") or "pi"
     random_suffix = uuid.uuid4().hex[:8]
-    client_id = f"nikko-{MQTT_STORE_ID}-{device_id}-{random_suffix}"
+    client_id = f"nikko-{MQTT_STORE_ID}-{random_suffix}"
 
     client = mqtt.Client(
         callback_api_version=mqtt.CallbackAPIVersion.VERSION2,

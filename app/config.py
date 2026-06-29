@@ -81,7 +81,7 @@ RCLONE_WEBDAV_URL_DEFAULT = "http://100.106.208.65:5005/"
 RCLONE_WEBDAV_VENDOR_DEFAULT = "other"
 RCLONE_REMOTE_PATH_DEFAULT = "qnapmusic:NikkoMusic"
 
-# QNAP NAS (Tailscale)
+# WebDAV defaults (QNAP over Tailscale example; replace with your own WebDAV host)
 QNAP_TAILSCALE_IP = "100.106.208.65"
 QNAP_WEBDAV_HTTP_PORT = 5005
 QNAP_WEBDAV_HTTPS_PORT = 5006

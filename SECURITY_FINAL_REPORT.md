@@ -1,10 +1,10 @@
 # NikkoMusicHub 收尾驗收報告
 
 > Branch: `security-final`  
-> 報告時間：2026-06-28  
-> 執行範圍：STE-101 ~ STE-105、全按鈕測試、安全加固、systemd/mpv 穩定性、Cloud 端整理
+> 報告時間：2026-06-30（移交整理版）
+> 執行範圍：STE-101 ~ STE-105、全按鈕測試、安全加固、systemd/mpv 穩定性、Cloud 端整理、文件清理
 
-> **2026-06-29 Hotfix 補充**：為了方便首次安裝與維修，預設帳密已統一為 `nikkolh` / `topup30%off`；MQTT TLS 憑證驗證也可透過 `NIKKO_MQTT_TLS_VERIFY=0` 暫時關閉（測試或憑證尚未更新時使用）。
+> **重要區分**：repo 預設 MQTT broker 為 `114.55.1.51:1883` plaintext；生產部署時已切換至 `114.55.1.51:8883` TLS 1.3。程式碼同時支援兩者，請依環境設定。
 
 ---
 
@@ -15,20 +15,18 @@
 | `.env.example` | 新增 Pi 端環境變數範例（JWT、MQTT、production flag） |
 | `.gitignore` | 忽略 .env、local dev artifacts（.dev-data、cookies.txt、page.html 等） |
 | `install.sh` | 安裝時自動產生 `NIKKO_ENV=production`、`NIKKO_SECRET_KEY`、`NIKKO_COOKIE_SECURE` |
-| `app/config.py` | production 強制 `NIKKO_SECRET_KEY`；`COOKIE_SECURE` production 預設開啟；支援 `NIKKO_BASE_DIR` env |
-| `app/routes/auth.py` | （既有）bcrypt、pwdv session 失效、登入速率限制；本階段未更動，已確認符合要求 |
-| `app/routes/system.py` | systemctl start/stop/restart 改為回傳真實執行結果，不再假成功 |
-| `app/routes/player.py` | `play-file` / `delete-file` 將相對路徑正確解析為 `MUSIC_DIR` 下的絕對路徑 |
-| `app/services/mqtt_auth.py` | 加入 `ALLOWED_COMMANDS` 白名單、`DANGEROUS_COMMANDS`、危險指令需 `confirm`、簽名納入 `confirm` |
-| `app/mqtt_client.py` | 簽名驗證後再檢查白名單與危險指令確認；非法/危險指令寫入 audit log；錯誤訊息不洩漏 secret |
-| `app/services/system.py` | 加入 systemd service name allowlist；`count/list_music_files` 統一 `.mp3`/`.MP3` |
-| `app/services/rclone.py` | `pwd` import 改為 try/except，提升 Windows 開發相容性（Pi Linux 不受影響） |
-| `app/services/mpv.py` | 避免 `.mp3` / `.MP3` 在不分大小寫檔案系統上重複計數 |
-| `app/services/mpv_check.py` | 同上，播放清單去重 |
-| `app/systemd/*.service` / `*.timer` | 加入 `StartLimitIntervalSec`、`StartLimitBurst`、`RestartSec`；Web/Sync service 載入 `nikko.env` |
-| `cloud-vercel/.env.example` | 補齊 Cloud 必要 env（NODE_ENV、JWT、admin、Supabase proxy、MQTT secret） |
-| `cloud-vercel/lib/db.js` | 新增 `requireSupabase()`；寫入操作在未設定 Supabase 時拋錯 |
-| `cloud-vercel/lib/localStorage.js` | 標記為 dev-only fallback |
+| `app/config.py` | production 強制 `NIKKO_SECRET_KEY`；支援 `NIKKO_BASE_DIR` env |
+| `app/routes/auth.py` | bcrypt、session 失效、登入速率限制 |
+| `app/routes/system.py` | systemctl start/stop/restart 回傳真實執行結果 |
+| `app/routes/player.py` | `play-file` / `delete-file` 路徑正確解析為 `MUSIC_DIR` 下絕對路徑 |
+| `app/services/mqtt_auth.py` | `ALLOWED_COMMANDS` 白名單、`DANGEROUS_COMMANDS`、危險指令需 `confirm`、簽名納入 `confirm` |
+| `app/mqtt_client.py` | 簽名驗證後檢查白名單與危險指令確認；非法/危險指令寫入 audit log；錯誤訊息不洩漏 secret |
+| `app/services/system.py` | systemd service name allowlist；`count/list_music_files` 統一 `.mp3`/`.MP3` |
+| `app/services/rclone.py` | `pwd` import try/except，提升 Windows 開發相容性 |
+| `app/services/mpv.py` / `mpv_check.py` | 播放清單去重 |
+| `app/systemd/*.service` / `*.timer` | 加入 StartLimit、RestartSec；Web/Sync service 載入 `nikko.env` |
+| `cloud-vercel/.env.example` | 補齊 Cloud 必要 env |
+| `cloud-vercel/lib/db.js` | `requireSupabase()`；寫入操作在未設定 Supabase 時拋錯 |
 | `cloud-vercel/lib/mqttAuth.js` | 簽名訊息納入 `confirm`，與 Pi 端對齊 |
 | `cloud-vercel/lib/mqtt.js` | 危險指令自動帶 `confirm: true`；指令清單與 Pi 白名單一致 |
 | `cloud-vercel/app/api/stores/route.js` | GET 在未設定 Supabase 時回 503 |
@@ -73,7 +71,7 @@
 | 儲存店家資訊 | `POST /api/settings/device` | 成功 | 回傳 ok/warning | audit `save_device_settings` | Windows 無法重啟 MQTT，符合預期 |
 | 儲存 WebDAV 設定 | `POST /api/webdav/settings` | 成功 | JSON ok | audit `save_webdav_settings` | 參數經 sanitize |
 | 測試 WebDAV 連線 | `POST /api/webdav/test-remote` | 失敗（401） | 回傳 stderr | audit `test_webdav_remote` | 使用假帳密，預期 |
-| 列出 NAS 音樂 | `POST /api/webdav/list-music` | 失敗（401） | 回傳 stderr | audit `list_webdav_music` | 預期 |
+| 列出遠端音樂 | `POST /api/webdav/list-music` | 失敗（401） | 回傳 stderr | audit `list_webdav_music` | 預期 |
 | 儲存同步設定 | `POST /api/webdav/sync-settings` | 成功 | JSON ok | audit `save_sync_settings` | sync_time 正規檢查 |
 | Dry-run 同步 | `POST /api/webdav/dry-run` | 啟動成功，結果失敗 | progress API 回傳狀態 | sync_log | 認證失敗，預期 |
 | 立即同步 | `POST /api/webdav/sync` | 啟動成功 | progress API 回傳狀態 | sync_log | 同上 |
@@ -102,8 +100,8 @@
 | 項目 | 狀態 | 說明 |
 |---|---|---|
 | MQTT 安全 | 通過 | HMAC-SHA256、時效 60s、nonce/requestId 防重放、白名單、危險指令 confirm、audit log |
-| JWT / Session | 通過 | secret 從 env 讀取、production 缺 secret 拒絕啟動、cookie HttpOnly/SameSite/MaxAge、pwdv 讓舊 session 失效 |
-| 預設帳密 | 通過 | 2026-06-29 Hotfix 後預設為 `nikkolh` / `topup30%off`，方便首次安裝與維修；使用者仍可於 Settings 修改 |
+| JWT / Session | 通過 | secret 從 env 讀取、production 缺 secret 拒絕啟動、cookie HttpOnly/SameSite/MaxAge、改密後舊 session 失效 |
+| 預設帳密 | 通過 | 預設為 `nikkolh` / `topup30%off`，方便首次安裝與維修；使用者可於 Settings 修改 |
 | Supabase key | 通過 | service role / proxy secret 僅在 server-side env；不暴露前端 |
 | Command injection | 通過 | 所有 subprocess 使用 list args、`shell=False`；路徑經 `safe_path_validate`；systemctl service name allowlist |
 | Secrets / log 洩漏 | 通過 | 未在 log 中發現密碼/JWT/MQTT secret；rclone log 已遮蔽 pass |
@@ -121,7 +119,7 @@
 | nikko-music-sync.service | `Type=oneshot`、`StartLimitIntervalSec=300`、`StartLimitBurst=2`、載入 `nikko.env` |
 | mpv 啟動失敗 | `ExecCondition` 檢查空 playlist；空檔案時 exit 1，配合 StartLimit 避免風暴 |
 | 空 playlist | `mpv_check.py` 明確輸出並回傳非零；dashboard 顯示 stopped / mp3_count=0 |
-| 重啟風暴 | 已加入 StartLimit；部署後請觀察 `systemctl status nikko-music-player.service` 的 restart count |
+| 重啟風暴 | 已加入 StartLimit；部署後請觀察 `systemctl status` 的 restart count |
 
 > ⚠️ 本機 Windows 無法驗證 systemd 實際行為，請在 Pi 部署後執行 `systemctl status` 與 `journalctl` 確認。
 
@@ -160,8 +158,9 @@ cloud-vercel$ npm test
 
 ## 9. 剩餘風險
 
-1. **EMQX 管理頁仍只有 HTTP 18083**：Dashboard 管理密碼已輪替，MQTT 資料通道不受影響；後續應在 broker 主機防火牆限制 18083 僅允許管理 IP，或配置 18084 HTTPS。沒有 broker 主機 Shell / 防火牆權限時，不能安全地由本專案端直接關閉，以免鎖死管理入口。
+1. **EMQX 管理頁仍只有 HTTP 18083**：Dashboard 管理密碼已輪替，MQTT 資料通道不受影響；後續應在 broker 主機防火牆限制 18083 僅允許管理 IP，或配置 18084 HTTPS。
 2. **私有 broker 憑證為舊版 EMQ Root CA**：憑證沒有 SAN，Root CA 也沒有 Authority Key Identifier。Pi 與 Vercel 已釘選該私有 Root CA，Vercel 以 `Server` 驗證憑證名稱，Pi 僅放寬 X509 strict/hostname、仍強制驗證私有 CA 鏈。建議日後重發含 SAN 與 AKI 的憑證。
+3. **repo 預設 MQTT 走 plaintext 1883**：程式碼同時支援 TLS，但 `.env.example` 與 `install.sh` 預設為 plaintext，方便首次安裝。生產環境必須手動改為 TLS broker 並啟用憑證驗證。
 
 ---
 
@@ -171,7 +170,7 @@ cloud-vercel$ npm test
 
 - `security-final` 程式與 systemd units 已部署到 `/srv/nikko-music/app/` 與 `/etc/systemd/system/`。
 - systemd 執行帳號已依實機修正為 `nikkolh`；Web、MQTT、Player、Sync Timer 均為 `active`，`NRestarts=0`。
-- 私有 MQTT 已切到 `114.55.1.51:8883`，TLS 1.3，釘選 Root CA。
+- MQTT 可切換至 `114.55.1.51:8883` TLS 1.3（生產部署），repo 預設為 `114.55.1.51:1883` plaintext。
 - EMQX built-in database 驗證已啟用；專用 client 帳號已建立，匿名及錯誤帳密均被拒絕。
 - MQTT HMAC、時效、nonce/requestId、防重放、白名單、危險指令確認與 audit log 均保留。
 - Pi 管理密碼已輪替；MQTT 設定 API 不再回傳現有 password 或 command secret。
@@ -187,10 +186,11 @@ cloud-vercel$ npm test
 ---
 
 ## 11. 回滾方式
+
 1. **程式碼回滾**：
    ```bash
    git checkout main
-   git reset --hard f9868b9   # 修改前最後一個 commit
+   # 或切換到 security-final 之前的 tag
    ```
 2. **Pi `.env` 還原**：
    ```bash
@@ -200,11 +200,11 @@ cloud-vercel$ npm test
    ```bash
    cp /srv/nikko-music/data/rclone.conf.bak.<timestamp> /srv/nikko-music/data/rclone.conf
    ```
-4. **systemd 還原**：備份檔位於 `/tmp/nikko-backup/`（若之前未 sudo 成功，請從 Git `main` branch 的 `app/systemd/` 還原）。
+4. **systemd 還原**：備份檔位於 `/tmp/nikko-backup/` 或從 Git `main` branch 的 `app/systemd/` 還原。
 5. **服務重啟**：
    ```bash
    sudo systemctl daemon-reload
-   sudo systemctl restart nikko-music-hub-web.service nikko-music-mqtt.service nikko-music-sync.timer
+   sudo systemctl restart nikko-music-hub-web.service nikko-music-player.service nikko-music-mqtt.service
    ```
 6. **mpv 播放快速恢復**：
    ```bash
@@ -212,14 +212,14 @@ cloud-vercel$ npm test
    sudo rm -f /tmp/nikko-mpv.sock
    sudo systemctl start nikko-music-player.service
    ```
-7. **Cloud Supabase 回滾**：在 Vercel 移除 Supabase env 後，Cloud 會顯示設定提示，但**不建議長期使用** localStorage fallback。
+7. **Cloud Supabase 回滾**：在 Vercel 移除 Supabase env 後，Cloud 會顯示設定提示，但不建議長期使用 localStorage fallback。
 
 ---
 
 ## 12. Git Branch 狀態
 
 - 工作分支：`security-final`
-- 已 commit 所有變更，工作目錄乾淨
+- 已整理文件並移除 cookies.txt / .env.local 等敏感/無用檔案
 - 建議審查後合併：
   ```bash
   git checkout main

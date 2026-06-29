@@ -28,12 +28,13 @@
 ### 1. clientId 規則
 
 ```
-nikko-<store_id>-<device_id>-<random>
+nikko-<store_id>-<random>
 ```
 
 - `store_id`：Cloud 設定的 Store ID。
-- `device_id`：Pi 本地設定的裝置 ID（例如 `pi-001`）。
 - `random`：啟動時產生的 8 碼亂數，避免同一台 Pi 重啟後被 broker 視為重複連線。
+
+> 註：設計文件原本納入 `device_id`，但目前 Pi 設定與 Cloud Stores 資料表尚未實作 `device_id` / `role` 欄位。若未來補實作，可將 `device_id` 加入 clientId。
 
 ### 2. 帳密儲存
 
@@ -64,6 +65,6 @@ nikko-<store_id>-<device_id>-<random>
 
 ## 驗收標準
 
-- [x] 每台 Pi 的 MQTT clientId 包含 store_id 與 device_id（已實作）。
+- [x] 每台 Pi 的 MQTT clientId 包含 store_id 與隨機字尾（已實作）。
 - [ ] Command Secret 可在 Cloud 端一鍵輪替並通知所有在線 Pi（規劃中 / 尚未實作）。
 - [ ] 文件化輪替步驟與緊急撤銷流程。

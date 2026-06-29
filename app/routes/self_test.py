@@ -13,6 +13,7 @@ from app.config import (
     SECRET_KEY,
     MQTT_COMMAND_SECRET,
     RCLONE_CONFIG_PATH,
+    RCLONE_REMOTE_NAME_DEFAULT,
 )
 from app.db import get_setting, get_db
 from app.routes.auth import get_current_user_or_local
@@ -89,9 +90,10 @@ def run_self_tests() -> list:
 
     # 7. WebDAV reachability
     webdav_url = get_setting("webdav_url", "")
-    webdav_test = rclone.test_remote("qnapmusic") if RCLONE_CONFIG_PATH.exists() else {"ok": False, "stderr": "no config"}
+    remote = get_setting("webdav_remote", RCLONE_REMOTE_NAME_DEFAULT)
+    webdav_test = rclone.test_remote(remote) if RCLONE_CONFIG_PATH.exists() else {"ok": False, "stderr": "no config"}
     results.append(_check(
-        "11. QNAP WebDAV 可連線",
+        "11. WebDAV 可連線",
         webdav_test.get("ok", False),
         webdav_url or "未設定",
     ))

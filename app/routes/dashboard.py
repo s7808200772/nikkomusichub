@@ -12,6 +12,9 @@ from app.config import (
     PLAYER_LOG_PATH,
     PLAYER_SERVICE,
     RCLONE_CONFIG_PATH,
+    RCLONE_REMOTE_NAME_DEFAULT,
+    RCLONE_REMOTE_PATH_DEFAULT,
+    RCLONE_WEBDAV_URL_DEFAULT,
     SYNC_LOG_PATH,
 )
 from app.db import get_recent_sync_logs, get_setting
@@ -125,9 +128,9 @@ def dashboard_data(request: Request):
         "last_sync_at": last_sync_display,
         "last_sync_status": last_sync_status,
         "last_sync_message": last_sync_message,
-        "webdav_remote": get_setting("webdav_remote", "qnapmusic"),
-        "webdav_url": get_setting("webdav_url", "http://100.106.208.65:5005/"),
-        "webdav_remote_path": get_setting("webdav_remote_path", "qnapmusic:NikkoMusic"),
+        "webdav_remote": get_setting("webdav_remote", RCLONE_REMOTE_NAME_DEFAULT),
+        "webdav_url": get_setting("webdav_url", RCLONE_WEBDAV_URL_DEFAULT),
+        "webdav_remote_path": get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT),
         "local_music_path": get_setting("local_music_path", str(MUSIC_DIR)),
         "player_status": mpv_status["state"],
         "current_track": mpv_status.get("current"),

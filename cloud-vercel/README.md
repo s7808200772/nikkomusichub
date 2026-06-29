@@ -6,11 +6,13 @@
 
 - 登入頁面與 JWT 認證
 - 左側側邊欄導航（參考 Pi 端介面風格）
-- **總覽控制台 `/`**：各店狀態、統計卡片、遠端指令控制台
-- **店點管理 `/stores`**：店點列表、MQTT 設定、音樂庫同步、OTA 更新、預設 Broker
+- **總覽控制台 `/`**：各店狀態、統計卡片、遠端指令控制台（原 `/commands` 已整合至此）
+- **店點管理 `/stores`**：店點列表、MQTT 設定、音樂庫同步、OTA 更新、預設 Broker（原 `/library` 已整合至此）
 - **監控與紀錄 `/monitoring`**：告警中心、遠端 Log
-- **中央音樂庫 `/library`**：瀏覽 NAS 音樂並批次同步到店點
+- **版本更新 `/changelog`**
 - 遠端執行預定義指令（播放控制、同步、重啟、重開機）
+
+> **頁面整合說明**：舊版獨立的 `/commands` 與 `/library` 頁面已 redirect 到 `/` 與 `/stores`，請以實際路由為準。
 
 ## 運作方式
 
@@ -44,11 +46,13 @@ npx vercel --prod
 - `NIKKO_ADMIN_USER`、`NIKKO_ADMIN_PASS`：管理員帳密
 - `NIKKO_CLOUD_SECRET`：JWT 簽章金鑰
 - `NIKKO_MQTT_COMMAND_SECRET`：與 Pi 相同的 HMAC 密鑰
-- `NIKKO_MQTT_BROKER`、`NIKKO_MQTT_PORT`、`NIKKO_MQTT_USERNAME`、`NIKKO_MQTT_PASSWORD`：broker 連線資訊（預設 `114.55.1.51:1883` plaintext）
+- `NIKKO_MQTT_BROKER`、`NIKKO_MQTT_PORT`、`NIKKO_MQTT_USERNAME`、`NIKKO_MQTT_PASSWORD`：broker 連線資訊（repo 預設 `114.55.1.51:1883` plaintext；生產建議 TLS）
 - `NIKKO_MQTT_CA`、`NIKKO_MQTT_TLS_SERVERNAME`：私有 broker Root CA 與憑證名稱
 - `NIKKO_MQTT_TLS_VERIFY`：設 `0` 可暫時關閉 broker 憑證驗證（測試用）
 - `NIKKO_MQTT_TOPIC_PREFIX`：與 Pi 相同的私有 topic prefix
 - `SUPABASE_URL`、`NIKKO_SUPABASE_PROXY_SECRET`：透過受保護 Edge Function 存取正式資料庫
+- `LINE_CHANNEL_ACCESS_TOKEN`、`LINE_USER_ID`：LINE 告警通知（選填）
+- `NIKKO_WEBHOOK_URL`：通用告警 webhook URL（選填）
 
 ## 新增店點
 
@@ -57,8 +61,8 @@ npx vercel --prod
 3. 登入 Cloud，到 `/stores` 填入：
    - Store ID（必須與 Pi 的 Store ID 一致）
    - 店名
-   - MQTT Broker（預設 `114.55.1.51`，生產環境請換成自己的 broker）
-   - MQTT Port（預設 `1883` plaintext；生產環境建議 `8883` TLS）
+   - MQTT Broker（生產環境請換成自己的 broker）
+   - MQTT Port（repo 預設 `1883` plaintext；生產建議 `8883` TLS）
    - 私有 broker 使用者 / 密碼（若 broker 提供）
 4. 點「測試連線」確認 Pi 有回應
 
@@ -67,6 +71,7 @@ npx vercel --prod
 - 未設定 Supabase 時，遠端指令與連線測試會停用。
 - 共用 broker 仍必須使用 TLS、私有 topic prefix 與 HMAC；正式營運建議再換成帳密隔離的專用 broker。
 - Vercel Serverless Function 每次請求獨立連線 MQTT，指令回應上限約 10~15 秒。
+- `device_id` / `role` 欄位目前尚未實作，Cloud `/api/stores` 僅儲存 storeId / storeName 與 MQTT 連線資訊。
 
 ## 檔案結構
 
@@ -76,7 +81,7 @@ cloud-vercel/
 │   ├── api/              # 後端 API（auth、command、stores、settings、ota、logs、alerts、library...）
 │   ├── changelog/        # 版本更新紀錄
 │   ├── commands/         # CommandsClient（現由總覽控制台引用）
-│   ├── library/          # 中央音樂庫（NAS 瀏覽與批次同步）
+│   ├── library/          # LibraryClient（現由店點管理頁面引用）
 │   ├── login/
 │   ├── monitoring/       # 告警 + Log 整合頁面
 │   ├── stores/           # 店點 + Library + OTA + Settings 整合頁面
@@ -90,9 +95,13 @@ cloud-vercel/
 │   ├── Tabs.js           # 分頁元件
 │   └── SupabaseWarning.js
 ├── lib/
+│   ├── alertRules.js     # 告警規則引擎
 │   ├── auth.js
 │   ├── db.js
-│   └── mqtt.js
+│   ├── jobs.js           # 批次任務狀態
+│   ├── line.js           # LINE / webhook 通知
+│   ├── mqtt.js
+│   └── mqttAuth.js
 ├── next.config.mjs
 ├── package.json
 └── README.md
