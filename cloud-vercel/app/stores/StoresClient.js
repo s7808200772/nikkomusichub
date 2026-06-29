@@ -259,82 +259,50 @@ export default function StoresClient({ initialStores, supabaseOk }) {
           </div>
         </div>
 
-        <div className="store-grid">
-          {filtered.map((s) => (
-            <div key={s.storeId} className="store-card">
-              {editing?.storeId === s.storeId ? (
-                <form onSubmit={saveEdit}>
-                  <div className="form-group">
-                    <label>店名</label>
-                    <input value={editing.storeName} onChange={(e) => setEditing({ ...editing, storeName: e.target.value })} required />
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>裝置 ID</label>
-                      <input value={editing.deviceId || ''} onChange={(e) => setEditing({ ...editing, deviceId: e.target.value })} />
+        {filtered.length > 0 ? (
+          <table className="list-table" style={{ marginBottom: editing ? '1rem' : 0 }}>
+            <thead>
+              <tr>
+                <th>店點</th>
+                <th>Broker</th>
+                <th>使用者</th>
+                <th>連線</th>
+                <th style={{ textAlign: 'right' }}>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((s) => (
+                <tr key={s.storeId}>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{s.storeName}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
+                      {s.storeId} · {s.deviceId || '無裝置 ID'}
                     </div>
-                    <div className="form-group">
-                      <label>角色</label>
-                      <select value={editing.role || 'store'} onChange={(e) => setEditing({ ...editing, role: e.target.value })}>
-                        <option value="store">門市播放機</option>
-                        <option value="backup">備援播放機</option>
-                        <option value="test">測試設備</option>
-                      </select>
+                    <span className={`badge badge-${s.role === 'test' ? 'yellow' : s.role === 'backup' ? 'blue' : 'gray'}`} style={{ marginTop: '0.35rem' }}>
+                      {s.role || 'store'}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      {s.mqttTls !== false && <span className="badge badge-blue">TLS</span>}
+                      <span>{s.mqttBroker}:{s.mqttPort}</span>
                     </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>MQTT Broker</label>
-                      <input value={editing.mqttBroker} onChange={(e) => setEditing({ ...editing, mqttBroker: e.target.value })} required />
-                    </div>
-                    <div className="form-group">
-                      <label>MQTT Port</label>
-                      <input type="number" value={editing.mqttPort} onChange={(e) => setEditing({ ...editing, mqttPort: e.target.value })} required />
-                    </div>
-                  </div>
-                  <label className="switch-row" style={{ marginBottom: '1rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={editing.mqttTls !== false}
-                      onChange={(e) => setEditing({ ...editing, mqttTls: e.target.checked })}
-                    />
-                    使用 TLS 加密連線
-                  </label>
-                  <label className="switch-row" style={{ marginBottom: '1rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={editing.tlsVerify !== false}
-                      onChange={(e) => setEditing({ ...editing, tlsVerify: e.target.checked })}
-                    />
-                    驗證 broker TLS 憑證
-                  </label>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>MQTT 使用者</label>
-                      <input value={editing.mqttUsername} onChange={(e) => setEditing({ ...editing, mqttUsername: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                      <label>MQTT 密碼</label>
-                      <input type="password" value={editing.mqttPassword} onChange={(e) => setEditing({ ...editing, mqttPassword: e.target.value })} placeholder="留空則不變" />
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button type="submit" className="primary" disabled={busy}>
-                      <Save size={14} /> 儲存
-                    </button>
-                    <button type="button" className="ghost" onClick={() => setEditing(null)} disabled={busy}>
-                      <X size={14} /> 取消
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <>
-                  <div className="store-card-header">
-                    <div>
-                      <div className="store-card-title">{s.storeName}</div>
-                      <div className="store-card-meta">{s.storeId} · {s.deviceId || '無裝置 ID'} · {s.role || 'store'}</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  </td>
+                  <td style={{ color: s.mqttUsername ? 'var(--text)' : 'var(--muted)' }}>
+                    {s.mqttUsername || '-'}
+                  </td>
+                  <td>
+                    {testStatus[s.storeId] && !testStatus[s.storeId].loading ? (
+                      <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: testStatus[s.storeId].ok ? 'var(--success)' : 'var(--danger)' }}>
+                        {testStatus[s.storeId].ok ? <Wifi size={14} /> : <WifiOff size={14} />}
+                        {testStatus[s.storeId].error || 'MQTT 連線成功'}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>未測試</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
                       <button className="icon-btn" onClick={() => testConnection(s.storeId)} title="測試連線" disabled={testStatus[s.storeId]?.loading}>
                         {testStatus[s.storeId]?.loading ? <Loader2 size={16} className="spin" /> : <Activity size={16} />}
                       </button>
@@ -345,34 +313,87 @@ export default function StoresClient({ initialStores, supabaseOk }) {
                         <Trash2 size={16} />
                       </button>
                     </div>
-                  </div>
-                  <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-2)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Server size={16} color="var(--muted)" /> {s.mqttTls !== false ? 'TLS · ' : ''}{s.mqttBroker}:{s.mqttPort}
-                    </div>
-                    {s.mqttUsername && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ color: 'var(--muted)' }}>使用者：</span>{s.mqttUsername}
-                      </div>
-                    )}
-                  </div>
-                  {testStatus[s.storeId] && !testStatus[s.storeId].loading && (
-                    <div>
-                      <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: testStatus[s.storeId].ok ? 'var(--success)' : 'var(--danger)' }}>
-                        {testStatus[s.storeId].ok ? <Wifi size={14} /> : <WifiOff size={14} />}
-                        {testStatus[s.storeId].error || 'MQTT 連線成功'}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-        {filtered.length === 0 && (
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
           <div className="empty-state">
             <Server size={48} />
             <p>{search ? '沒有符合搜索條件的店點' : '尚無店點'}</p>
+          </div>
+        )}
+
+        {editing && (
+          <div className="card" style={{ background: 'var(--bg-2)', marginBottom: 0 }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 0 }}>
+              <Pencil size={18} color="var(--accent-2)" /> 編輯店點：{editing.storeName}
+            </h3>
+            <form onSubmit={saveEdit}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>店名</label>
+                  <input value={editing.storeName} onChange={(e) => setEditing({ ...editing, storeName: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <label>裝置 ID</label>
+                  <input value={editing.deviceId || ''} onChange={(e) => setEditing({ ...editing, deviceId: e.target.value })} />
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>角色</label>
+                  <select value={editing.role || 'store'} onChange={(e) => setEditing({ ...editing, role: e.target.value })}>
+                    <option value="store">門市播放機</option>
+                    <option value="backup">備援播放機</option>
+                    <option value="test">測試設備</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>MQTT Broker</label>
+                  <input value={editing.mqttBroker} onChange={(e) => setEditing({ ...editing, mqttBroker: e.target.value })} required />
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>MQTT Port</label>
+                  <input type="number" value={editing.mqttPort} onChange={(e) => setEditing({ ...editing, mqttPort: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <label>MQTT 使用者</label>
+                  <input value={editing.mqttUsername} onChange={(e) => setEditing({ ...editing, mqttUsername: e.target.value })} />
+                </div>
+              </div>
+              <label className="switch-row" style={{ marginBottom: '1rem' }}>
+                <input
+                  type="checkbox"
+                  checked={editing.mqttTls !== false}
+                  onChange={(e) => setEditing({ ...editing, mqttTls: e.target.checked })}
+                />
+                使用 TLS 加密連線
+              </label>
+              <label className="switch-row" style={{ marginBottom: '1rem' }}>
+                <input
+                  type="checkbox"
+                  checked={editing.tlsVerify !== false}
+                  onChange={(e) => setEditing({ ...editing, tlsVerify: e.target.checked })}
+                />
+                驗證 broker TLS 憑證
+              </label>
+              <div className="form-group">
+                <label>MQTT 密碼</label>
+                <input type="password" value={editing.mqttPassword} onChange={(e) => setEditing({ ...editing, mqttPassword: e.target.value })} placeholder="留空則不變" />
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="submit" className="primary" disabled={busy}>
+                  <Save size={14} /> 儲存
+                </button>
+                <button type="button" className="ghost" onClick={() => setEditing(null)} disabled={busy}>
+                  <X size={14} /> 取消
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </div>
