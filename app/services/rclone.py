@@ -117,6 +117,7 @@ def list_remote_music(remote_name: str, remote_path: str) -> dict:
         [
             "rclone", "lsf", f"{remote_name}:{path}",
             "--config", str(RCLONE_CONFIG_PATH),
+            "--files-only",
             "--filter", "+ *.mp3",
             "--filter", "+ *.MP3",
             "--filter", "- *",

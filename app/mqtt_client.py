@@ -268,6 +268,7 @@ def handle_command(command_key, payload=None):
                         "--webdav-user", username,
                         "--webdav-pass", obscured,
                         "--webdav-vendor", "other",
+                        "--files-only",
                         "--filter", "+ *.mp3",
                         "--filter", "+ *.MP3",
                         "--filter", "- *",

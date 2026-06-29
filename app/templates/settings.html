@@ -110,12 +110,27 @@
       <div class="init-row">
         <button class="block icon-left" onclick="installWatchdog(this)" title="安裝並啟用網路看門狗"><span>🐕</span> 安裝網路看門狗</button>
       </div>
-      <div class="form-group" style="margin-top:.5rem;">
-        <label>看門狗設定</label>
-        <div class="form-row" style="gap:.5rem;">
-          <input id="wd-target" value="8.8.8.8" placeholder="Ping 目標" title="看門狗會 ping 此目標來判斷網路是否正常" style="min-width:120px;">
-          <input id="wd-interval" value="60" type="number" placeholder="間隔（秒）" title="每次 ping 的間隔秒數" style="min-width:100px;">
-          <input id="wd-retries" value="3" type="number" placeholder="重試次數" title="連續失敗幾次後執行修復動作" style="min-width:100px;">
+      <div class="watchdog-config" style="margin-top:.75rem;">
+        <div class="form-group">
+          <label>🐕 看門狗設定</label>
+          <div class="hint">當網路斷線時，自動嘗試修復（重啟 NetworkManager → Tailscale → 最後重開機）。下方三個數字請依店點網路環境調整。</div>
+        </div>
+        <div class="watchdog-fields">
+          <div class="form-group">
+            <label>Ping 目標</label>
+            <input id="wd-target" value="8.8.8.8" placeholder="例如 8.8.8.8" title="看門狗會持續 ping 這個位址來判斷網路是否正常">
+            <div class="hint">建議填穩定的外部位址，例如 Google DNS 8.8.8.8 或店點閘道器 IP。</div>
+          </div>
+          <div class="form-group">
+            <label>檢查間隔（秒）</label>
+            <input id="wd-interval" value="60" type="number" min="10" max="3600" placeholder="例如 60" title="每隔幾秒檢查一次網路">
+            <div class="hint">預設 60 秒。間隔太短會頻繁 ping，太長則斷線後反應較慢。</div>
+          </div>
+          <div class="form-group">
+            <label>連續失敗幾次後修復</label>
+            <input id="wd-retries" value="3" type="number" min="1" max="20" placeholder="例如 3" title="連續幾次 ping 失敗就執行修復動作">
+            <div class="hint">預設 3 次。次數太少可能誤判短暫抖動，太多則延遲修復。</div>
+          </div>
         </div>
       </div>
     </div>

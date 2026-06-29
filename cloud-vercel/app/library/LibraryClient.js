@@ -15,11 +15,21 @@ const DEFAULT_NAS = {
   webdavPassword: '',
 };
 
+function isMusicFile(path) {
+  if (typeof path !== 'string') return false;
+  const clean = path.trim();
+  if (/@recently-snapshot/i.test(clean)) return false;
+  if (/@recycle/i.test(clean)) return false;
+  return /\.mp3$/i.test(clean);
+}
+
 function loadLibraryFiles() {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(LIBRARY_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const list = raw ? JSON.parse(raw) : [];
+    const filtered = Array.isArray(list) ? list.filter(isMusicFile) : [];
+    return filtered;
   } catch { return []; }
 }
 
@@ -225,13 +235,8 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
         okResults.forEach((s) => {
           (s.data.files || []).forEach((f) => {
             const path = typeof f === 'string' ? f : f.path || JSON.stringify(f);
-            if (
-              typeof path === 'string' &&
-              !/@recently-snapshot/i.test(path) &&
-              !/@recycle/i.test(path) &&
-              /\.mp3$/i.test(path)
-            ) {
-              allFiles.add(path);
+            if (isMusicFile(path)) {
+              allFiles.add(path.trim());
             }
           });
         });

@@ -96,23 +96,33 @@ def _parse_progress_line(line: str) -> dict:
     Transferred:              0 / 0, 100%
     """
     out = {}
-    # Match Transferred: <size> / <size>, <pct>%
-    m = re.search(r"Transferred:\s+([\d\.\s\wB]+|0)\s*/\s+([\d\.\s\wB]+|0),\s*(\d+)%", line)
+    if not line:
+        return out
+    # Strip ANSI colour codes and normalize whitespace
+    clean = re.sub(r"\[[0-9;]*m", "", line)
+    clean = re.sub(r"\s+", " ", clean).strip()
+
+    # Prefer byte transfer line: Transferred: <size> / <size>, <pct>%, <speed>, ETA <eta>
+    m = re.search(
+        r"Transferred:\s*([\d\.]+\s*\w+|0)\s*/\s*([\d\.]+\s*\w+|0),\s*(\d+)%",
+        clean,
+    )
     if m:
         out["transferred"] = m.group(1).strip()
         out["total"] = m.group(2).strip()
         out["progress"] = int(m.group(3))
-    # Fallback: match Transferred: <n> / <n>, <pct>% (file counts)
-    if not m:
-        m2 = re.search(r"Transferred:\s+(\d+)\s*/\s*(\d+),\s*(\d+)%", line)
+    else:
+        # Fallback: file counts like Transferred: 12 / 50, 24%
+        m2 = re.search(r"Transferred:\s*(\d+)\s*/\s*(\d+),\s*(\d+)%", clean)
         if m2:
             out["transferred"] = m2.group(1) + " 個"
             out["total"] = m2.group(2) + " 個"
             out["progress"] = int(m2.group(3))
-    speed_m = re.search(r"(\d+(?:\.\d+)?\s*[\wB]+/s)", line)
+
+    speed_m = re.search(r"([\d\.]+\s*\w+/s)", clean)
     if speed_m:
         out["speed"] = speed_m.group(1)
-    eta_m = re.search(r"ETA\s+([^,\n]+)", line)
+    eta_m = re.search(r"ETA\s+([^,\n]+)", clean)
     if eta_m:
         out["eta"] = eta_m.group(1).strip()
     return out
