@@ -46,7 +46,7 @@ export default function AlertsClient({ initialAlerts, supabaseOk }) {
 
   return (
     <>
-      <div className="store-grid" style={{ marginBottom: '1.5rem' }}>
+      <div className="stats-grid" style={{ marginBottom: '1.5rem', gridTemplateColumns: 'repeat(2, 1fr)' }}>
         <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ background: 'rgba(245,158,11,0.15)', padding: '0.8rem', borderRadius: '0.8rem' }}>
             <Bell size={24} color="var(--warning)" />
@@ -68,42 +68,58 @@ export default function AlertsClient({ initialAlerts, supabaseOk }) {
       </div>
 
       <div className="card">
-        <h2>告警列表</h2>
-        {[...unack, ...acked].length === 0 && (
+        <div className="page-header" style={{ marginBottom: '1rem' }}>
+          <h2 style={{ margin: 0 }}>告警列表</h2>
+          <p style={{ margin: 0 }}>「標記已處理」代表這條告警已看過，會從未確認數中移除</p>
+        </div>
+        {[...unack, ...acked].length === 0 ? (
           <div className="empty-state">
             <CheckCircle2 size={48} color="var(--success)" />
             <p>目前沒有告警</p>
           </div>
+        ) : (
+          <div className="list-table-wrap">
+            <table className="list-table">
+              <thead>
+                <tr>
+                  <th>店點</th>
+                  <th>類型</th>
+                  <th>訊息</th>
+                  <th>時間</th>
+                  <th>狀態</th>
+                  <th style={{ width: '1%' }}>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...unack, ...acked].map((a) => {
+                  const severityColor = a.severity === 'offline' || a.severity === 'critical' ? 'danger' : 'warning';
+                  return (
+                    <tr key={a.id}>
+                      <td><strong>{a.store_id}</strong></td>
+                      <td><span className={`badge badge-${severityColor}`}>{TYPE_LABELS[a.type] || a.type}</span></td>
+                      <td>{a.message}</td>
+                      <td style={{ fontSize: '0.85rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{new Date(a.created_at).toLocaleString('zh-TW')}</td>
+                      <td>
+                        {a.acknowledged_at ? (
+                          <span className="badge badge-green">已處理</span>
+                        ) : (
+                          <span className={`badge badge-${severityColor}`}>未處理</span>
+                        )}
+                      </td>
+                      <td>
+                        {!a.acknowledged_at && (
+                          <button className="primary" onClick={() => acknowledge(a.id)} disabled={ackLoading === a.id}>
+                            {ackLoading === a.id ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} />} 標記已處理
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
-          {[...unack, ...acked].map((a) => {
-            const color = a.severity === 'offline' || a.severity === 'critical' ? 'danger' : 'warning';
-            return (
-              <div key={a.id} className="store-card" style={{ borderLeft: `4px solid var(--${color})` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    {a.severity === 'offline' ? <WifiOff size={18} color="var(--danger)" /> :
-                     a.severity === 'critical' ? <AlertCircle size={18} color="var(--danger)" /> :
-                     <Bell size={18} color="var(--warning)" />}
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{a.store_id} · {TYPE_LABELS[a.type] || a.type}</div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-2)' }}>{a.message}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '0.2rem' }}>
-                        {new Date(a.created_at).toLocaleString('zh-TW')}
-                        {a.acknowledged_at && ` · 已確認 ${new Date(a.acknowledged_at).toLocaleString('zh-TW')}`}
-                      </div>
-                    </div>
-                  </div>
-                  {!a.acknowledged_at && (
-                    <button className="primary" onClick={() => acknowledge(a.id)} disabled={ackLoading === a.id}>
-                      {ackLoading === a.id ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} />} 確認
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </div>
     </>
   );

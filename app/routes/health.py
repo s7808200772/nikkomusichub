@@ -26,7 +26,6 @@ def health_check(request: Request):
     try:
         conn = get_db()
         conn.execute("SELECT 1").fetchone()
-        conn.close()
         db_ok = True
     except Exception:
         db_ok = False

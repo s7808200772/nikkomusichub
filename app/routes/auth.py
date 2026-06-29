@@ -80,7 +80,6 @@ def get_current_user(request: Request):
     row = conn.execute(
         "SELECT username, updated_at, is_default FROM users WHERE username = ?", (username,)
     ).fetchone()
-    conn.close()
     if not row or not hmac.compare_digest(str(row["updated_at"]), str(password_version)):
         raise HTTPException(status_code=401, detail="Session expired")
     return username
@@ -89,7 +88,6 @@ def get_current_user(request: Request):
 def user_uses_initial_password(username: str) -> bool:
     conn = get_db()
     row = conn.execute("SELECT is_default FROM users WHERE username = ?", (username,)).fetchone()
-    conn.close()
     return bool(row and row["is_default"])
 
 
@@ -114,7 +112,6 @@ def get_current_user_or_local(request: Request):
 def init_default_user():
     conn = get_db()
     row = conn.execute("SELECT * FROM users WHERE username = ?", (DEFAULT_USERNAME,)).fetchone()
-    conn.close()
     if row is None:
         conn = get_db()
         conn.execute(
@@ -122,7 +119,6 @@ def init_default_user():
             (DEFAULT_USERNAME, hash_password(DEFAULT_PASSWORD), 1, datetime.utcnow().isoformat()),
         )
         conn.commit()
-        conn.close()
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -147,7 +143,6 @@ async def login_post(request: Request, username: str = Form(...), password: str 
 
     conn = get_db()
     row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
-    conn.close()
     if not row or not verify_password(password, row["hashed_password"]):
         failures.append(time.monotonic())
         return RedirectResponse(url="/login?error=invalid", status_code=303)
@@ -178,7 +173,6 @@ async def change_password(request: Request, current: str = Form(...), new_passwo
     conn = get_db()
     row = conn.execute("SELECT * FROM users WHERE username = ?", (user,)).fetchone()
     if not row or not verify_password(current, row["hashed_password"]):
-        conn.close()
         raise HTTPException(status_code=400, detail="Current password incorrect")
     if (
         len(new_password) < 12
@@ -186,7 +180,6 @@ async def change_password(request: Request, current: str = Form(...), new_passwo
         or not re.search(r"[a-z]", new_password)
         or not re.search(r"\d", new_password)
     ):
-        conn.close()
         raise HTTPException(
             status_code=400,
             detail="Password must be at least 12 characters and include upper/lowercase letters and a number",
@@ -197,7 +190,6 @@ async def change_password(request: Request, current: str = Form(...), new_passwo
         (hash_password(new_password), updated_at, user),
     )
     conn.commit()
-    conn.close()
     audit(user, "change_password", {})
     token = create_access_token({"sub": user, "pwdv": updated_at})
     resp = JSONResponse({"ok": True})
@@ -217,5 +209,4 @@ async def me(request: Request):
     user = get_current_user(request)
     conn = get_db()
     row = conn.execute("SELECT username, is_default FROM users WHERE username = ?", (user,)).fetchone()
-    conn.close()
     return {"username": row["username"], "is_default": bool(row["is_default"])}

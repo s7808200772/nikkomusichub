@@ -15,9 +15,9 @@ export default function Sidebar() {
   }
 
   const nav = [
-    { href: '/', label: '總覽控制台', icon: LayoutDashboard },
+    { href: '/', label: '控制中心', icon: LayoutDashboard },
     { href: '/stores', label: '店點管理', icon: Store },
-    { href: '/monitoring', label: '監控與紀錄', icon: Bell },
+    { href: '/monitoring', label: '監控紀錄', icon: Bell },
   ];
 
   return (

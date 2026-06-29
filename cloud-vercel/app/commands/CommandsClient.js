@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Play, Pause, SkipForward, RefreshCw, FolderSearch, RotateCcw, Power,
   Activity, Cpu, Music2, Terminal, Server, Wifi, WifiOff, Loader2,
@@ -261,100 +261,106 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="store-grid">
-        {filtered.map((s) => {
-          const last = lastResult(s.storeId);
-          return (
-            <div key={s.storeId} className="store-card">
-              <div className="store-card-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={selected.has(s.storeId)}
-                    onChange={() => toggleSelect(s.storeId)}
-                    title="加入批量選取"
-                  />
-                  <div style={{ background: 'rgba(14,165,233,0.12)', padding: '0.6rem', borderRadius: '0.7rem' }}>
-                    <Server size={20} color="var(--accent-2)" />
-                  </div>
-                  <div>
-                    <div className="store-card-title">{s.storeName}</div>
-                    <div className="store-card-meta">{s.storeId} · {s.mqttBroker}</div>
-                  </div>
-                </div>
-                {last?.loading ? (
-                  <Loader2 size={18} className="spin" color="var(--accent-2)" />
-                ) : last?.ok ? (
-                  <CheckCircle2 size={18} color="var(--success)" />
-                ) : last ? (
-                  <AlertCircle size={18} color="var(--danger)" />
-                ) : (
-                  <Wifi size={18} color="var(--muted)" />
-                )}
-              </div>
-
-              <div style={{ display: 'grid', gap: '0.85rem' }}>
-                {CATEGORIES.map((cat) => (
-                  <div key={cat.key}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: cat.color, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
-                      {cat.label}
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {cat.commands.map((c) => {
-                        const Icon = c.icon;
-                        const loading = results[s.storeId]?.[c.key]?.loading;
-                        return (
-                          <button
-                            key={c.key}
-                            className="ghost icon-btn"
-                            title={c.label}
-                            onClick={() => runForStore(s.storeId, c.key)}
-                            disabled={!supabaseOk || loading}
-                            style={{ borderColor: 'rgba(255,255,255,0.06)', color: cat.color }}
-                          >
-                            {loading ? <Loader2 size={16} className="spin" /> : <Icon size={16} />}
+        {filtered.length > 0 ? (
+          <div className="list-table-wrap">
+            <table className="list-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '1%' }}>選取</th>
+                  <th>店點</th>
+                  <th>最後結果</th>
+                  <th>音樂播放</th>
+                  <th>系統狀態</th>
+                  <th>同步掃描</th>
+                  <th>服務控制</th>
+                  <th style={{ width: '1%' }}>輸出</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((s) => {
+                  const last = lastResult(s.storeId);
+                  return (
+                    <React.Fragment key={s.storeId}>
+                      <tr>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={selected.has(s.storeId)}
+                            onChange={() => toggleSelect(s.storeId)}
+                            title="加入批量選取"
+                          />
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Server size={18} color="var(--accent-2)" />
+                            <div>
+                              <div style={{ fontWeight: 600 }}>{s.storeName}</div>
+                              <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{s.storeId} · {s.mqttBroker}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          {last?.loading ? (
+                            <Loader2 size={16} className="spin" color="var(--accent-2)" />
+                          ) : last?.ok ? (
+                            <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}><CheckCircle2 size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />成功</span>
+                          ) : last ? (
+                            <span style={{ color: 'var(--danger)', fontSize: '0.85rem' }}><AlertCircle size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />{last.error || '失敗'}</span>
+                          ) : (
+                            <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}><Wifi size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />未執行</span>
+                          )}
+                        </td>
+                        {CATEGORIES.map((cat) => (
+                          <td key={cat.key}>
+                            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                              {cat.commands.map((c) => {
+                                const Icon = c.icon;
+                                const loading = results[s.storeId]?.[c.key]?.loading;
+                                return (
+                                  <button
+                                    key={c.key}
+                                    className="ghost icon-btn"
+                                    title={c.label}
+                                    onClick={() => runForStore(s.storeId, c.key)}
+                                    disabled={!supabaseOk || loading}
+                                    style={{ borderColor: 'rgba(255,255,255,0.06)', color: cat.color }}
+                                  >
+                                    {loading ? <Loader2 size={16} className="spin" /> : <Icon size={16} />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </td>
+                        ))}
+                        <td>
+                          <button className="ghost icon-btn" onClick={() => toggleExpand(s.storeId)} title="展開/收合輸出">
+                            {expanded[s.storeId] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                           </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {last && (
-                <div style={{ fontSize: '0.85rem', color: last.ok ? 'var(--success)' : 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  {last.ok ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-                  {last.error || '最後指令成功'}
-                </div>
-              )}
-
-              <button className="ghost" onClick={() => toggleExpand(s.storeId)} style={{ width: '100%', fontSize: '0.85rem' }}>
-                {expanded[s.storeId] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                {expanded[s.storeId] ? '收合輸出' : '展開輸出'}
-              </button>
-
-              {expanded[s.storeId] && (
-                <div className="log-output" style={{ maxHeight: '200px' }}>
-                  {last ? (
-                    JSON.stringify(last.parsed || last.result || {}, null, 2)
-                  ) : (
-                    '尚未執行指令'
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+                        </td>
+                      </tr>
+                      {expanded[s.storeId] && (
+                        <tr>
+                          <td colSpan={8} style={{ background: 'var(--bg-2)', padding: 0 }}>
+                            <div className="log-output" style={{ maxHeight: '200px', margin: '0.75rem', border: 'none' }}>
+                              {last ? JSON.stringify(last.parsed || last.result || {}, null, 2) : '尚未執行指令'}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="empty-state">
+            <Terminal size={48} />
+            <p>{search ? '沒有符合搜索條件的店點' : '尚無店點，請先到 Stores 新增。'}</p>
+          </div>
+        )}
       </div>
-
-      {filtered.length === 0 && (
-        <div className="empty-state">
-          <Terminal size={48} />
-          <p>{search ? '沒有符合搜索條件的店點' : '尚無店點，請先到 Stores 新增。'}</p>
-        </div>
-      )}
     </>
   );
 }
