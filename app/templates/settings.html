@@ -107,6 +107,17 @@
       </div>
       <button class="block icon-left" onclick="runAction(this, '/api/setup/create-folders', null, 'op-status')" title="建立音樂與 log 資料夾"><span>📁</span> 建立音樂資料夾</button>
       <button class="block icon-left" onclick="runAction(this, '/api/setup/install-service', null, 'op-status')" title="重新載入 systemd 設定"><span>⚙️</span> 重新載入 systemd</button>
+      <div class="init-row">
+        <button class="block icon-left" onclick="installWatchdog(this)" title="安裝並啟用網路看門狗"><span>🐕</span> 安裝網路看門狗</button>
+      </div>
+      <div class="form-group" style="margin-top:.5rem;">
+        <label>看門狗設定</label>
+        <div class="form-row" style="gap:.5rem;">
+          <input id="wd-target" value="8.8.8.8" placeholder="Ping 目標" title="看門狗會 ping 此目標來判斷網路是否正常" style="min-width:120px;">
+          <input id="wd-interval" value="60" type="number" placeholder="間隔（秒）" title="每次 ping 的間隔秒數" style="min-width:100px;">
+          <input id="wd-retries" value="3" type="number" placeholder="重試次數" title="連續失敗幾次後執行修復動作" style="min-width:100px;">
+        </div>
+      </div>
     </div>
   </div>
 
@@ -141,7 +152,7 @@
     </form>
     <div class="webdav-btn-row">
       <button type="submit" form="webdav-form" id="btn-save-webdav" class="primary icon-left" title="儲存 WebDAV 連線設定"><span>💾</span> 儲存設定</button>
-      <button class="primary icon-left" onclick="startSync(this, true)" id="btn-dryrun" title="模擬同步，不會真正下載或刪除檔案"><span>📡</span> 測試同步</button>
+      <button class="primary icon-left" onclick="testWebDAVConnection(this)" id="btn-dryrun" title="測試 WebDAV 連線是否正常"><span>🔌</span> 測試連線</button>
       <button class="success icon-left" onclick="startSync(this, false)" id="btn-sync" title="立即執行 NAS 到本地的音樂同步"><span>▶</span> 立即同步</button>
     </div>
   </div>
@@ -184,25 +195,17 @@
   </div>
 </div>
 
-<div class="card progress-card" id="sync-progress-card" style="display:none;">
-  <h2><span class="icon">📊</span>同步進度</h2>
-  <div class="progress-header">
-    <span id="sync-progress-message">準備中…</span>
-    <span id="sync-progress-percent">0%</span>
-  </div>
-  <div class="progress-track"><div class="progress-bar-fill" id="sync-progress-bar"></div></div>
-  <div class="progress-stats">
-    <span>已傳輸：<b id="sync-transferred">-</b></span>
-    <span>總計：<b id="sync-total">-</b></span>
-    <span>速度：<b id="sync-speed">-</b></span>
-    <span>ETA：<b id="sync-eta">-</b></span>
-  </div>
-  <pre class="log-output" id="sync-progress-log" style="margin-top:.75rem; max-height:160px;"></pre>
-</div>
-
 <div class="card" id="op-status-card">
   <h2><span class="icon">📋</span>操作狀態</h2>
   <pre class="log-output" id="op-status">等待操作…</pre>
+  <div class="progress-track" id="op-progress-track" style="display:none; margin-top:.75rem;"><div class="progress-bar-fill" id="op-progress-bar"></div></div>
+  <div class="progress-stats" id="op-progress-stats" style="display:none; margin-top:.5rem;">
+    <span>進度：<b id="op-progress-percent">0%</b></span>
+    <span>已傳輸：<b id="op-transferred">-</b></span>
+    <span>總計：<b id="op-total">-</b></span>
+    <span>速度：<b id="op-speed">-</b></span>
+    <span>ETA：<b id="op-eta">-</b></span>
+  </div>
 </div>
 
 <script>
@@ -367,7 +370,7 @@ function buildDryRunMessage(stdout, status) {
   const direction = '方向：NAS → 本地';
   if (status === 'success' && errors === 0) {
     if (copyCount === 0 && delCount === 0) {
-      return `測試完成：無需同步（0 個檔案變更）。${direction}。若本地檔案被刪除但 NAS 仍存在，實際同步時會重新下載。`;
+      return `測試完成：本地與 NAS 內容一致，無需同步（0 個檔案變更）。${direction}。`;
     }
     return `測試完成：將從 NAS 同步 ${copyCount} 個檔案到本地${delCount > 0 ? '，並刪除本地 ' + delCount + ' 個檔案' : ''}，無錯誤。${direction}。`;
   }
@@ -375,6 +378,35 @@ function buildDryRunMessage(stdout, status) {
     return `測試發現 ${errors} 個錯誤` + (copyCount > 0 ? `，仍將同步 ${copyCount} 個檔案` : '') + `。${direction}。`;
   }
   return '測試完成，但狀態異常。';
+}
+
+async function testWebDAVConnection(btn) {
+  const out = document.getElementById('op-status');
+  setBusy(btn, true);
+  if (out) out.textContent = '正在測試 WebDAV 連線…';
+  try {
+    const res = await apiPost('/api/webdav/test-remote', null);
+    if (out) {
+      out.textContent = res.ok
+        ? '連線測試通過：WebDAV 可正常連線。'
+        : ('連線測試失敗：' + (res.stderr || res.error || '未知錯誤'));
+    }
+    showToast(res.ok ? 'WebDAV 連線測試通過' : 'WebDAV 連線測試失敗', res.ok ? 'success' : 'error');
+  } catch (e) {
+    if (out) out.textContent = '連線測試失敗：' + e;
+    showToast('連線測試失敗', 'error');
+  } finally {
+    setBusy(btn, false);
+  }
+}
+
+async function installWatchdog(btn) {
+  const target = document.getElementById('wd-target')?.value?.trim() || '8.8.8.8';
+  const interval = parseInt(document.getElementById('wd-interval')?.value, 10) || 60;
+  const retries = parseInt(document.getElementById('wd-retries')?.value, 10) || 3;
+  if (!confirm(`確定要安裝網路看門狗嗎？\n設定：ping ${target} / 間隔 ${interval} 秒 / 重試 ${retries} 次`)) return;
+  const res = await runAction(btn, '/api/setup/install-watchdog', new URLSearchParams({target, interval, retries}), 'op-status', 120000);
+  if (res?.ok) showToast('網路看門狗已安裝並啟用', 'success');
 }
 function syncDurationSeconds(startedAt, finishedAt) {
   if (!startedAt || !finishedAt) return 0;
@@ -396,28 +428,44 @@ function buildSyncSummaryMessage(p) {
   if (p.speed) msg += `，平均速度 ${p.speed}`;
   return msg;
 }
+function setOpProgress(visible, p = {}) {
+  const track = document.getElementById('op-progress-track');
+  const stats = document.getElementById('op-progress-stats');
+  if (!track || !stats) return;
+  track.style.display = visible ? 'block' : 'none';
+  stats.style.display = visible ? 'flex' : 'none';
+  if (!visible) return;
+  const bar = document.getElementById('op-progress-bar');
+  const pct = p.progress || 0;
+  if (bar) bar.style.width = pct + '%';
+  document.getElementById('op-progress-percent').textContent = pct + '%';
+  document.getElementById('op-transferred').textContent = p.transferred || '-';
+  document.getElementById('op-total').textContent = p.total || '-';
+  document.getElementById('op-speed').textContent = p.speed || '-';
+  document.getElementById('op-eta').textContent = p.eta || '-';
+}
+
 async function startSync(btn, dryRun) {
   if (progressTimer) clearInterval(progressTimer);
   setBusy(btn, true);
+  const out = document.getElementById('op-status');
   const res = await apiPost(dryRun ? '/api/webdav/dry-run' : '/api/webdav/sync', null);
   if (!res || !res.ok) {
     setBusy(btn, false);
+    if (out) out.textContent = res ? ('同步啟動失敗：' + (res.stderr || res.error || '未知錯誤')) : '未登入或網路中斷';
     showToast(res ? (res.stderr || '同步啟動失敗') : '未登入', 'error');
     return;
   }
-  document.getElementById('sync-progress-card').style.display = 'block';
-  document.getElementById('sync-progress-message').textContent = dryRun ? '測試同步進行中…' : '同步進行中…';
+  if (out) out.textContent = dryRun ? '測試同步進行中…' : '同步進行中…';
+  setOpProgress(true);
   document.getElementById('btn-dryrun').disabled = true;
   document.getElementById('btn-sync').disabled = true;
   document.getElementById('btn-save-webdav').disabled = true;
   progressTimer = setInterval(async () => {
     const p = await apiGet('/api/webdav/sync-progress');
     if (!p) return;
-    document.getElementById('sync-progress-bar').style.width = (p.progress || 0) + '%';
-    document.getElementById('sync-progress-percent').textContent = (p.progress || 0) + '%';
-    document.getElementById('sync-progress-message').textContent = p.message || '處理中…';
-    document.getElementById('sync-transferred').textContent = p.transferred || '-';
-    document.getElementById('sync-progress-log').textContent = (p.stdout || '') + '\n' + (p.stderr || '');
+    setOpProgress(true, p);
+    if (out) out.textContent = (p.stdout || '').slice(-800) + '\n' + (p.stderr || '');
     if (!p.running) {
       clearInterval(progressTimer);
       progressTimer = null;
@@ -433,7 +481,8 @@ async function startSync(btn, dryRun) {
       } else {
         message = p.message || '同步失敗';
       }
-      document.getElementById('sync-progress-message').textContent = message;
+      if (out) out.textContent = message + '\n\n' + (p.stdout || '').slice(-800) + '\n' + (p.stderr || '');
+      setOpProgress(false);
       showToast(message, p.status === 'success' ? 'success' : 'error');
     }
   }, 1000);

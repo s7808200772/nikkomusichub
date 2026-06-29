@@ -10,10 +10,19 @@ FAIL_COUNT_FILE="${STATE_DIR}/fail_count"
 LAST_REBOOT_FILE="${STATE_DIR}/last_reboot"
 LAST_ACTION_FILE="${STATE_DIR}/last_action"
 LOG_TAG="nikko-network-watchdog"
-REBOOT_COOLDOWN_SECONDS=1800
-MAX_FAIL_BEFORE_NETWORKMANAGER=3
-MAX_FAIL_BEFORE_TAILSCALED=5
-MAX_FAIL_BEFORE_REBOOT=8
+
+# Configurable defaults
+CONFIG_FILE="/etc/nikko-watchdog.conf"
+if [[ -f "${CONFIG_FILE}" ]]; then
+    # shellcheck source=/dev/null
+    source "${CONFIG_FILE}"
+fi
+
+PING_TARGET="${PING_TARGET:-8.8.8.8}"
+REBOOT_COOLDOWN_SECONDS="${REBOOT_COOLDOWN_SECONDS:-1800}"
+MAX_FAIL_BEFORE_NETWORKMANAGER="${MAX_FAIL_BEFORE_NETWORKMANAGER:-3}"
+MAX_FAIL_BEFORE_TAILSCALED="${MAX_FAIL_BEFORE_TAILSCALED:-5}"
+MAX_FAIL_BEFORE_REBOOT="${MAX_FAIL_BEFORE_REBOOT:-8}"
 
 mkdir -p "${STATE_DIR}"
 
@@ -151,7 +160,7 @@ if [[ -z "${gateway}" ]]; then
 fi
 
 external_ok=false
-for ext in 1.1.1.1 8.8.8.8; do
+for ext in ${PING_TARGET}; do
     if ping_host "${ext}"; then
         external_ok=true
         break

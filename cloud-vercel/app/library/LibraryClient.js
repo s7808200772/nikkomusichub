@@ -227,8 +227,8 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
             const path = typeof f === 'string' ? f : f.path || JSON.stringify(f);
             if (
               typeof path === 'string' &&
-              !path.includes('@Recently-Snapshot') &&
-              !path.includes('@Recycle') &&
+              !/@recently-snapshot/i.test(path) &&
+              !/@recycle/i.test(path) &&
               /\.mp3$/i.test(path)
             ) {
               allFiles.add(path);

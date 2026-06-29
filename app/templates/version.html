@@ -11,8 +11,8 @@
       <div class="version-rows">
         <div class="status-row"><span class="label">Git Commit</span><span class="value" id="v-commit">{{ version.commit }}</span></div>
         <div class="status-row"><span class="label">Git Branch</span><span class="value" id="v-branch">{{ version.branch }}</span></div>
-        <div class="status-row"><span class="label">店點</span><span class="value">{{ version.store_name }}</span></div>
-        <div class="status-row"><span class="label">Store ID</span><span class="value">{{ version.store_id }}</span></div>
+        <div class="status-row"><span class="label">Store ID</span><span class="value">{{ version.store_id or '-' }}</span></div>
+        <div class="status-row"><span class="label">店點名稱</span><span class="value">{{ version.store_name or '-' }}</span></div>
       </div>
     </div>
     <div class="version-actions">
@@ -23,8 +23,8 @@
     <pre class="log-output" id="v-output" style="width:100%; margin-top:1rem; min-height:80px;">等待操作…</pre>
   </div>
 
-  <div class="card settings-col-3" style="grid-column:4 / span 9;">
-    <h2><span class="icon">📝</span>更新紀錄 Changelog</h2>
+  <div class="card" style="grid-column: 1 / -1; grid-row:2;">
+    <h2><span class="icon">📝</span>更新紀錄</h2>
     <div class="changelog">
       {% for entry in changelog %}
       <div class="changelog-entry">
@@ -41,13 +41,21 @@
 </div>
 
 <script>
+function formatVersionInfo(res) {
+  const commit = (typeof res.commit === 'object' ? (res.commit?.commit || JSON.stringify(res.commit)) : (res.commit || 'unknown'));
+  const branch = (typeof res.branch === 'object' ? (res.branch?.branch || JSON.stringify(res.branch)) : (res.branch || 'unknown'));
+  return `目前版本：${commit} (${branch})\nStore ID：${res.store_id || '-'}\n店點名稱：${res.store_name || '-'}`;
+}
+
 async function checkUpdate(btn) {
   setBusy(btn, true);
   try {
     const res = await apiGet('/api/version');
-    document.getElementById('v-commit').textContent = res.commit || 'unknown';
-    document.getElementById('v-branch').textContent = res.branch || 'unknown';
-    document.getElementById('v-output').textContent = '目前版本：' + (res.commit || 'unknown') + ' (' + (res.branch || 'unknown') + ')' + '\nStore ID：' + (res.store_id || '-') + '\n店點：' + (res.store_name || '-');
+    const commit = typeof res.commit === 'object' ? (res.commit?.commit || JSON.stringify(res.commit)) : (res.commit || 'unknown');
+    const branch = typeof res.branch === 'object' ? (res.branch?.branch || JSON.stringify(res.branch)) : (res.branch || 'unknown');
+    document.getElementById('v-commit').textContent = commit;
+    document.getElementById('v-branch').textContent = branch;
+    document.getElementById('v-output').textContent = formatVersionInfo(res);
   } catch (e) {
     showToast('版本檢查失敗', 'error');
   } finally {

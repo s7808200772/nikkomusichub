@@ -36,7 +36,7 @@ def _read_text_file(path: Path, default: str = "") -> str:
         return default
 
 
-def install_watchdog() -> dict:
+def install_watchdog(target: str = "8.8.8.8", interval: int = 60, retries: int = 3) -> dict:
     """Install or update the network watchdog script, service and timer."""
     errors = []
     try:
@@ -46,12 +46,46 @@ def install_watchdog() -> dict:
             return {"ok": False, "error": f"Watchdog script source not found: {SCRIPT_SRC}"}
         if not SERVICE_SRC.exists():
             return {"ok": False, "error": f"Watchdog service source not found: {SERVICE_SRC}"}
-        if not TIMER_SRC.exists():
-            return {"ok": False, "error": f"Watchdog timer source not found: {TIMER_SRC}"}
+
+        # Validate inputs
+        target = (target or "8.8.8.8").strip()
+        interval = max(10, min(3600, int(interval or 60)))
+        max_fail = max(1, min(20, int(retries or 3)))
+
+        # Write configurable config file
+        config_content = f"""# Nikko Network Watchdog configuration
+PING_TARGET="{target}"
+REBOOT_COOLDOWN_SECONDS=1800
+MAX_FAIL_BEFORE_NETWORKMANAGER={max(1, max_fail)}
+MAX_FAIL_BEFORE_TAILSCALED={max(2, max_fail + 2)}
+MAX_FAIL_BEFORE_REBOOT={max(3, max_fail + 4)}
+"""
+        config_path = Path("/tmp/nikko-watchdog.conf")
+        config_path.write_text(config_content, encoding="utf-8")
+        cp_config = run(["sudo", "cp", str(config_path), "/etc/nikko-watchdog.conf"], timeout=10)
+        if not cp_config.get("ok"):
+            errors.append(f"copy config failed: {cp_config.get('stderr')}")
 
         shutil.copy2(SCRIPT_SRC, SCRIPT_DST)
         shutil.copy2(SERVICE_SRC, SERVICE_DST)
-        shutil.copy2(TIMER_SRC, TIMER_DST)
+
+        # Generate timer with configured interval
+        timer_content = f"""[Unit]
+Description=Run Nikko Network Watchdog every {interval} seconds
+
+[Timer]
+OnBootSec={interval}s
+OnUnitActiveSec={interval}s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+"""
+        timer_path = Path("/tmp/nikko-network-watchdog.timer")
+        timer_path.write_text(timer_content, encoding="utf-8")
+        cp_timer = run(["sudo", "cp", str(timer_path), str(TIMER_DST)], timeout=10)
+        if not cp_timer.get("ok"):
+            errors.append(f"copy timer failed: {cp_timer.get('stderr')}")
 
         chmod_res = run(["chmod", "+x", str(SCRIPT_DST)], timeout=10)
         if not chmod_res.get("ok"):
@@ -67,7 +101,7 @@ def install_watchdog() -> dict:
 
         if errors:
             return {"ok": False, "installed": True, "error": "; ".join(errors)}
-        return {"ok": True, "installed": True}
+        return {"ok": True, "installed": True, "target": target, "interval": interval, "retries": max_fail}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 

@@ -17,6 +17,7 @@ from app.db import audit, get_setting, set_setting
 from app.routes.auth import get_current_user_or_local
 from app.services import mpv, rclone
 from app.services.system import run, safe_path_validate
+from app.services.watchdog import install_watchdog
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -84,6 +85,20 @@ async def install_service(request: Request):
     # Services are installed by install.sh; this endpoint reloads systemd just in case.
     res = run(["sudo", "systemctl", "daemon-reload"], timeout=30)
     _log("install_service", res, user)
+    return res
+
+
+@router.post("/api/setup/install-watchdog")
+async def install_watchdog_route(
+    request: Request,
+    target: str = Form("8.8.8.8"),
+    interval: int = Form(60),
+    retries: int = Form(3),
+):
+    user = get_current_user_or_local(request)
+    from app.services.watchdog import install_watchdog
+    res = install_watchdog(target=target, interval=interval, retries=retries)
+    _log("install_watchdog", res, user)
     return res
 
 

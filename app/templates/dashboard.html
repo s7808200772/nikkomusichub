@@ -127,6 +127,7 @@
         <div class="status-row"><span class="label">mpv</span><span class="value" id="ss-mpv"><span class="dot {{ 'green' if data.mpv_installed else 'gray' }}"></span> <span class="skeleton" id="ss-mpv-text">已{{ '安裝' if data.mpv_installed else '未安裝' }}</span></span></div>
         <div class="status-row"><span class="label">mpv 版本</span><span class="value small skeleton" id="ss-mpv-ver" style="font-size:.7rem;">{{ data.mpv_version or '-' }}</span></div>
         <div class="status-row"><span class="label">音樂服務</span><span class="value" id="ss-player-svc"><span class="dot {{ 'green' if data.player_service_status == 'active' else 'gray' }}"></span> <span class="skeleton" id="ss-player-svc-text">{{ data.player_service_status or 'inactive' }}</span></span></div>
+        <div class="hint" style="margin-top:.3rem;">音樂服務 = systemd 播放器服務（nikko-music-player.service）。inactive 表示 mpv 沒在背景執行，按首頁「播放」或維護區「啟動播放服務」即可喚醒。</div>
       </div>
 
       <div class="status-card">
@@ -173,7 +174,6 @@
       <button onclick="runAction(this, '/api/system/stop-player', null, 'global-log')" title="停止 systemd 播放器服務"><span>⏹</span> 停止播放服務</button>
       <button onclick="runAction(this, '/api/system/restart-player', null, 'global-log')" title="重啟 systemd 播放器服務"><span>🔄</span> 重啟播放服務</button>
       <button onclick="runAction(this, '/api/system/rescan', null, 'global-log')" title="重新掃描音樂庫目錄"><span>🔍</span> 重新掃描音樂</button>
-      <button onclick="runAction(this, '/api/system/test-audio', null, 'global-log')" title="播放測試音訊確認喇叭有聲"><span>🔊</span> 測試音訊輸出</button>
       <button onclick="document.getElementById('reboot-modal').classList.add('active')" class="danger" title="重新啟動 Raspberry Pi"><span>🔴</span> 重開機</button>
     </div>
   </section>

@@ -92,13 +92,23 @@ def get_progress() -> dict:
 def _parse_progress_line(line: str) -> dict:
     """Parse rclone --progress output line like:
     Transferred:   285.712 MiB / 285.712 MiB, 100%, 10.074 MiB/s, ETA 0s
+    Also handles dry-run lines like:
+    Transferred:              0 / 0, 100%
     """
     out = {}
-    m = re.search(r"Transferred:\s+([\d\.\s\wB]+)\s*/\s*([\d\.\s\wB]+),\s*(\d+)%", line)
+    # Match Transferred: <size> / <size>, <pct>%
+    m = re.search(r"Transferred:\s+([\d\.\s\wB]+|0)\s*/\s+([\d\.\s\wB]+|0),\s*(\d+)%", line)
     if m:
         out["transferred"] = m.group(1).strip()
         out["total"] = m.group(2).strip()
         out["progress"] = int(m.group(3))
+    # Fallback: match Transferred: <n> / <n>, <pct>% (file counts)
+    if not m:
+        m2 = re.search(r"Transferred:\s+(\d+)\s*/\s*(\d+),\s*(\d+)%", line)
+        if m2:
+            out["transferred"] = m2.group(1) + " 個"
+            out["total"] = m2.group(2) + " 個"
+            out["progress"] = int(m2.group(3))
     speed_m = re.search(r"(\d+(?:\.\d+)?\s*[\wB]+/s)", line)
     if speed_m:
         out["speed"] = speed_m.group(1)
@@ -307,7 +317,10 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool, use_staging: boo
     status = "success" if ok else "failed"
     if dry_run:
         if ok:
-            message = f"測試完成：將從 NAS 下載 {would_download} 個檔案（包含你剛刪除的本地檔案）"
+            if would_download == 0:
+                message = "測試完成：本地與 NAS 內容一致，無需同步（0 個檔案變更）"
+            else:
+                message = f"測試完成：將從 NAS 同步 {would_download} 個檔案到本地"
         else:
             message = "Dry-run 失敗"
     else:

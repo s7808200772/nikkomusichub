@@ -19,6 +19,16 @@ CHANGELOG = [
         "version": "v2026.06.30",
         "date": "2026-06-30",
         "items": [
+            "首頁維護操作移除「測試音訊輸出」按鈕",
+            "音樂庫刪除改為標題列「刪除選取」，支援批次刪除",
+            "shuffle/loop 勾選狀態改以持久化設定為準，避免自動跳掉",
+            "版本更新頁面：目前版本卡片改為橫式並置於更新紀錄上方，修復 object Object 顯示問題，統一中英文格式",
+            "系統設定頁面卡片位置調整：MQTT 上移、網路設定上移，減少空白",
+            "WebDAV「測試同步」改為「測試連線」，僅驗證連線能力；修正 dry-run 訊息邏輯",
+            "同步進度卡片移除，進度與狀態直接顯示於「操作狀態」",
+            "系統初始化卡片新增「安裝網路看門狗」，可設定 ping 目標、間隔與重試次數",
+            "首頁元件與版本卡片增加「音樂服務」狀態說明提示",
+            "Pi 整體 UI 改為與 Cloud 一致的亮色系風格",
             "儀表板狀態卡片整併：元件與版本、服務與同步、系統資源與資訊，移除播放器狀態卡片，讓資訊更集中",
             "播放控制台新增單鍵靜音切換，音量滑桿在靜音時同步歸零、恢復時回到原音量，並移除重複的圖示按鈕",
             "新增網路設定卡片：可儲存 WiFi 帳號密碼與乙太網路 / WiFi 優先順序，並透過 nmcli 自動套用",
@@ -69,16 +79,32 @@ CHANGELOG = [
 ]
 
 
+def _normalize_git_version(value) -> dict:
+    """Normalize various git version shapes to {commit, branch} strings."""
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, dict):
+                value = parsed
+        except Exception:
+            pass
+    if isinstance(value, dict):
+        commit = value.get("commit") or "unknown"
+        branch = value.get("branch") or "unknown"
+        # Handle nested object
+        if isinstance(commit, dict):
+            branch = commit.get("branch") or branch
+            commit = commit.get("commit") or "unknown"
+        return {"commit": str(commit), "branch": str(branch)}
+    return {"commit": "unknown", "branch": "unknown"}
+
+
 def _get_installed_git_version() -> dict:
     path = Path(DATA_DIR) / "git-version.json"
     if path.exists():
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
-            if isinstance(data, dict):
-                return {
-                    "commit": data.get("commit") or "unknown",
-                    "branch": data.get("branch") or "unknown",
-                }
+            return _normalize_git_version(data)
         except Exception:
             pass
     return {"commit": "unknown", "branch": "unknown"}
@@ -86,7 +112,7 @@ def _get_installed_git_version() -> dict:
 
 def get_git_version_info() -> dict:
     """Return git commit/branch, falling back to the version recorded at install time."""
-    live = get_git_version()
+    live = _normalize_git_version(get_git_version())
     if live.get("commit") and live.get("commit") != "unknown":
         return live
     return _get_installed_git_version()
