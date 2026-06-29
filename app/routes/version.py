@@ -12,11 +12,23 @@ templates = Jinja2Templates(directory="app/templates")
 
 CHANGELOG = [
     {
+        "version": "v2026.06.30",
+        "date": "2026-06-30",
+        "items": [
+            "儀表板狀態卡片整併：元件與版本、服務與同步、系統資源與資訊，移除播放器狀態卡片，讓資訊更集中",
+            "播放控制台新增單鍵靜音切換，音量滑桿在靜音時同步歸零、恢復時回到原音量，並移除重複的圖示按鈕",
+            "新增網路設定卡片：可儲存 WiFi 帳號密碼與乙太網路 / WiFi 優先順序，並透過 nmcli 自動套用",
+            "MQTT 設定改為預填白值（114.55.1.51:1883 / admin / topup30%off），開箱即可直接儲存",
+            "WebDAV 設定移除廠商欄位，Remote Music Path 改為 /NikkoMusic 顯示，後端自動轉為 qnapmusic:NikkoMusic",
+            "設定頁按鈕加入固定最小寬度與提示文字，避免儲存時文字縮水；登出連結改為中文「登出系統」",
+        ],
+    },
+    {
         "version": "v2026.06.29",
         "date": "2026-06-29",
         "items": [
             "MQTT 預設值改為 114.55.1.51:1883 / admin / topup30%off，並移除 Topic Prefix、Command Secret 欄位",
-            "WebDAV 設定移除 Remote Name，Remote Music Path 改為 \\NikkoMusic 形式顯示",
+            "WebDAV 設定移除 Remote Name，Remote Music Path 改為顯示形式",
             "店家資訊簡化為店名 + store- 前綴 Store ID",
             "首頁狀態卡片改為無閃爍更新，綠燈加入脈衝動畫",
             "播放控制台改為 lucide 風格圖示按鈕",
@@ -31,6 +43,17 @@ CHANGELOG = [
             "新增 MQTT 指令簽章、DANGEROUS_KEYS 確認機制與 replay 防護",
             "Cloud 新增總覽控制台、OTA、音樂庫、店點管理",
             "Pi 新增 WebDAV 同步、播放器控制、系統監控與日誌",
+        ],
+    },
+    {
+        "version": "v2026.05.10",
+        "date": "2026-05-10",
+        "items": [
+            "完成 install.sh 一鍵安裝腳本，自動建立目錄、安裝相依、設定 systemd 服務與定時同步",
+            "建立 FastAPI 本機管理後台，提供登入、儀表板、系統設定與日誌頁面",
+            "整合 mpv IPC 播放控制：播放、暫停、停止、上一首 / 下一首、音量、隨機、循環、播放清單重載",
+            "整合 rclone WebDAV 同步：從 QNAP NAS 拉取音樂，支援 dry-run、排程同步與進度顯示",
+            "加入系統監控：CPU / RAM / 磁碟 / 溫度、服務狀態、Tailscale 連線、QNAP 連線檢查",
         ],
     },
 ]

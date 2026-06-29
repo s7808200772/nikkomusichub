@@ -1,11 +1,51 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Save, KeyRound, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Save, KeyRound, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 import { loadLocalSettings, saveLocalSettings } from '@/lib/localStorage';
 
+const DEFAULTS = {
+  defaultMqttBroker: '114.55.1.51',
+  defaultMqttPort: '1883',
+  defaultMqttUsername: 'admin',
+  defaultMqttPassword: 'topup30%off',
+  defaultMqttTls: false,
+  defaultMqttTlsVerify: false,
+};
+
+function applyDefaults(settings) {
+  return {
+    ...DEFAULTS,
+    ...settings,
+  };
+}
+
+function PasswordInput({ value, onChange, placeholder }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="password-wrap">
+      <input
+        type={show ? 'text' : 'password'}
+        value={value || ''}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={{ marginBottom: 0 }}
+      />
+      <button
+        type="button"
+        className="eye-btn icon-btn"
+        onClick={() => setShow((s) => !s)}
+        title={show ? '隱藏密碼' : '顯示密碼'}
+        tabIndex={-1}
+      >
+        {show ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  );
+}
+
 export default function SettingsClient({ initialSettings, supabaseOk }) {
-  const [settings, setSettings] = useState(initialSettings || {});
+  const [settings, setSettings] = useState(() => applyDefaults(initialSettings || {}));
   const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState('');
   const [busy, setBusy] = useState(false);
@@ -13,9 +53,9 @@ export default function SettingsClient({ initialSettings, supabaseOk }) {
   useEffect(() => {
     if (!supabaseOk && typeof window !== 'undefined') {
       const local = loadLocalSettings();
-      setSettings({ ...(initialSettings || {}), ...local });
+      setSettings(applyDefaults({ ...(initialSettings || {}), ...local }));
     } else {
-      setSettings(initialSettings || {});
+      setSettings(applyDefaults(initialSettings || {}));
     }
   }, [initialSettings, supabaseOk]);
 
@@ -26,7 +66,7 @@ export default function SettingsClient({ initialSettings, supabaseOk }) {
         const res = await fetch('/api/settings');
         if (res.ok) {
           const data = await res.json();
-          setSettings(data.settings || {});
+          setSettings(applyDefaults(data.settings || {}));
         }
       } catch {}
     }
@@ -51,7 +91,7 @@ export default function SettingsClient({ initialSettings, supabaseOk }) {
     });
     if (res.ok) {
       const data = await res.json();
-      setSettings(data.settings || settings);
+      setSettings(applyDefaults(data.settings || settings));
       setMsg('設定已儲存');
       setMsgType('success');
     } else {
@@ -94,16 +134,15 @@ export default function SettingsClient({ initialSettings, supabaseOk }) {
               <input
                 value={settings.defaultMqttUsername || ''}
                 onChange={(e) => setSettings({ ...settings, defaultMqttUsername: e.target.value })}
-                placeholder="nikko"
+                placeholder="admin"
               />
             </div>
             <div className="form-group">
               <label>預設 MQTT 密碼</label>
-              <input
-                type="password"
-                value={settings.defaultMqttPassword || ''}
+              <PasswordInput
+                value={settings.defaultMqttPassword}
                 onChange={(e) => setSettings({ ...settings, defaultMqttPassword: e.target.value })}
-                placeholder="預設密碼"
+                placeholder="topup30%off"
               />
             </div>
           </div>
@@ -132,7 +171,7 @@ export default function SettingsClient({ initialSettings, supabaseOk }) {
             </div>
           )}
 
-          <button type="submit" className="primary" disabled={busy}>
+          <button type="submit" className="primary" disabled={busy} title="儲存 MQTT 預設設定">
             {busy ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
             {busy ? '儲存中…' : '儲存設定'}
           </button>

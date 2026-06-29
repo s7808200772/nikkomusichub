@@ -8,6 +8,10 @@ const TOPIC_PREFIX = process.env.NIKKO_MQTT_TOPIC_PREFIX || 'nikko';
 const MQTT_CA = process.env.NIKKO_MQTT_CA || '';
 const MQTT_TLS_SERVERNAME = process.env.NIKKO_MQTT_TLS_SERVERNAME || '';
 const MQTT_TLS_VERIFY = process.env.NIKKO_MQTT_TLS_VERIFY !== '0' && process.env.NIKKO_MQTT_TLS_VERIFY !== 'false';
+const DEFAULT_BROKER = process.env.NIKKO_MQTT_BROKER || '114.55.1.51';
+const DEFAULT_PORT = parseInt(process.env.NIKKO_MQTT_PORT || '1883', 10);
+const DEFAULT_USERNAME = process.env.NIKKO_MQTT_USERNAME || 'admin';
+const DEFAULT_PASSWORD = process.env.NIKKO_MQTT_PASSWORD || 'topup30%off';
 
 const COMMANDS = [
   { key: 'player_play', label: '播放' },
@@ -44,30 +48,33 @@ export function getTopics(storeId) {
   };
 }
 
-function buildClient({ broker, port, username, password, tls = true, tlsVerify = true }) {
+function buildClient({ broker, port, username, password, tls = false, tlsVerify = false }) {
+  const useTls = tls === true;
+  const finalBroker = broker || DEFAULT_BROKER;
+  const finalPort = port || (useTls ? 8883 : DEFAULT_PORT);
+  const finalUsername = username || DEFAULT_USERNAME;
+  const finalPassword = password || DEFAULT_PASSWORD;
   const options = {
-    protocol: tls ? 'mqtts' : 'mqtt',
-    host: broker,
-    port: port || (tls ? 8883 : 1883),
+    protocol: useTls ? 'mqtts' : 'mqtt',
+    host: finalBroker,
+    port: finalPort,
     clean: true,
     connectTimeout: 10000,
     reconnectPeriod: 0,
-    rejectUnauthorized: MQTT_TLS_VERIFY && tlsVerify,
+    rejectUnauthorized: MQTT_TLS_VERIFY && tlsVerify === true,
   };
-  if (tls && MQTT_CA) {
+  if (useTls && MQTT_CA) {
     options.ca = MQTT_CA;
   }
-  if (tls && MQTT_TLS_SERVERNAME) {
+  if (useTls && MQTT_TLS_SERVERNAME) {
     options.servername = MQTT_TLS_SERVERNAME;
   }
-  if (username) {
-    options.username = username;
-    options.password = password;
-  }
+  options.username = finalUsername;
+  options.password = finalPassword;
   return mqtt.connect(options);
 }
 
-export function publishCommand({ broker, port, username, password, tls = true, tlsVerify = true, storeId, commandKey, timeout = 25000 }) {
+export function publishCommand({ broker, port, username, password, tls = false, tlsVerify = false, storeId, commandKey, payload, timeout = 25000 }) {
   return new Promise((resolve) => {
     if (!COMMAND_SECRET) {
       resolve({ ok: false, error: 'MQTT command authentication is not configured' });
@@ -107,7 +114,7 @@ export function publishCommand({ broker, port, username, password, tls = true, t
           timestamp: Date.now(),
           nonce: randomUUID(),
           confirm: DANGEROUS_KEYS.has(commandKey),
-          ...(options.payload ? { payload: options.payload } : {}),
+          ...(payload ? { payload } : {}),
         };
         command.signature = signCommand(command, storeId, COMMAND_SECRET);
         const payload = JSON.stringify(command);
@@ -183,6 +190,7 @@ export async function publishCommandWithRetry(options) {
       tlsVerify: options.tlsVerify,
       storeId: options.storeId,
       commandKey: options.commandKey,
+      payload: options.payload,
       timeout: options.timeout || 25000,
     });
     if (result.ok) return result;
@@ -234,7 +242,7 @@ export async function publishBatch({ stores, commandKey, timeout = 25000 }) {
   return { jobId: job.id };
 }
 
-export function testMQTT({ broker, port, username, password, tls = true, tlsVerify = true, storeId, timeout = 20000 }) {
+export function testMQTT({ broker, port, username, password, tls = false, tlsVerify = false, storeId, timeout = 20000 }) {
   return publishCommand({
     broker,
     port,

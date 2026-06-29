@@ -36,26 +36,26 @@
     <form id="mqtt-form" onsubmit="saveMqttSettings(event)">
       <div class="form-group">
         <label>MQTT Broker</label>
-        <input name="broker" id="mqtt-broker" required placeholder="114.55.1.51">
+        <input name="broker" id="mqtt-broker" value="{{ settings.mqtt.broker }}" required placeholder="114.55.1.51">
       </div>
       <div class="form-group">
         <label>MQTT Port</label>
-        <input name="port" id="mqtt-port" type="number" required placeholder="1883">
+        <input name="port" id="mqtt-port" type="number" value="{{ settings.mqtt.port }}" required placeholder="1883">
       </div>
       <div class="form-group">
         <label>MQTT 使用者</label>
-        <input name="username" id="mqtt-username" placeholder="admin">
+        <input name="username" id="mqtt-username" value="{{ settings.mqtt.username }}" placeholder="admin">
       </div>
       <div class="form-group">
         <label>MQTT 密碼</label>
         <div class="password-wrap">
-          <input type="password" name="password" id="mqtt-password" placeholder="topup30%off">
+          <input type="password" name="password" id="mqtt-password" value="{{ settings.mqtt.password }}" placeholder="topup30%off">
           <button type="button" class="eye-btn" onclick="togglePwd('mqtt-password', this)" title="顯示 / 隱藏密碼">👁</button>
         </div>
       </div>
       <div class="form-group">
         <label class="switch-label">
-          <span class="switch"><input type="checkbox" name="tls" id="mqtt-tls" value="1"><span class="slider"></span></span>
+          <span class="switch"><input type="checkbox" name="tls" id="mqtt-tls" value="1" {% if settings.mqtt.tls %}checked{% endif %}><span class="slider"></span></span>
           使用 TLS 加密連線
         </label>
       </div>
@@ -114,48 +114,74 @@
     <h2><span class="icon">🖐️</span>WebDAV / 手動同步</h2>
     <form id="webdav-form" onsubmit="saveWebDAV(event)">
       <div class="webdav-grid">
-        <div class="form-group">
+        <div class="form-group full-width">
           <label>WebDAV URL</label>
-          <input name="url" id="url" value="{{ settings.url }}" required placeholder="https://example.com/webdav">
+          <input name="url" id="url" value="{{ settings.url }}" required placeholder="https://example.com/webdav" title="QNAP WebDAV URL">
         </div>
         <div class="form-group">
           <label>Username</label>
-          <input name="username" id="username" value="{{ settings.username }}" autocomplete="off" required placeholder="請輸入 Username">
+          <input name="username" id="username" value="{{ settings.username }}" autocomplete="off" required placeholder="請輸入 Username" title="WebDAV 使用者名稱">
         </div>
         <div class="form-group">
           <label>Password</label>
           <div class="password-wrap">
-            <input type="password" name="password" id="webdav-password" autocomplete="off" placeholder="請輸入 Password">
+            <input type="password" name="password" id="webdav-password" autocomplete="off" placeholder="請輸入 Password" title="WebDAV 密碼（首次設定必填，之後留空可保留現有密碼）">
             <button type="button" class="eye-btn" onclick="togglePwd('webdav-password', this)" title="顯示 / 隱藏密碼">👁</button>
           </div>
         </div>
         <div class="form-group">
           <label>Remote Music Path</label>
           <div style="display:flex;align-items:center;gap:.4rem;">
-            <span style="color:var(--muted);font-size:.9rem;">\\</span>
-            <input name="remote_path" id="remote_path" value="{{ settings.remote_path_display }}" required placeholder="NikkoMusic" style="flex:1;">
+            <span style="color:var(--muted);font-size:.9rem;">/</span>
+            <input name="remote_path" id="remote_path" value="{{ settings.remote_path_display }}" required placeholder="NikkoMusic" style="flex:1;" title="NAS 上的音樂路徑，例如 /NikkoMusic">
           </div>
         </div>
         <div class="form-group">
-          <label>Vendor</label>
-          <input name="vendor" id="vendor" value="{{ settings.vendor }}" required placeholder="例如 other">
-        </div>
-        <div class="form-group">
           <label>Local Music Path</label>
-          <input name="local_path" id="local_path" value="{{ settings.local_path }}" required placeholder="/volume1/music">
+          <input name="local_path" id="local_path" value="{{ settings.local_path }}" required placeholder="/volume1/music" title="本地音樂儲存路徑">
         </div>
       </div>
       <div class="webdav-actions">
         <button type="submit" class="primary icon-left" title="儲存 WebDAV 連線設定"><span>💾</span> 儲存 WebDAV 設定</button>
-        <button type="button" class="outline icon-left" onclick="runAction(this, '/api/webdav/test-remote', null, 'op-status')" title="測試是否能連線到 NAS WebDAV"><span>📡</span> 測試 WebDAV 連線</button>
-        <button type="button" class="outline icon-left" onclick="runAction(this, '/api/webdav/list-music', null, 'op-status')" title="列出 NAS 上的音樂檔案"><span>📂</span> 列出 NAS 音樂檔案</button>
       </div>
     </form>
-    <div class="sync-actions" style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
-      <button class="primary block icon-left" onclick="startSync(this, true)" id="btn-dryrun" title="模擬同步，不會真正下載或刪除檔案"><span>📡</span> Dry-run 測試同步</button>
-      <button class="success block icon-left" onclick="startSync(this, false)" id="btn-sync" title="立即執行 NAS 到本地的音樂同步"><span>▶</span> 立即同步</button>
-      <button class="danger block icon-left" onclick="if(confirm('確定要清空本地音樂嗎？這會刪除 /srv/nikko-music/music 內所有 MP3。')) runAction(this, '/api/webdav/clear-local', null, 'op-status')" title="刪除本地音樂目錄中的所有 MP3"><span>🗑</span> 清空本地音樂</button>
+    <div class="sync-actions" style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border); display:flex; gap:.5rem;">
+      <button class="primary icon-left" onclick="startSync(this, true)" id="btn-dryrun" title="模擬同步，不會真正下載或刪除檔案"><span>📡</span> Dry-run 測試同步</button>
+      <button class="success icon-left" onclick="startSync(this, false)" id="btn-sync" title="立即執行 NAS 到本地的音樂同步"><span>▶</span> 立即同步</button>
     </div>
+  </div>
+
+  <div class="card settings-col-5">
+    <h2><span class="icon">🌐</span>網路設定</h2>
+    <form id="network-form" onsubmit="saveNetworkSettings(event)">
+      <div class="network-grid">
+        <div class="form-group">
+          <label>WiFi SSID</label>
+          <input name="wifi_ssid" id="wifi_ssid" value="{{ settings.wifi_ssid or '' }}" placeholder="請輸入 WiFi 名稱" title="要連線的 WiFi 名稱">
+        </div>
+        <div class="form-group">
+          <label>WiFi Password</label>
+          <div class="password-wrap">
+            <input type="password" name="wifi_password" id="wifi_password" value="{{ settings.wifi_password or '' }}" placeholder="請輸入 WiFi 密碼" title="WiFi 密碼">
+            <button type="button" class="eye-btn" onclick="togglePwd('wifi_password', this)" title="顯示 / 隱藏密碼">👁</button>
+          </div>
+        </div>
+        <div class="form-group full-width">
+          <label>網路優先順序</label>
+          <div class="network-priority">
+            <label title="優先使用乙太網路線">
+              <input type="radio" name="network_priority" value="ethernet" {% if (settings.network_priority or 'ethernet') == 'ethernet' %}checked{% endif %}>
+              優先使用乙太網路線
+            </label>
+            <label title="優先使用 WiFi">
+              <input type="radio" name="network_priority" value="wifi" {% if (settings.network_priority or 'ethernet') == 'wifi' %}checked{% endif %}>
+              優先使用 WiFi
+            </label>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="primary icon-left" title="儲存網路設定並嘗試套用優先順序"><span>💾</span> 儲存網路設定</button>
+    </form>
   </div>
 </div>
 
@@ -209,14 +235,14 @@ async function saveDevice(e) {
   showToast(res.ok ? '已儲存店家資訊。' : '失敗', res.ok ? 'success' : 'error');
   setBusy(btn, false);
 }
+
 async function loadMqtt() {
   const s = await apiGet('/api/settings/mqtt');
   document.getElementById('mqtt-broker').value = s.broker || '';
   document.getElementById('mqtt-port').value = s.port || '';
   document.getElementById('mqtt-tls').checked = s.tls;
   document.getElementById('mqtt-username').value = s.username || '';
-  document.getElementById('mqtt-password').value = '';
-  document.getElementById('mqtt-password').placeholder = s.password_set ? '已設定；留空則不變' : 'topup30%off';
+  document.getElementById('mqtt-password').value = s.password || '';
 }
 
 async function saveMqttSettings(e) {
@@ -235,7 +261,6 @@ async function saveMqttSettings(e) {
 async function loadWebDAV() {
   const s = await apiGet('/api/webdav/settings');
   document.getElementById('url').value = s.url || '';
-  document.getElementById('vendor').value = s.vendor || '';
   document.getElementById('username').value = s.username || '';
   document.getElementById('remote_path').value = s.remote_path_display || '';
   document.getElementById('local_path').value = s.local_path || '';
@@ -271,6 +296,27 @@ async function saveSyncSettings(e) {
   setBusy(btn, false);
 }
 
+async function loadNetwork() {
+  const s = await apiGet('/api/settings/network');
+  document.getElementById('wifi_ssid').value = s.wifi_ssid || '';
+  document.getElementById('wifi_password').value = s.wifi_password || '';
+  const priority = s.network_priority || 'ethernet';
+  document.querySelectorAll('input[name="network_priority"]').forEach(r => {
+    r.checked = r.value === priority;
+  });
+}
+
+async function saveNetworkSettings(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type="submit"]');
+  const fd = new FormData(e.target);
+  setBusy(btn, true);
+  const res = await apiPost('/api/settings/network', fd);
+  showToast(res.ok ? (res.warning || '網路設定已儲存') : ('失敗：' + (res.stderr || '')), res.ok ? 'success' : 'error');
+  if (res.ok) await loadNetwork();
+  setBusy(btn, false);
+}
+
 let progressTimer = null;
 async function startSync(btn, dryRun) {
   if (progressTimer) clearInterval(progressTimer);
@@ -303,5 +349,6 @@ async function startSync(btn, dryRun) {
 
 loadMqtt();
 loadWebDAV();
+loadNetwork();
 </script>
 {% endblock %}

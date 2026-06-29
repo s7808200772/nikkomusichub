@@ -2,6 +2,19 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { getSettings, saveSettings, isSupabaseConfigured } from '@/lib/db';
 
+const DEFAULT_SETTINGS = {
+  defaultMqttBroker: '114.55.1.51',
+  defaultMqttPort: 1883,
+  defaultMqttUsername: 'admin',
+  defaultMqttPassword: 'topup30%off',
+  defaultMqttTls: false,
+  defaultMqttTlsVerify: false,
+  webdavUrl: 'http://100.106.208.65:5005/',
+  webdavRemotePath: '/NikkoMusic',
+  webdavUsername: '',
+  webdavPassword: '',
+};
+
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -9,7 +22,12 @@ export async function GET() {
     return NextResponse.json({ error: 'Supabase is required' }, { status: 503 });
   }
   const settings = await getSettings();
-  return NextResponse.json({ settings });
+  const merged = { ...DEFAULT_SETTINGS, ...settings };
+  // Treat empty strings as defaults for core fields so the UI shows white pre-filled values.
+  ['defaultMqttBroker', 'defaultMqttPort', 'defaultMqttUsername', 'defaultMqttPassword', 'webdavUrl', 'webdavRemotePath'].forEach((k) => {
+    if (!merged[k]) merged[k] = DEFAULT_SETTINGS[k];
+  });
+  return NextResponse.json({ settings: merged });
 }
 
 export async function POST(request) {
@@ -32,5 +50,9 @@ export async function POST(request) {
     webdavPassword: data.webdavPassword || '',
   };
   await saveSettings(settings);
-  return NextResponse.json({ settings });
+  const merged = { ...DEFAULT_SETTINGS, ...settings };
+  ['defaultMqttBroker', 'defaultMqttPort', 'defaultMqttUsername', 'defaultMqttPassword', 'webdavUrl', 'webdavRemotePath'].forEach((k) => {
+    if (!merged[k]) merged[k] = DEFAULT_SETTINGS[k];
+  });
+  return NextResponse.json({ settings: merged });
 }

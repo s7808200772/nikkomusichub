@@ -59,8 +59,10 @@ ENV_FILE="${INSTALL_DIR}/data/nikko.env"
 if [ ! -f "${ENV_FILE}" ]; then
   log "Generating device security secrets..."
   JWT_SECRET=$("${INSTALL_DIR}/venv/bin/python" -c "import secrets; print(secrets.token_urlsafe(48))")
-  MQTT_COMMAND_SECRET=$("${INSTALL_DIR}/venv/bin/python" -c "import secrets; print(secrets.token_urlsafe(48))")
-  MQTT_TOPIC_PREFIX="nikko-$("${INSTALL_DIR}/venv/bin/python" -c "import secrets; print(secrets.token_hex(12))")"
+  # Use a shared command secret / topic prefix so the central Cloud can manage all Pis.
+  # Override with NIKKO_MQTT_COMMAND_SECRET / NIKKO_MQTT_TOPIC_PREFIX before running install.sh if desired.
+  MQTT_COMMAND_SECRET="${NIKKO_MQTT_COMMAND_SECRET:-topup30%off}"
+  MQTT_TOPIC_PREFIX="${NIKKO_MQTT_TOPIC_PREFIX:-nikko}"
   umask 077
   cat > "${ENV_FILE}" <<EOF
 NIKKO_ENV=production
@@ -110,6 +112,11 @@ if [ -f "${ENV_FILE}" ]; then
   fi
   _ensure_env NIKKO_MQTT_USERNAME admin
   _ensure_env NIKKO_MQTT_PASSWORD topup30%off
+  # Align command secret / topic prefix with the centralized Cloud defaults.
+  # If you intentionally changed these, set NIKKO_MQTT_COMMAND_SECRET / NIKKO_MQTT_TOPIC_PREFIX
+  # before running repair-pi.sh to preserve your custom values.
+  _ensure_env NIKKO_MQTT_COMMAND_SECRET topup30%off
+  _ensure_env NIKKO_MQTT_TOPIC_PREFIX nikko
 fi
 # Only rewrite the initial password file if the env variable was missing, which
 # indicates this is either a fresh install or an upgrade from a version that did

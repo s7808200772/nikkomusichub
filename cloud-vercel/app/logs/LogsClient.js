@@ -136,7 +136,13 @@ export default function LogsClient({ initialStores, supabaseOk }) {
             <label>行數</label>
             <input type="number" min={10} max={500} value={linesCount} onChange={(e) => setLinesCount(Number(e.target.value))} />
           </div>
-          <button className="primary" onClick={refresh} disabled={loading || !selected}>
+          <button
+            className="primary"
+            onClick={refresh}
+            disabled={loading || !selected}
+            title="載入所選店點的遠端 Log"
+            style={{ height: '2.55rem' }}
+          >
             {loading ? <Loader2 size={16} className="spin" /> : <Terminal size={16} />} 載入 Log
           </button>
         </div>
@@ -177,6 +183,7 @@ export default function LogsClient({ initialStores, supabaseOk }) {
                         key={t.key}
                         className={`log-tab ${activeType === t.key ? 'active' : ''}`}
                         onClick={() => { setActiveType(t.key); setPage(1); }}
+                        title={`切換至 ${t.label} Log`}
                       >
                         {t.label}
                       </button>
@@ -187,14 +194,14 @@ export default function LogsClient({ initialStores, supabaseOk }) {
                       <Search size={14} />
                       <input type="text" placeholder="搜尋訊息…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
                     </div>
-                    <select value={level} onChange={(e) => { setLevel(e.target.value); setPage(1); }}>
+                    <select value={level} onChange={(e) => { setLevel(e.target.value); setPage(1); }} title="篩選 Log 等級">
                       <option value="all">全部等級</option>
                       <option value="error">ERROR / 失敗</option>
                     </select>
                     <button className="outline icon-left" onClick={exportCsv} title="將目前日誌匯出為 CSV">
                       <Download size={14} /> 輸出 CSV
                     </button>
-                    <button className="outline" onClick={refresh} title="重新整理">
+                    <button className="outline" onClick={refresh} title="重新整理 Log">
                       <RefreshCw size={16} />
                     </button>
                   </div>
@@ -241,18 +248,18 @@ export default function LogsClient({ initialStores, supabaseOk }) {
                       <span>共 {filtered.length} 筆</span>
                       <div className="log-pagination">
                         {currentPage > 1 && (
-                          <button className="btn-sm" onClick={() => setPage((p) => p - 1)}>‹</button>
+                          <button className="btn-sm" onClick={() => setPage((p) => p - 1)} title="上一頁">‹</button>
                         )}
                         {Array.from({ length: totalPages }, (_, i) => i + 1)
                           .filter((i) => i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1))
                           .map((i, idx, arr) => (
                             <React.Fragment key={i}>
                               {idx > 0 && i - arr[idx - 1] > 1 && <span style={{ color: 'var(--muted)' }}>…</span>}
-                              <button className={`btn-sm ${i === currentPage ? 'primary' : ''}`} onClick={() => setPage(i)}>{i}</button>
+                              <button className={`btn-sm ${i === currentPage ? 'primary' : ''}`} onClick={() => setPage(i)} title={`第 ${i} 頁`}>{i}</button>
                             </React.Fragment>
                           ))}
                         {currentPage < totalPages && (
-                          <button className="btn-sm" onClick={() => setPage((p) => p + 1)}>›</button>
+                          <button className="btn-sm" onClick={() => setPage((p) => p + 1)} title="下一頁">›</button>
                         )}
                       </div>
                     </div>

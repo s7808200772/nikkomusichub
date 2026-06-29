@@ -1,11 +1,18 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { Music, RefreshCw, Loader2, AlertCircle, Server, HardDrive, Download, Save } from 'lucide-react';
+import { Music, RefreshCw, Loader2, AlertCircle, Server, HardDrive, Save, Eye, EyeOff } from 'lucide-react';
 import { loadLocalSettings, saveLocalSettings } from '@/lib/localStorage';
 
 const NAS_KEY = 'nikko_nas_files';
 const NAS_TS_KEY = 'nikko_nas_files_ts';
+
+const DEFAULT_NAS = {
+  webdavUrl: 'http://100.106.208.65:5005/',
+  webdavRemotePath: '/NikkoMusic',
+  webdavUsername: '',
+  webdavPassword: '',
+};
 
 function loadNasFiles() {
   if (typeof window === 'undefined') return [];
@@ -28,6 +35,30 @@ function loadNasTs() {
   return localStorage.getItem(NAS_TS_KEY);
 }
 
+function PasswordInput({ value, onChange, placeholder }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="password-wrap">
+      <input
+        type={show ? 'text' : 'password'}
+        value={value || ''}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={{ marginBottom: 0 }}
+      />
+      <button
+        type="button"
+        className="eye-btn icon-btn"
+        onClick={() => setShow((s) => !s)}
+        title={show ? '隱藏密碼' : '顯示密碼'}
+        tabIndex={-1}
+      >
+        {show ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  );
+}
+
 export default function LibraryClient({ initialStores, initialSettings, supabaseOk }) {
   const [stores] = useState(initialStores || []);
   const [selected, setSelected] = useState(new Set());
@@ -38,10 +69,10 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchJob, setBatchJob] = useState(null);
   const [config, setConfig] = useState({
-    webdavUrl: initialSettings?.webdavUrl || '',
-    webdavRemotePath: initialSettings?.webdavRemotePath || '',
-    webdavUsername: initialSettings?.webdavUsername || '',
-    webdavPassword: initialSettings?.webdavPassword || '',
+    webdavUrl: initialSettings?.webdavUrl || DEFAULT_NAS.webdavUrl,
+    webdavRemotePath: initialSettings?.webdavRemotePath || DEFAULT_NAS.webdavRemotePath,
+    webdavUsername: initialSettings?.webdavUsername || DEFAULT_NAS.webdavUsername,
+    webdavPassword: initialSettings?.webdavPassword || DEFAULT_NAS.webdavPassword,
   });
   const [configMsg, setConfigMsg] = useState('');
 
@@ -49,17 +80,17 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
     if (!supabaseOk && typeof window !== 'undefined') {
       const local = loadLocalSettings();
       setConfig({
-        webdavUrl: initialSettings?.webdavUrl || local?.webdavUrl || '',
-        webdavRemotePath: initialSettings?.webdavRemotePath || local?.webdavRemotePath || '',
-        webdavUsername: initialSettings?.webdavUsername || local?.webdavUsername || '',
-        webdavPassword: initialSettings?.webdavPassword || local?.webdavPassword || '',
+        webdavUrl: initialSettings?.webdavUrl || local?.webdavUrl || DEFAULT_NAS.webdavUrl,
+        webdavRemotePath: initialSettings?.webdavRemotePath || local?.webdavRemotePath || DEFAULT_NAS.webdavRemotePath,
+        webdavUsername: initialSettings?.webdavUsername || local?.webdavUsername || DEFAULT_NAS.webdavUsername,
+        webdavPassword: initialSettings?.webdavPassword || local?.webdavPassword || DEFAULT_NAS.webdavPassword,
       });
     } else {
       setConfig({
-        webdavUrl: initialSettings?.webdavUrl || '',
-        webdavRemotePath: initialSettings?.webdavRemotePath || '',
-        webdavUsername: initialSettings?.webdavUsername || '',
-        webdavPassword: initialSettings?.webdavPassword || '',
+        webdavUrl: initialSettings?.webdavUrl || DEFAULT_NAS.webdavUrl,
+        webdavRemotePath: initialSettings?.webdavRemotePath || DEFAULT_NAS.webdavRemotePath,
+        webdavUsername: initialSettings?.webdavUsername || DEFAULT_NAS.webdavUsername,
+        webdavPassword: initialSettings?.webdavPassword || DEFAULT_NAS.webdavPassword,
       });
     }
   }, [initialSettings, supabaseOk]);
@@ -185,6 +216,9 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
           <HardDrive size={20} color="var(--accent-2)" /> NAS / WebDAV 連線設定
         </h2>
+        <p style={{ margin: '0 0 1rem', color: 'var(--muted)', fontSize: '0.9rem' }}>
+          顯示 NAS 上目前可同步的音樂檔案。選取店點後可一鍵同步。
+        </p>
         <form onSubmit={saveConfig}>
           <div className="form-row">
             <div className="form-group">
@@ -203,14 +237,18 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
             </div>
             <div className="form-group">
               <label>密碼</label>
-              <input type="password" value={config.webdavPassword} onChange={(e) => setConfig({ ...config, webdavPassword: e.target.value })} placeholder="topup30%off" />
+              <PasswordInput
+                value={config.webdavPassword}
+                onChange={(e) => setConfig({ ...config, webdavPassword: e.target.value })}
+                placeholder="topup30%off"
+              />
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <button type="submit" className="primary">
+            <button type="submit" className="primary" title="儲存 NAS 設定">
               <Save size={16} /> 儲存 NAS 設定
             </button>
-            <button type="button" className="primary" onClick={loadNasLibrary} disabled={loading}>
+            <button type="button" className="primary" onClick={loadNasLibrary} disabled={loading} title="從 NAS 載入音樂清單">
               {loading ? <Loader2 size={16} className="spin" /> : <RefreshCw size={16} />} 載入 NAS 音樂清單
             </button>
             {configMsg && <span style={{ fontSize: '0.9rem', color: configMsg.includes('失敗') ? 'var(--danger)' : 'var(--success)' }}>{configMsg}</span>}
@@ -230,14 +268,11 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
             <span className="badge badge-gray">{selected.size} / {stores.length}</span>
           </h2>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button className="ghost" onClick={selectAll} disabled={stores.length === 0}>
+            <button className="ghost" onClick={selectAll} disabled={stores.length === 0} title="全選/取消全選店點">
               {allSelected ? '取消全選' : '全選'}
             </button>
-            <button className="primary" onClick={() => runBatch('sync')} disabled={!supabaseOk || batchLoading || selected.size === 0}>
+            <button className="primary" onClick={() => runBatch('sync')} disabled={!supabaseOk || batchLoading || selected.size === 0} title="同步 NAS 音樂到選取店點">
               {batchLoading ? <Loader2 size={16} className="spin" /> : <RefreshCw size={16} />} 同步到選取店點
-            </button>
-            <button className="primary" onClick={() => runBatch('sync')} disabled={!supabaseOk || batchLoading || selected.size === 0}>
-              {batchLoading ? <Loader2 size={16} className="spin" /> : <Download size={16} />} 下載到選取店點
             </button>
           </div>
         </div>

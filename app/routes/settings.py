@@ -37,15 +37,15 @@ async def settings_page(request: Request):
     store_id = get_setting("store_id", "")
     store_id_suffix = store_id.replace("store-", "") if store_id.startswith("store-") else store_id
     remote_path = get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT)
+    mqtt_settings = await get_mqtt_settings(request)
     settings = {
         "store_name": get_setting("store_name", "未命名店鋪"),
         "store_id": store_id,
         "store_id_suffix": store_id_suffix,
         "url": get_setting("webdav_url", RCLONE_WEBDAV_URL_DEFAULT),
-        "vendor": get_setting("webdav_vendor", RCLONE_WEBDAV_VENDOR_DEFAULT),
         "username": get_setting("webdav_username", ""),
         "remote_path": remote_path,
-        "remote_path_display": remote_path.split(":", 1)[-1].lstrip("/").replace("/", "\\"),
+        "remote_path_display": "/" + remote_path.split(":", 1)[-1].lstrip("/"),
         "local_path": get_setting("local_music_path", str(MUSIC_DIR)),
         "sync_mode": get_setting("sync_mode", "sync"),
         "daily_sync_enabled": bool(int(get_setting("daily_sync_enabled", "1"))),
@@ -53,6 +53,10 @@ async def settings_page(request: Request):
         "boot_delay_min": int(get_setting("sync_boot_delay_min", "2")),
         "auto_restart_player": bool(int(get_setting("auto_restart_player", "1"))),
         "configured": rclone.get_rclone_config_exists(),
+        "mqtt": mqtt_settings,
+        "wifi_ssid": get_setting("wifi_ssid", ""),
+        "wifi_password": get_setting("wifi_password", ""),
+        "network_priority": get_setting("network_priority", "ethernet"),
     }
     return templates.TemplateResponse("settings.html", {"request": request, "settings": settings})
 
@@ -150,6 +154,7 @@ async def get_mqtt_settings(request: Request):
         "port": int(port_str) if port_str.isdigit() else int(DEFAULT_MQTT_PORT),
         "tls": tls_str == "1",
         "username": username,
+        "password": password,
         "password_set": bool(password),
     }
 

@@ -12,7 +12,7 @@ from starlette.middleware.gzip import GZipMiddleware
 
 from app.config import BASE_DIR, DATA_DIR, LOGS_DIR, MUSIC_DIR, SCRIPTS_DIR
 from app.db import init_db
-from app.routes import auth, backup, dashboard, health, logs, player, self_test, settings, setup, system, version, webdav
+from app.routes import auth, backup, dashboard, health, logs, network, player, self_test, settings, setup, system, version, webdav
 from app.routes.auth import init_default_user
 from app.routes.dashboard import bump_dashboard_version
 from app.services.system import ensure_local_music_fallback
@@ -55,6 +55,7 @@ app.include_router(player.router)
 app.include_router(system.router)
 app.include_router(logs.router)
 app.include_router(settings.router)
+app.include_router(network.router)
 app.include_router(version.router)
 app.include_router(backup.router)
 app.include_router(self_test.router)

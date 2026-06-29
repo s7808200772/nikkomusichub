@@ -104,6 +104,20 @@ async def player_mute(request: Request, mute: int = Form(...)):
     return res
 
 
+@router.post("/api/player/mute-toggle")
+async def player_mute_toggle(request: Request):
+    user = get_current_user_or_local(request)
+    status = mpv.get_status()
+    new_mute = not status.get("mute", False)
+    res = mpv.set_mute(new_mute)
+    audit(user, "player_mute_toggle", {"mute": new_mute, "ok": res["ok"]})
+    return {
+        "ok": res["ok"],
+        "mute": new_mute,
+        "volume": status.get("volume", 100),
+    }
+
+
 @router.post("/api/player/shuffle")
 async def player_shuffle(request: Request, enabled: int = Form(...)):
     user = get_current_user_or_local(request)

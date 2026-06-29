@@ -20,7 +20,7 @@ export default function MonitoringClient({ initialAlerts, initialStores, initial
     <>
       <Tabs tabs={TABS} activeKey={activeKey} onChange={setActiveKey} />
       {activeKey === 'alerts' && (
-        <AlertsClient initialAlerts={initialAlerts} supabaseOk={supabaseOk} />
+        <AlertsClient initialAlerts={initialAlerts} initialStores={initialStores} supabaseOk={supabaseOk} />
       )}
       {activeKey === 'logs' && (
         <LogsClient initialStores={initialStores} supabaseOk={supabaseOk} />

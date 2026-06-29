@@ -643,6 +643,9 @@ button.block, .btn.block { width: 100%; }
 .settings-col-2 { grid-column: 1 / span 3; grid-row: 2; }
 .settings-col-3 { grid-column: 4 / span 5; grid-row: 1 / span 2; }
 .settings-col-4 { grid-column: 9 / span 4; grid-row: 1 / span 2; }
+.settings-col-5 { grid-column: 1 / -1; grid-row: 3; }
+
+.settings-layout button[type="submit"] { min-width: 8rem; }
 
 .webdav-grid {
   display: grid;
@@ -653,7 +656,17 @@ button.block, .btn.block { width: 100%; }
 .webdav-actions {
   display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;
 }
-.webdav-actions button { font-size: 0.8rem; padding: 0.5rem 0.7rem; }
+.webdav-actions button { font-size: 0.8rem; padding: 0.5rem 0.7rem; min-width: 7.5rem; }
+
+.network-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0 1rem;
+}
+.network-grid .full-width { grid-column: 1 / -1; }
+.network-priority { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 0.25rem; }
+.network-priority label { display: flex; align-items: center; gap: 0.4rem; color: var(--text-secondary); cursor: pointer; }
+.network-priority input[type="radio"] { width: auto; }
 
 .sync-actions {
   display: flex; flex-direction: column; gap: 0.6rem;
@@ -846,6 +859,8 @@ button.icon-left span { font-size: 1rem; }
 .player-info .progress-track { background: var(--panel-2); border-radius: 4px; height: 6px; margin: 0.6rem 0 0.3rem; overflow: hidden; }
 .player-info .progress-bar-fill { background: var(--accent); height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s; }
 .player-info .time-row { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); }
+.player-info .volume-slider-wrap { margin-top: 0.6rem; }
+.player-info .volume-label-below { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
 
 .player-controls {
   display: flex; align-items: center; gap: 0.6rem; justify-content: flex-start;
@@ -989,8 +1004,9 @@ button.icon-left span { font-size: 1rem; }
 .log-stack { display: flex; flex-direction: column; gap: 1rem; }
 
 @media (max-width: 1280px) {
-  .settings-col-1, .settings-col-2, .settings-col-3, .settings-col-4 { grid-column: 1 / -1; grid-row: auto; }
+  .settings-col-1, .settings-col-2, .settings-col-3, .settings-col-4, .settings-col-5 { grid-column: 1 / -1; grid-row: auto; }
   .webdav-grid { grid-template-columns: 1fr; }
+  .network-grid { grid-template-columns: 1fr; }
   .init-row { grid-template-columns: 1fr; }
 }
 @media (max-width: 1439px) {

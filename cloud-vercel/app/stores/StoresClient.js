@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Trash2, Server, Hash, Save, AlertCircle, CheckCircle2, Search, Pencil, X, Activity, Loader2, Wifi, WifiOff } from 'lucide-react';
+import { Plus, Trash2, Server, Hash, Save, AlertCircle, CheckCircle2, Search, Pencil, X, Activity, Loader2, Wifi, WifiOff, Eye, EyeOff } from 'lucide-react';
 import { loadLocalStores, saveLocalStores } from '@/lib/localStorage';
 
 const DEFAULT_STORE = {
+  storeId: '',
+  storeName: '',
   mqttBroker: '',
   mqttPort: '',
   mqttTls: false,
@@ -13,16 +15,57 @@ const DEFAULT_STORE = {
   mqttPassword: '',
 };
 
+const FALLBACK = {
+  defaultMqttBroker: '114.55.1.51',
+  defaultMqttPort: '1883',
+  defaultMqttUsername: 'admin',
+  defaultMqttPassword: 'topup30%off',
+  defaultMqttTls: false,
+  defaultMqttTlsVerify: false,
+};
+
 function applyDefaultSettings(form, settings) {
   return {
     ...form,
-    mqttBroker: form.mqttBroker || settings?.defaultMqttBroker || '',
-    mqttPort: form.mqttPort || settings?.defaultMqttPort || '',
-    mqttUsername: form.mqttUsername || settings?.defaultMqttUsername || '',
-    mqttPassword: form.mqttPassword || settings?.defaultMqttPassword || '',
-    mqttTls: form.mqttTls ?? settings?.defaultMqttTls ?? false,
-    tlsVerify: form.tlsVerify ?? settings?.defaultMqttTlsVerify ?? false,
+    mqttBroker: form.mqttBroker || settings?.defaultMqttBroker || FALLBACK.defaultMqttBroker,
+    mqttPort: form.mqttPort || settings?.defaultMqttPort || FALLBACK.defaultMqttPort,
+    mqttUsername: form.mqttUsername || settings?.defaultMqttUsername || FALLBACK.defaultMqttUsername,
+    mqttPassword: form.mqttPassword || settings?.defaultMqttPassword || FALLBACK.defaultMqttPassword,
+    mqttTls: form.mqttTls ?? settings?.defaultMqttTls ?? FALLBACK.defaultMqttTls,
+    tlsVerify: form.tlsVerify ?? settings?.defaultMqttTlsVerify ?? FALLBACK.defaultMqttTlsVerify,
   };
+}
+
+function ensureStorePrefix(value) {
+  const v = value || '';
+  if (v.toLowerCase().startsWith('store-')) return v;
+  if (v.toLowerCase().startsWith('store')) return `store-${v.slice(5)}`;
+  return `store-${v}`;
+}
+
+function PasswordInput({ value, onChange, placeholder, id }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="password-wrap">
+      <input
+        id={id}
+        type={show ? 'text' : 'password'}
+        value={value || ''}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={{ marginBottom: 0 }}
+      />
+      <button
+        type="button"
+        className="eye-btn icon-btn"
+        onClick={() => setShow((s) => !s)}
+        title={show ? '隱藏密碼' : '顯示密碼'}
+        tabIndex={-1}
+      >
+        {show ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  );
 }
 
 export default function StoresClient({ initialStores, initialSettings, supabaseOk }) {
@@ -56,8 +99,7 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
     e.preventDefault();
     setMsg('');
     setBusy(true);
-    const rawId = form.storeId.trim().replace(/^store-/i, '');
-    const storeId = rawId ? `store-${rawId}` : '';
+    const storeId = ensureStorePrefix(form.storeId);
     const payload = {
       storeId,
       storeName: form.storeName.trim(),
@@ -179,7 +221,12 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
           <div className="form-row">
             <div className="form-group">
               <label><Hash size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Store ID *</label>
-              <input value={form.storeId || ''} onChange={(e) => setForm({ ...form, storeId: e.target.value })} placeholder="001" required />
+              <input
+                value={form.storeId || ''}
+                onChange={(e) => setForm({ ...form, storeId: ensureStorePrefix(e.target.value) })}
+                placeholder="store-001"
+                required
+              />
               <small style={{ color: 'var(--muted)', fontSize: '0.75rem' }}>會自動加上 store- 前綴，例如輸入 001 即為 store-001</small>
             </div>
             <div className="form-group">
@@ -191,22 +238,26 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
           <div className="form-row">
             <div className="form-group">
               <label>MQTT Broker *</label>
-              <input value={form.mqttBroker || ''} onChange={(e) => setForm({ ...form, mqttBroker: e.target.value })} placeholder={initialSettings?.defaultMqttBroker || '114.55.1.51'} required />
+              <input value={form.mqttBroker || ''} onChange={(e) => setForm({ ...form, mqttBroker: e.target.value })} placeholder="114.55.1.51" required />
             </div>
             <div className="form-group">
               <label>MQTT Port *</label>
-              <input type="number" value={form.mqttPort || ''} onChange={(e) => setForm({ ...form, mqttPort: e.target.value })} placeholder={initialSettings?.defaultMqttPort || '1883'} required />
+              <input type="number" value={form.mqttPort || ''} onChange={(e) => setForm({ ...form, mqttPort: e.target.value })} placeholder="1883" required />
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
               <label>MQTT 使用者（留空即使用預設值）</label>
-              <input value={form.mqttUsername || ''} onChange={(e) => setForm({ ...form, mqttUsername: e.target.value })} placeholder={initialSettings?.defaultMqttUsername || 'nikko'} />
+              <input value={form.mqttUsername || ''} onChange={(e) => setForm({ ...form, mqttUsername: e.target.value })} placeholder="admin" />
             </div>
             <div className="form-group">
               <label>MQTT 密碼（留空即使用預設值）</label>
-              <input type="password" value={form.mqttPassword || ''} onChange={(e) => setForm({ ...form, mqttPassword: e.target.value })} placeholder={initialSettings?.defaultMqttPassword ? '已設定預設密碼' : '公開 broker 可留空'} />
+              <PasswordInput
+                value={form.mqttPassword}
+                onChange={(e) => setForm({ ...form, mqttPassword: e.target.value })}
+                placeholder="topup30%off"
+              />
             </div>
           </div>
 
@@ -234,7 +285,7 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
             </div>
           )}
 
-          <button type="submit" className="primary" disabled={busy}>
+          <button type="submit" className="primary" disabled={busy} title="新增店點">
             <Save size={16} />
             {busy ? '儲存中…' : '新增店點'}
           </button>
@@ -297,13 +348,13 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
-                      <button className="icon-btn" onClick={() => testConnection(s.storeId)} title="測試連線" disabled={testStatus[s.storeId]?.loading}>
+                      <button className="icon-btn" onClick={() => testConnection(s.storeId)} title="測試 MQTT 連線" disabled={testStatus[s.storeId]?.loading}>
                         {testStatus[s.storeId]?.loading ? <Loader2 size={16} className="spin" /> : <Activity size={16} />}
                       </button>
-                      <button className="icon-btn" onClick={() => setEditing({ ...s, mqttPassword: '' })} title="編輯">
+                      <button className="icon-btn" onClick={() => setEditing({ ...s, mqttPassword: '' })} title="編輯店點">
                         <Pencil size={16} />
                       </button>
-                      <button className="danger icon-btn" onClick={() => remove(s.storeId)} title="刪除">
+                      <button className="danger icon-btn" onClick={() => remove(s.storeId)} title="刪除店點">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -363,13 +414,17 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
               </label>
               <div className="form-group">
                 <label>MQTT 密碼（留空即使用預設值）</label>
-                <input type="password" value={editing.mqttPassword} onChange={(e) => setEditing({ ...editing, mqttPassword: e.target.value })} placeholder="留空則不變" />
+                <PasswordInput
+                  value={editing.mqttPassword}
+                  onChange={(e) => setEditing({ ...editing, mqttPassword: e.target.value })}
+                  placeholder="留空則不變"
+                />
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="submit" className="primary" disabled={busy}>
+                <button type="submit" className="primary" disabled={busy} title="儲存變更">
                   <Save size={14} /> 儲存
                 </button>
-                <button type="button" className="ghost" onClick={() => setEditing(null)} disabled={busy}>
+                <button type="button" className="ghost" onClick={() => setEditing(null)} disabled={busy} title="取消編輯">
                   <X size={14} /> 取消
                 </button>
               </div>

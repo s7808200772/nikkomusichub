@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-  Play, Pause, SkipForward, RefreshCw, FolderSearch, RotateCcw, Power,
+  Play, Pause, SkipBack, SkipForward, RefreshCw, FolderSearch, RotateCcw, Power,
   Activity, Cpu, Music2, Terminal, Server, Wifi, WifiOff, Loader2,
   ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Search
 } from 'lucide-react';
@@ -13,9 +13,9 @@ const CATEGORIES = [
     label: '音樂播放',
     color: '#22c55e',
     commands: [
-      { key: 'player_play', label: '播放', icon: Play },
+      { key: 'player_play', label: '播放 / 繼續', icon: Play },
       { key: 'player_pause', label: '暫停', icon: Pause },
-      { key: 'player_resume', label: '繼續', icon: Play },
+      { key: 'player_previous', label: '上一首', icon: SkipBack },
       { key: 'player_next', label: '下一首', icon: SkipForward },
       { key: 'status_player', label: '播放狀態', icon: Music2 },
     ],
@@ -51,9 +51,17 @@ const CATEGORIES = [
 
 const ALL_COMMANDS = CATEGORIES.flatMap((c) => c.commands);
 
+function statusTooltip(st) {
+  if (!st) return '尚未取得狀態';
+  if (st.loading) return '正在取得狀態…';
+  if (st.ok) return '狀態正常';
+  return st.error || '狀態取得失敗';
+}
+
 export default function CommandsClient({ initialStores, supabaseOk }) {
   const [stores, setStores] = useState(initialStores || []);
   const [results, setResults] = useState({});
+  const [status, setStatus] = useState({});
   const [expanded, setExpanded] = useState({});
   const [runningAll, setRunningAll] = useState(null);
   const [search, setSearch] = useState('');
@@ -64,6 +72,27 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
   useEffect(() => {
     setStores(initialStores || []);
   }, [initialStores]);
+
+  useEffect(() => {
+    if (!supabaseOk) return;
+    stores.forEach((s) => fetchStatus(s.storeId));
+    const id = setInterval(() => {
+      stores.forEach((s) => fetchStatus(s.storeId));
+    }, 60000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stores, supabaseOk]);
+
+  async function fetchStatus(storeId) {
+    setStatus((prev) => ({ ...prev, [storeId]: { loading: true } }));
+    const res = await fetch('/api/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storeId, commandKey: 'status_dashboard' }),
+    });
+    const data = await res.json();
+    setStatus((prev) => ({ ...prev, [storeId]: { ...data, loading: false } }));
+  }
 
   async function runForStore(storeId, commandKey) {
     if (!supabaseOk) {
@@ -180,34 +209,6 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
 
   return (
     <>
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h2 style={{ margin: '0 0 0.3rem' }}>批量指令</h2>
-            <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>
-              已選取 <strong>{selected.size}</strong> 家店點
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {ALL_COMMANDS.filter((c) => ['player_play', 'player_pause', 'player_next', 'sync'].includes(c.key)).map((c) => {
-              const Icon = c.icon;
-              return (
-                <button
-                  key={c.key}
-                  className="primary"
-                  onClick={() => runBatch(c.key)}
-                  disabled={!supabaseOk || batchLoading || selected.size === 0}
-                  title={`對選取店點執行：${c.label}`}
-                  style={{ minWidth: '2.8rem', height: '2.4rem', padding: 0 }}
-                >
-                  {batchLoading ? <Loader2 size={18} className="spin" /> : <Icon size={18} />}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
       {batchJob && (
         <div className="card" style={{ borderLeft: '4px solid var(--accent-2)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
@@ -218,10 +219,10 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
               </p>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button className="ghost" onClick={retryFailed} disabled={batchLoading || batchJob.pending > 0}>
+              <button className="ghost" onClick={retryFailed} disabled={batchLoading || batchJob.pending > 0} title="重試失敗或無回應的店點">
                 <RotateCcw size={14} /> 重試失敗/無回應
               </button>
-              <button className="ghost" onClick={() => setBatchJob(null)}>關閉</button>
+              <button className="ghost" onClick={() => setBatchJob(null)} title="關閉批次任務">關閉</button>
             </div>
           </div>
           <div style={{ display: 'grid', gap: '0.4rem', marginTop: '0.75rem' }}>
@@ -242,12 +243,28 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-            <Terminal size={20} color="var(--accent-2)" /> 店點指令
+            <Terminal size={20} color="var(--accent-2)" /> 店點指令控制台
             <span className="badge badge-gray">{filtered.length} / {stores.length}</span>
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.35rem' }}>
+              {ALL_COMMANDS.filter((c) => ['player_play', 'player_pause', 'player_next', 'sync'].includes(c.key)).map((c) => {
+                const Icon = c.icon;
+                return (
+                  <button
+                    key={c.key}
+                    className="primary icon-btn"
+                    onClick={() => runBatch(c.key)}
+                    disabled={!supabaseOk || batchLoading || selected.size === 0}
+                    title={`對選取店點執行：${c.label}`}
+                  >
+                    {batchLoading ? <Loader2 size={18} className="spin" /> : <Icon size={18} />}
+                  </button>
+                );
+              })}
+            </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: 'var(--text-2)', cursor: 'pointer' }}>
-              <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={selectAll} />
+              <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length} onChange={selectAll} title="全選/取消全選目前篩選的店點" />
               全選
             </label>
             <div style={{ position: 'relative', minWidth: '240px' }}>
@@ -269,7 +286,7 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
                 <tr>
                   <th style={{ width: '1%' }}>選取</th>
                   <th>店點</th>
-                  <th>最後結果</th>
+                  <th style={{ width: '1%' }}>狀態</th>
                   <th>音樂播放</th>
                   <th>系統狀態</th>
                   <th>同步掃描</th>
@@ -279,6 +296,7 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
               </thead>
               <tbody>
                 {filtered.map((s) => {
+                  const st = status[s.storeId];
                   const last = lastResult(s.storeId);
                   return (
                     <React.Fragment key={s.storeId}>
@@ -301,15 +319,15 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
                           </div>
                         </td>
                         <td>
-                          {last?.loading ? (
-                            <Loader2 size={16} className="spin" color="var(--accent-2)" />
-                          ) : last?.ok ? (
-                            <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}><CheckCircle2 size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />成功</span>
-                          ) : last ? (
-                            <span style={{ color: 'var(--danger)', fontSize: '0.85rem' }}><AlertCircle size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />{last.error || '失敗'}</span>
-                          ) : (
-                            <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}><Wifi size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />未執行</span>
-                          )}
+                          <button
+                            className="ghost icon-btn"
+                            onClick={() => fetchStatus(s.storeId)}
+                            disabled={st?.loading}
+                            title={statusTooltip(st)}
+                            style={{ color: st?.ok ? 'var(--success)' : st ? 'var(--danger)' : 'var(--muted)' }}
+                          >
+                            {st?.loading ? <Loader2 size={16} className="spin" /> : st?.ok ? <Wifi size={16} /> : <WifiOff size={16} />}
+                          </button>
                         </td>
                         {CATEGORIES.map((cat) => (
                           <td key={cat.key}>
@@ -334,7 +352,7 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
                           </td>
                         ))}
                         <td>
-                          <button className="ghost icon-btn" onClick={() => toggleExpand(s.storeId)} title="展開/收合輸出">
+                          <button className="ghost icon-btn" onClick={() => toggleExpand(s.storeId)} title="展開/收合指令輸出">
                             {expanded[s.storeId] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                           </button>
                         </td>

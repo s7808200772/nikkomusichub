@@ -29,9 +29,9 @@ async def webdav_page(request: Request):
 
 
 def _remote_path_display(remote_path: str) -> str:
-    # Convert stored rclone path like "nikko_nas:NikkoMusic/sub" to "NikkoMusic\sub"
+    # Convert stored rclone path like "qnapmusic:NikkoMusic/sub" to "/NikkoMusic/sub"
     path = remote_path.split(":", 1)[-1].lstrip("/")
-    return path.replace("/", "\\")
+    return "/" + path if path else "/NikkoMusic"
 
 
 @router.get("/api/webdav/settings")
@@ -40,7 +40,6 @@ async def webdav_settings(request: Request):
     remote_path = get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT)
     return {
         "url": get_setting("webdav_url", RCLONE_WEBDAV_URL_DEFAULT),
-        "vendor": get_setting("webdav_vendor", RCLONE_WEBDAV_VENDOR_DEFAULT),
         "username": get_setting("webdav_username", ""),
         "remote_path": remote_path,
         "remote_path_display": _remote_path_display(remote_path),
@@ -58,7 +57,6 @@ async def webdav_settings(request: Request):
 async def save_webdav_settings(
     request: Request,
     url: str = Form(RCLONE_WEBDAV_URL_DEFAULT),
-    vendor: str = Form(RCLONE_WEBDAV_VENDOR_DEFAULT),
     username: str = Form(""),
     password: str = Form(""),
     remote_path: str = Form(RCLONE_REMOTE_PATH_DEFAULT),
@@ -71,14 +69,14 @@ async def save_webdav_settings(
     if not username:
         return {"ok": False, "stderr": "Username is required"}
 
-    # Normalize remote path display (\NikkoMusic) to rclone format (nikko_nas:NikkoMusic)
+    # Normalize remote path display (/NikkoMusic) to rclone format (qnapmusic:NikkoMusic)
     clean_path = remote_path.strip().lstrip("\\").lstrip("/").replace("\\", "/")
     stored_remote_path = f"{remote_name}:{clean_path}" if clean_path else RCLONE_REMOTE_PATH_DEFAULT
 
     # Only rewrite rclone config if a password was provided; otherwise keep existing config
     if password:
         try:
-            rclone.write_rclone_config(remote_name, url, vendor, username, password)
+            rclone.write_rclone_config(remote_name, url, RCLONE_WEBDAV_VENDOR_DEFAULT, username, password)
         except Exception as e:
             return {"ok": False, "stderr": str(e)}
     elif not rclone.get_rclone_config_exists():
@@ -86,7 +84,6 @@ async def save_webdav_settings(
 
     set_setting("webdav_remote", remote_name)
     set_setting("webdav_url", url)
-    set_setting("webdav_vendor", vendor)
     set_setting("webdav_username", username)
     set_setting("webdav_remote_path", stored_remote_path)
     set_setting("local_music_path", local_path)
