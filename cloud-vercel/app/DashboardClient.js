@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Wifi, WifiOff, Store, CheckCircle2, AlertCircle, Bell, Loader2 } from 'lucide-react';
 import { loadLocalStores } from '@/lib/localStorage';
 import { fetchWithTimeout, humanizeCommandError } from '@/lib/fetchUtils';
@@ -97,6 +97,18 @@ export default function DashboardClient({ initialStores, supabaseOk, children })
 
   const online = Object.values(status).filter((s) => s.ok).length;
   const unackAlerts = alerts.filter((a) => !a.acknowledged_at);
+  const latestAlerts = useMemo(() => {
+    const byStore = {};
+    alerts.forEach((a) => {
+      const current = byStore[a.store_id];
+      if (!current || new Date(a.created_at) > new Date(current.created_at)) {
+        byStore[a.store_id] = a;
+      }
+    });
+    return Object.values(byStore)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 5);
+  }, [alerts]);
 
   return (
     <>
@@ -206,9 +218,9 @@ export default function DashboardClient({ initialStores, supabaseOk, children })
           </div>
         )}
 
-        {alerts.length > 0 && (
+        {latestAlerts.length > 0 && (
           <div>
-            <h3 style={{ fontSize: '0.9rem', color: 'var(--muted)', margin: '0 0 0.5rem' }}>最近告警</h3>
+            <h3 style={{ fontSize: '0.9rem', color: 'var(--muted)', margin: '0 0 0.5rem' }}>最近告警（每店點最新一筆）</h3>
             <div className="list-table-wrap">
               <table className="list-table">
                 <thead>
@@ -221,7 +233,7 @@ export default function DashboardClient({ initialStores, supabaseOk, children })
                   </tr>
                 </thead>
                 <tbody>
-                  {alerts.slice(0, 5).map((a) => {
+                  {latestAlerts.map((a) => {
                     const severityColor = a.severity === 'offline' || a.severity === 'critical' ? 'danger' : 'warning';
                     return (
                       <tr key={a.id}>

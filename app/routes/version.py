@@ -141,6 +141,7 @@ def version(request: Request):
     return {
         "commit": git.get("commit", "unknown"),
         "branch": git.get("branch", "unknown"),
+        "date": git.get("date") or None,
         "store_id": get_setting("store_id", ""),
         "store_name": get_setting("store_name", "未命名店鋪"),
     }

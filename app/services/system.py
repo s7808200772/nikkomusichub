@@ -162,10 +162,12 @@ def get_python_version() -> str:
 
 
 def get_git_version() -> dict:
-    """Return current git commit hash and branch."""
+    """Return current git commit hash, branch and commit date."""
     commit = run(["git", "rev-parse", "HEAD"], timeout=10)["stdout"].strip() or "unknown"
     branch = run(["git", "branch", "--show-current"], timeout=10)["stdout"].strip() or "unknown"
-    return {"commit": commit, "branch": branch}
+    date_res = run(["git", "show", "-s", "--format=%cI", "HEAD"], timeout=10)
+    commit_date = date_res["stdout"].strip() or None
+    return {"commit": commit, "branch": branch, "date": commit_date}
 
 
 def get_pi_model() -> str:

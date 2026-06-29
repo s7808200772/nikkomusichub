@@ -24,7 +24,12 @@ function fmt(value) {
   if (value === null || value === undefined || value === '') return null;
   if (typeof value === 'boolean') return value ? '是' : '否';
   if (typeof value === 'number') return Number.isFinite(value) ? value : String(value);
-  return String(value);
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }
 
 const KEY_LABELS = {
@@ -185,11 +190,12 @@ function SystemFormatter({ data }) {
     { key: 'mqtt_service_status', label: 'MQTT 服務' },
   ];
   function serviceBadge(status) {
-    if (!status) return <Badge color="gray">未知</Badge>;
-    if (status === 'active') return <Badge color="green">執行中</Badge>;
-    if (status === 'failed') return <Badge color="red">失敗</Badge>;
-    if (status === 'inactive') return <Badge color="gray">未啟動</Badge>;
-    return <Badge color="gray">{status}</Badge>;
+    const s = typeof status === 'string' ? status : (status && typeof status === 'object' ? status.status : String(status || ''));
+    if (!s) return <Badge color="gray">未知</Badge>;
+    if (s === 'active') return <Badge color="green">執行中</Badge>;
+    if (s === 'failed') return <Badge color="red">失敗</Badge>;
+    if (s === 'inactive') return <Badge color="gray">未啟動</Badge>;
+    return <Badge color="gray">{s}</Badge>;
   }
   return (
     <div className="resp-card">
@@ -200,8 +206,8 @@ function SystemFormatter({ data }) {
         <Row icon={Clock} label="運行時間" value={formatSeconds(d.uptime_seconds)} />
       </Section>
       <Section title="軟體版本" icon={Activity}>
-        {d.git?.commit && <Row icon={Activity} label="Git Commit" value={`${d.git.commit.slice(0, 7)}${d.git.branch ? ` (${d.git.branch})` : ''}`} />}
-        <Row icon={Activity} label="Python" value={d.python_version?.split(' ')[0]} />
+        {d.git?.commit && <Row icon={Activity} label="Git Commit" value={`${String(d.git.commit).slice(0, 7)}${d.git.branch ? ` (${d.git.branch})` : ''}`} />}
+        <Row icon={Activity} label="Python" value={d.python_version ? String(d.python_version).split(' ')[0] : null} />
         <Row icon={Activity} label="rclone" value={d.rclone_version} />
         <Row icon={Activity} label="mpv" value={d.mpv_version} />
       </Section>
@@ -221,8 +227,8 @@ function SystemFormatter({ data }) {
 
 function SimpleMessageFormatter({ data, commandKey }) {
   const d = data || {};
-  const message = d.message || d.stdout || (d.ok ? '指令已執行' : null);
-  const error = d.error || d.stderr;
+  const message = d.message != null ? fmt(d.message) : (d.stdout != null ? fmt(d.stdout) : (d.ok ? '指令已執行' : null));
+  const error = d.error != null ? fmt(d.error) : (d.stderr != null ? fmt(d.stderr) : null);
   return (
     <div className="resp-card">
       <Section title={commandLabel(commandKey)} icon={CheckCircle2}>
@@ -302,7 +308,28 @@ function WatchdogFormatter({ data }) {
   );
 }
 
-export default function ResponseFormatter({ commandKey, data, error }) {
+class FormatterErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="resp-alert resp-alert-danger">
+          <AlertCircle size={18} />
+          <div>輸出格式化失敗：{this.state.error?.message || '未知錯誤'}</div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function ResponseFormatterInner({ commandKey, data, error }) {
   if (error) {
     return (
       <div className="resp-alert resp-alert-danger">
@@ -340,4 +367,12 @@ export default function ResponseFormatter({ commandKey, data, error }) {
     );
   }
   return <pre className="resp-pre">{String(data)}</pre>;
+}
+
+export default function ResponseFormatter(props) {
+  return (
+    <FormatterErrorBoundary>
+      <ResponseFormatterInner {...props} />
+    </FormatterErrorBoundary>
+  );
 }

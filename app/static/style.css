@@ -210,7 +210,8 @@ a { color: inherit; text-decoration: none; }
   font-size: 1rem;
   font-weight: 600;
   color: var(--accent-2);
-  display: flex; align-items: center; gap: 0.5rem;
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  text-align: center;
 }
 .card h2 .icon, .card h3 .icon { font-size: 1.1rem; }
 .card-header {
@@ -219,7 +220,7 @@ a { color: inherit; text-decoration: none; }
   margin-bottom: 1rem;
   flex-wrap: wrap;
 }
-.card-header h2, .card-header h3 { margin: 0; }
+.card-header h2, .card-header h3 { margin: 0; justify-content: flex-start; text-align: left; }
 
 /* Password input with eye */
 .password-wrap {
@@ -719,15 +720,15 @@ button .spinner, .btn .spinner { border-color: rgba(255,255,255,0.3); border-top
   align-items: start;
   margin-bottom: 1rem;
 }
-/* Match the screenshot layout exactly:
-   Row 1: 店家資訊 | 同步設定 | WebDAV/手動同步
-   Row 2: MQTT 連線設定 | 系統初始化 | 網路設定 */
+/* Layout:
+   Row 1: 店家資訊 | 網路設定 | 同步設定
+   Row 2: MQTT 連線設定 | 系統初始化 | WebDAV/手動同步 */
 .settings-col-1 { grid-column: 1; grid-row: 1; }
 .settings-col-3 { grid-column: 2; grid-row: 1; }
-.settings-col-4 { grid-column: 3; grid-row: 1; }
+.settings-col-4 { grid-column: 3; grid-row: 2; }
 .settings-col-2 { grid-column: 1; grid-row: 2; }
 .settings-col-init { grid-column: 2; grid-row: 2; }
-.settings-col-5 { grid-column: 3; grid-row: 2; }
+.settings-col-5 { grid-column: 3; grid-row: 1; }
 
 .settings-layout > .card { align-self: start; }
 
@@ -795,7 +796,7 @@ button .spinner, .btn .spinner { border-color: rgba(255,255,255,0.3); border-top
   .watchdog-fields { grid-template-columns: 1fr; gap: 0.6rem 0; }
 }
 
-button.icon-left { justify-content: flex-start; padding-left: 0.85rem; }
+button.icon-left { justify-content: center; padding-left: 0.85rem; }
 button.icon-left span { font-size: 1rem; }
 
 .form-group { margin-bottom: 0.85rem; }
@@ -977,6 +978,15 @@ button.icon-left span { font-size: 1rem; }
   font-size: 3rem; flex-shrink: 0;
   box-shadow: 0 6px 20px rgba(30, 136, 255, 0.25);
 }
+.player-main-row .cover.waveform {
+  gap: 1px;
+  padding: 0 0.4rem;
+  opacity: 0.9;
+}
+.player-main-row .cover.waveform span {
+  width: 1.5px;
+  background: rgba(255,255,255,0.95);
+}
 .player-info { flex: 1; min-width: 0; }
 .player-info .label { color: var(--muted); font-size: 0.78rem; }
 .player-info .track-title { font-size: 1.1rem; font-weight: 700; margin: 0.15rem 0 0.6rem; }
@@ -1033,10 +1043,10 @@ button.icon-left span { font-size: 1rem; }
 }
 .maintenance-col button {
   display: flex; align-items: center; gap: 0.4rem;
-  justify-content: flex-start; padding: 0.55rem 0.5rem;
+  justify-content: center; padding: 0.55rem 0.5rem;
   background: var(--panel-2); border: 1px solid var(--border);
   color: var(--text-secondary); font-size: 0.78rem;
-  text-align: left; line-height: 1.2;
+  text-align: center; line-height: 1.2;
 }
 .maintenance-col button:hover { background: var(--panel-hover); color: var(--text); }
 .maintenance-col button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
@@ -1234,7 +1244,7 @@ button.loading, .btn.loading {
   .player-body { grid-template-columns: 1fr; }
   .player-main-row .cover { width: 80px; height: 80px; font-size: 2rem; }
   .player-controls { flex-wrap: wrap; }
-  .waveform { display: none; }
+  .waveform:not(.cover) { display: none; }
   .card { padding: 1rem; }
   .table { display: block; overflow-x: auto; white-space: nowrap; }
   .log-toolbar { flex-direction: column; align-items: flex-start; }

@@ -36,12 +36,10 @@ def _read_text_file(path: Path, default: str = "") -> str:
         return default
 
 
-def install_watchdog(target: str = "8.8.8.8", interval: int = 60, retries: int = 3) -> dict:
+def install_watchdog(target: str = "8.8.8.8", interval: int = 300, retries: int = 5) -> dict:
     """Install or update the network watchdog script, service and timer."""
     errors = []
     try:
-        STATE_DIR.mkdir(parents=True, exist_ok=True)
-
         if not SCRIPT_SRC.exists():
             return {"ok": False, "error": f"Watchdog script source not found: {SCRIPT_SRC}"}
         if not SERVICE_SRC.exists():
@@ -51,6 +49,12 @@ def install_watchdog(target: str = "8.8.8.8", interval: int = 60, retries: int =
         target = (target or "8.8.8.8").strip()
         interval = max(10, min(3600, int(interval or 60)))
         max_fail = max(1, min(20, int(retries or 3)))
+
+        # Ensure state dir exists with sudo (needs root ownership for systemd timer)
+        state_mkdir = run(["sudo", "mkdir", "-p", str(STATE_DIR)], timeout=10)
+        if not state_mkdir.get("ok"):
+            return {"ok": False, "error": f"無法建立狀態目錄 {STATE_DIR}：{state_mkdir.get('stderr')}"}
+        run(["sudo", "chmod", "755", str(STATE_DIR)], timeout=10)
 
         # Write configurable config file
         config_content = f"""# Nikko Network Watchdog configuration
@@ -87,7 +91,7 @@ WantedBy=timers.target
         if not cp_timer.get("ok"):
             errors.append(f"copy timer failed: {cp_timer.get('stderr')}")
 
-        chmod_res = run(["chmod", "+x", str(SCRIPT_DST)], timeout=10)
+        chmod_res = run(["sudo", "chmod", "+x", str(SCRIPT_DST)], timeout=10)
         if not chmod_res.get("ok"):
             errors.append(f"chmod script failed: {chmod_res.get('stderr')}")
 
@@ -101,7 +105,7 @@ WantedBy=timers.target
 
         if errors:
             return {"ok": False, "installed": True, "error": "; ".join(errors)}
-        return {"ok": True, "installed": True, "target": target, "interval": interval, "retries": max_fail}
+        return {"ok": True, "installed": True, "target": target, "interval": interval, "retries": max_fail, "message": f"網路看門狗已安裝並啟用：ping {target} / 每 {interval} 秒檢查 / 連續 {max_fail} 次失敗後修復"}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 

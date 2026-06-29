@@ -78,6 +78,10 @@ async def save_webdav_settings(
     clean_path = remote_path_raw.lstrip("/")
     stored_remote_path = f"{remote_name}:{clean_path}" if clean_path else RCLONE_REMOTE_PATH_DEFAULT
 
+    # Treat mask placeholder as "no change" so the UI does not overwrite the real password.
+    if password == "********":
+        password = ""
+
     # Only rewrite rclone config if a password was provided; otherwise keep existing config
     if password:
         try:

@@ -172,7 +172,13 @@ def sync_music(remote_path: str, local_path: str, dry_run: bool = False) -> dict
     finished_at = datetime.utcnow().isoformat()
 
     status = "success" if result["ok"] else "failed"
-    message = "Dry-run completed" if dry_run else ("Sync completed" if result["ok"] else "Sync failed")
+    if dry_run:
+        message = "連線測試完成：可正常連線至 NAS WebDAV"
+    elif result["ok"]:
+        message = "同步 NAS WebDAV 完成：音樂檔案已更新到本機"
+    else:
+        err = (result.get("stderr") or result.get("stdout") or "未知錯誤").strip()
+        message = f"同步 NAS WebDAV 失敗：{err[:200]}"
 
     # Append to sync log file (sanitise password)
     SYNC_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -190,6 +196,7 @@ def sync_music(remote_path: str, local_path: str, dry_run: bool = False) -> dict
     set_setting("last_sync_status", status)
     set_setting("last_sync_message", message)
 
+    result["message"] = message
     return result
 
 

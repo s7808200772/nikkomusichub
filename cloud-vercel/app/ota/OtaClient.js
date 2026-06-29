@@ -22,14 +22,15 @@ function formatVersion(data) {
   }
   const parsed = data.parsed || data.result || {};
 
-  // Handle git object: { commit, branch }
+  // Handle git object: { commit, branch, date }
   if (parsed.git && typeof parsed.git === 'object') {
     const commit = String(parsed.git.commit || '').trim();
     const branch = String(parsed.git.branch || '').trim();
+    const date = parsed.git.date ? new Date(parsed.git.date).toLocaleDateString('zh-TW') : '';
     const shortCommit = commit.length > 7 ? commit.slice(0, 7) : commit;
     if (!isUnknown(commit)) {
-      if (!isUnknown(branch)) return { value: `${shortCommit} (${branch})`, ok: true };
-      return { value: shortCommit, ok: true };
+      const base = !isUnknown(branch) ? `${shortCommit} (${branch})` : shortCommit;
+      return { value: date ? `${base} · ${date}` : base, ok: true };
     }
   }
 

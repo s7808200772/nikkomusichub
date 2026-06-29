@@ -341,7 +341,7 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <Server size={20} color="var(--accent-2)" /> 目標店點
-            <span className="badge badge-gray">{selected.size} / {stores.length}</span>
+            <span className="badge badge-white">{selected.size} / {stores.length}</span>
           </h2>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button className="ghost" onClick={selectAll} disabled={stores.length === 0} title="全選/取消全選店點">
@@ -383,7 +383,7 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <Music size={20} color="var(--accent-2)" /> NAS 音樂清單
-            <span className="badge badge-gray">{files.length}</span>
+            <span className="badge badge-white">{files.length}</span>
           </h2>
           {lastTs && <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>最後更新：{new Date(lastTs).toLocaleString('zh-TW')}</span>}
         </div>

@@ -37,17 +37,16 @@
   <!-- Player console -->
   <div class="card player-console dash-player">
     <h2><span class="icon">🎛️</span>播放控制台</h2>
-    <div class="waveform" id="waveform" aria-hidden="true">
-      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-    </div>
     <div class="player-body">
       <div class="player-left">
         <div class="player-main-row">
-          <div class="cover">🎵</div>
+          <div class="cover waveform" id="waveform" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
           <div class="player-info">
             <div class="label">目前播放</div>
             <div class="track-title" id="p-track">-</div>
@@ -127,7 +126,7 @@
         <div class="status-row"><span class="label">mpv</span><span class="value" id="ss-mpv"><span class="dot {{ 'green' if data.mpv_installed else 'gray' }}"></span> <span class="skeleton" id="ss-mpv-text">已{{ '安裝' if data.mpv_installed else '未安裝' }}</span></span></div>
         <div class="status-row"><span class="label">mpv 版本</span><span class="value small skeleton" id="ss-mpv-ver" style="font-size:.7rem;">{{ data.mpv_version or '-' }}</span></div>
         <div class="status-row"><span class="label">音樂服務</span><span class="value" id="ss-player-svc"><span class="dot {{ 'green' if data.player_service_status == 'active' else 'gray' }}"></span> <span class="skeleton" id="ss-player-svc-text">{{ data.player_service_status or 'inactive' }}</span></span></div>
-        <div class="hint" style="margin-top:.3rem;">音樂服務 = systemd 播放器服務（nikko-music-player.service）。inactive 表示 mpv 沒在背景執行，按首頁「播放」或維護區「啟動播放服務」即可喚醒。</div>
+        <div class="hint" id="ss-player-svc-hint" style="margin-top:.3rem;">音樂服務 = systemd 播放器服務。若正在播放，狀態會顯示「播放中」；若為 inactive，按首頁「播放」或維護區「啟動播放服務」即可喚醒。</div>
       </div>
 
       <div class="status-card">
@@ -285,8 +284,16 @@ function updateStatusCards(data) {
   setValue('ss-rclone-text', '已' + (data.rclone_installed ? '安裝' : '未安裝'));
   setDot('ss-mpv', data.mpv_installed);
   setValue('ss-mpv-text', '已' + (data.mpv_installed ? '安裝' : '未安裝'));
-  setDot('ss-player-svc', data.player_service_status === 'active');
-  setValue('ss-player-svc-text', data.player_service_status || 'inactive');
+  const isPlaying = data.player_status === 'playing';
+  const playerSvcText = isPlaying ? '播放中' : (data.player_service_status || 'inactive');
+  setDot('ss-player-svc', data.player_service_status === 'active' || isPlaying);
+  setValue('ss-player-svc-text', playerSvcText);
+  const playerHint = document.getElementById('ss-player-svc-hint');
+  if (playerHint) {
+    playerHint.textContent = isPlaying
+      ? '目前 mpv 正在播放音樂。'
+      : '音樂服務 = systemd 播放器服務。若正在播放，狀態會顯示「播放中」；若為 inactive，按首頁「播放」或維護區「啟動播放服務」即可喚醒。';
+  }
   setValue('ss-rclone-ver', data.rclone_version || '-');
   setValue('ss-mpv-ver', data.mpv_version || '-');
 
@@ -625,24 +632,43 @@ function updateConnRow(rowId, textId, ok, text) {
 }
 
 async function loadConnectivity() {
-  try {
-    const [ts, qnap] = await Promise.all([
-      apiGet('/api/health/tailscale'),
-      apiGet('/api/health/qnap'),
-    ]);
-    const tsUp = !!ts.up;
-    updateConnRow('ss-tailscale', 'ss-tailscale-text', tsUp, tsUp ? '上線' : '未上線');
+  // Set a per-endpoint timeout so the UI never gets stuck at "檢查中…"
+  const fetchJson = async (url, timeoutMs = 10000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const r = await fetch(url, { signal: controller.signal });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    } finally {
+      clearTimeout(id);
+    }
+  };
 
-    const qnapReachable = !!(qnap.ok && qnap.webdav_ok);
-    let qnapText = '檢查中…';
-    if (qnapReachable) qnapText = 'QNAP 可連線';
-    else if (qnap.tailscale_ping_ok === false) qnapText = 'Tailscale 不通';
-    else if (qnap.webdav_ok === false) qnapText = 'WebDAV 失敗';
-    else qnapText = '未設定';
-    updateConnRow('ss-webdav', 'ss-webdav-text', qnapReachable, qnapText);
+  let ts = { up: false };
+  let qnap = { ok: false, webdav_ok: false, tailscale_ping_ok: undefined };
+  try {
+    ts = await fetchJson('/api/health/tailscale', 10000);
   } catch (e) {
-    console.warn('loadConnectivity failed', e);
+    console.warn('tailscale health failed', e);
   }
+  try {
+    qnap = await fetchJson('/api/health/qnap', 15000);
+  } catch (e) {
+    console.warn('qnap health failed', e);
+  }
+
+  const tsUp = !!ts.up;
+  updateConnRow('ss-tailscale', 'ss-tailscale-text', tsUp, tsUp ? '上線' : '未上線');
+
+  let qnapText = '檢查中…';
+  const qnapReachable = !!(qnap.ok && qnap.webdav_ok);
+  if (qnapReachable) qnapText = 'QNAP 可連線';
+  else if (qnap.tailscale_ping_ok === false) qnapText = 'Tailscale 不通';
+  else if (qnap.webdav_ok === false) qnapText = 'WebDAV 失敗';
+  else if (qnap.ok === false) qnapText = 'QNAP 連線失敗';
+  else qnapText = '未設定';
+  updateConnRow('ss-webdav', 'ss-webdav-text', qnapReachable, qnapText);
 }
 
 loadDashboardData();

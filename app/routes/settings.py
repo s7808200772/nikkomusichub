@@ -57,6 +57,7 @@ async def settings_page(request: Request):
         "boot_delay_min": int(get_setting("sync_boot_delay_min", "2")),
         "auto_restart_player": bool(int(get_setting("auto_restart_player", "1"))),
         "configured": rclone.get_rclone_config_exists(),
+        "webdav_password_set": rclone.get_rclone_config_exists(),
         "mqtt": mqtt_settings,
         "wifi_ssid": get_setting("wifi_ssid", ""),
         "wifi_password": get_setting("wifi_password", ""),

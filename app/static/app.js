@@ -326,6 +326,22 @@ function updateSidebarClock() {
 updateSidebarClock();
 setInterval(updateSidebarClock, 1000);
 
+// Top bar clock (YYYY-MM-DD HH:MM:SS)
+function updateTopbarClock() {
+  const el = document.getElementById('nav-clock');
+  if (!el) return;
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const h = String(now.getHours()).padStart(2, '0');
+  const min = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  el.textContent = `${y}-${m}-${d} ${h}:${min}:${s}`;
+}
+updateTopbarClock();
+setInterval(updateTopbarClock, 1000);
+
 // HTMX SPA: update active nav link after navigation
 document.body.addEventListener('htmx:afterSettle', function(evt) {
   const path = window.location.pathname;

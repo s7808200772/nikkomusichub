@@ -332,7 +332,12 @@ def handle_command(command_key, payload=None):
             threading.Thread(target=_rollback, daemon=True).start()
             return True, {"ok": True, "message": "Rollback started in background"}
         if command_key == "network_watchdog_install":
-            res = install_watchdog()
+            cfg = payload if isinstance(payload, dict) else {}
+            res = install_watchdog(
+                target=cfg.get("target") or "8.8.8.8",
+                interval=int(cfg.get("interval") or 300),
+                retries=int(cfg.get("threshold") or cfg.get("retries") or 5),
+            )
             return res.get("ok", False), res
         if command_key == "network_watchdog_disable":
             res = disable_watchdog()

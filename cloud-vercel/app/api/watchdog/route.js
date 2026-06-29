@@ -16,7 +16,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { action, storeId, storeIds, lines = 50 } = body || {};
+  const { action, storeId, storeIds, lines = 50, target, interval, threshold } = body || {};
   const validActions = ['install', 'disable', 'status', 'logs'];
   if (!validActions.includes(action)) {
     return NextResponse.json({ error: `Invalid action. Must be one of: ${validActions.join(', ')}` }, { status: 400 });
@@ -24,6 +24,11 @@ export async function POST(request) {
 
   const commandKey = `network_watchdog_${action}`;
   const isBulk = Array.isArray(storeIds) && storeIds.length > 0;
+  const installParams = action === 'install' ? {
+    target: typeof target === 'string' && target.trim() ? target.trim() : '8.8.8.8',
+    interval: Number.isFinite(Number(interval)) && Number(interval) >= 10 ? Number(interval) : 300,
+    threshold: Number.isFinite(Number(threshold)) && Number(threshold) >= 1 ? Number(threshold) : 5,
+  } : {};
 
   try {
     if (isBulk) {
@@ -45,7 +50,8 @@ export async function POST(request) {
         return NextResponse.json({ error: 'No valid stores found' }, { status: 404 });
       }
       const batchTimeout = commandKey === 'network_watchdog_install' ? 120000 : commandKey === 'network_watchdog_disable' ? 60000 : 15000;
-      const job = await publishBatch({ stores, commandKey, payload: { lines }, timeout: batchTimeout });
+      const payload = action === 'install' ? { ...installParams, lines } : { lines };
+      const job = await publishBatch({ stores, commandKey, payload, timeout: batchTimeout });
       return NextResponse.json({ ok: true, jobId: job.jobId, action, count: stores.length });
     }
 
@@ -58,6 +64,7 @@ export async function POST(request) {
     }
 
     const timeoutMs = action === 'install' ? 120000 : action === 'disable' ? 60000 : 15000;
+    const payload = action === 'install' ? { ...installParams, lines } : { lines };
     const result = await publishCommandWithRetry({
       broker: store.mqttBroker,
       port: store.mqttPort || (store.mqttTls === true ? 8883 : 1883),
@@ -67,7 +74,7 @@ export async function POST(request) {
       tlsVerify: store.tlsVerify === true,
       storeId: store.storeId,
       commandKey,
-      payload: { lines },
+      payload,
       timeout: timeoutMs,
       retries: action === 'install' || action === 'disable' ? 1 : 2,
     });

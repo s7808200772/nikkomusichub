@@ -238,6 +238,8 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
   const [watchdogModal, setWatchdogModal] = useState(null);
   const [watchdogBusy, setWatchdogBusy] = useState({});
   const [watchdogResult, setWatchdogResult] = useState({});
+  const [watchdogConfig, setWatchdogConfig] = useState({ target: '8.8.8.8', interval: 300, threshold: 5 });
+  const [showWatchdogConfig, setShowWatchdogConfig] = useState(false);
 
   async function watchdogAction(action, storeId) {
     if (!supabaseOk) {
@@ -250,11 +252,17 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
     }
     setWatchdogBusy((prev) => ({ ...prev, [`${action}:${storeId}`]: true }));
     const timeout = action === 'install' ? 120000 : action === 'disable' ? 60000 : 15000;
+    const body = { action, storeId };
+    if (action === 'install') {
+      body.target = watchdogConfig.target || '8.8.8.8';
+      body.interval = Number(watchdogConfig.interval) || 300;
+      body.threshold = Number(watchdogConfig.threshold) || 5;
+    }
     try {
       const res = await fetchWithTimeout('/api/watchdog', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, storeId }),
+        body: JSON.stringify(body),
       }, timeout + 15000);
       const data = await res.json();
       const humanError = data.ok ? null : humanizeCommandError(data.error, timeout);
@@ -292,11 +300,17 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
     }
     setWatchdogBusy((prev) => ({ ...prev, [`bulk:${action}`]: true }));
     const timeout = action === 'install' ? 120000 : action === 'disable' ? 60000 : 15000;
+    const body = { action, storeIds: ids };
+    if (action === 'install') {
+      body.target = watchdogConfig.target || '8.8.8.8';
+      body.interval = Number(watchdogConfig.interval) || 300;
+      body.threshold = Number(watchdogConfig.threshold) || 5;
+    }
     try {
       const res = await fetchWithTimeout('/api/watchdog', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, storeIds: ids }),
+        body: JSON.stringify(body),
       }, timeout + 15000);
       const data = await res.json();
       setMsg(`批量看門狗${action === 'install' ? '安裝/更新' : '停用'}：已送出 ${data.count || 0} 間店（jobId: ${data.jobId || '-'}）`);
@@ -431,6 +445,15 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
               {watchdogBusy[`bulk:disable`] ? <Loader2 size={14} className="spin" /> : <ShieldOff size={14} />}
               批量停用看門狗
             </button>
+            <button
+              type="button"
+              className="ghost"
+              style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem' }}
+              onClick={() => setShowWatchdogConfig((s) => !s)}
+              title="設定看門狗參數"
+            >
+              {showWatchdogConfig ? '收起參數' : '看門狗參數'}
+            </button>
             <div style={{ position: 'relative', minWidth: '240px' }}>
               <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
               <input
@@ -442,6 +465,43 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
             </div>
           </div>
         </div>
+
+        {showWatchdogConfig && (
+          <div className="card" style={{ background: 'var(--bg-2)', marginTop: '-0.75rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Ping 目標</label>
+                <input
+                  value={watchdogConfig.target}
+                  onChange={(e) => setWatchdogConfig({ ...watchdogConfig, target: e.target.value })}
+                  placeholder="8.8.8.8"
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>檢查間隔（秒）</label>
+                <input
+                  type="number"
+                  min={10}
+                  max={3600}
+                  value={watchdogConfig.interval}
+                  onChange={(e) => setWatchdogConfig({ ...watchdogConfig, interval: e.target.value })}
+                  placeholder="300"
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>連續失敗次數</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={watchdogConfig.threshold}
+                  onChange={(e) => setWatchdogConfig({ ...watchdogConfig, threshold: e.target.value })}
+                  placeholder="5"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {filtered.length > 0 ? (
           <table className="list-table" style={{ marginBottom: editing ? '1rem' : 0 }}>

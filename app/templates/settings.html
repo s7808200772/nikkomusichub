@@ -10,6 +10,19 @@
 {% block sidebar_status %}{% endblock %}
 {% block content %}
 
+<div class="card" id="op-status-card">
+  <h2><span class="icon">📋</span>操作狀態</h2>
+  <pre class="log-output" id="op-status">等待操作…</pre>
+  <div class="progress-track" id="op-progress-track" style="display:none; margin-top:.75rem;"><div class="progress-bar-fill" id="op-progress-bar"></div></div>
+  <div class="progress-stats" id="op-progress-stats" style="display:none; margin-top:.5rem;">
+    <span>進度：<b id="op-progress-percent">0%</b></span>
+    <span>已傳輸：<b id="op-transferred">-</b></span>
+    <span>總計：<b id="op-total">-</b></span>
+    <span>速度：<b id="op-speed">-</b></span>
+    <span>ETA：<b id="op-eta">-</b></span>
+  </div>
+</div>
+
 <div class="settings-layout">
   <div class="card settings-col-1">
     <h2><span class="icon">🏪</span>店家資訊</h2>
@@ -65,114 +78,6 @@
   </div>
 
   <div class="card settings-col-3">
-    <h2><span class="icon">🔄</span>同步設定</h2>
-    <form id="sync-form" onsubmit="saveSyncSettings(event)">
-      <div class="form-group">
-        <label>同步模式</label>
-        <select name="sync_mode" id="sync_mode" title="選擇 rclone 同步模式">
-          <option value="sync" {% if settings.sync_mode == 'sync' %}selected{% endif %}>sync（NAS 為主，本地同步）</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="switch-label" title="開啟後會依照下方時間每日自動同步">
-          <span class="switch"><input type="checkbox" name="daily_sync_enabled" id="daily_sync_enabled" value="1" {% if settings.daily_sync_enabled %}checked{% endif %}><span class="slider"></span></span>
-          啟用每日同步
-        </label>
-      </div>
-      <div class="form-group">
-        <label>每日同步時間</label>
-        <input name="sync_time" id="sync_time" value="{{ settings.sync_time }}" required placeholder="HH:MM" title="每日自動執行同步的時間">
-      </div>
-      <div class="form-group">
-        <label>開機延遲同步（分鐘）</label>
-        <input name="boot_delay_min" id="boot_delay_min" type="number" value="{{ settings.boot_delay_min }}" required title="開機後等待多久再執行第一次同步">
-      </div>
-      <div class="form-group">
-        <label class="switch-label" title="同步完成後自動重新載入播放清單">
-          <span class="switch"><input type="checkbox" name="auto_restart_player" id="auto_restart_player" value="1" {% if settings.auto_restart_player %}checked{% endif %}><span class="slider"></span></span>
-          同步完成後自動重啟播放器
-        </label>
-      </div>
-      <button type="submit" class="primary block icon-left" title="儲存同步相關設定"><span>💾</span> 儲存同步設定</button>
-    </form>
-  </div>
-
-  <div class="card settings-col-init">
-    <h2><span class="icon">🛠️</span>系統初始化</h2>
-    <div class="init-stack">
-      <button class="block icon-left" onclick="runAction(this, '/api/setup/apt-update', null, 'op-status')" title="執行 apt update + upgrade"><span>🔄</span> 系統更新（apt update + upgrade）</button>
-      <div class="init-row">
-        <button class="block icon-left" onclick="runAction(this, '/api/setup/install-rclone', null, 'op-status')" title="安裝 rclone 同步工具"><span>📦</span> 安裝 rclone</button>
-        <button class="block icon-left" onclick="runAction(this, '/api/setup/install-mpv', null, 'op-status')" title="安裝 mpv 音樂播放器"><span>🎵</span> 安裝 mpv</button>
-      </div>
-      <button class="block icon-left" onclick="runAction(this, '/api/setup/create-folders', null, 'op-status')" title="建立音樂與 log 資料夾"><span>📁</span> 建立音樂資料夾</button>
-      <button class="block icon-left" onclick="runAction(this, '/api/setup/install-service', null, 'op-status')" title="重新載入 systemd 設定"><span>⚙️</span> 重新載入 systemd</button>
-      <div class="init-row">
-        <button class="block icon-left" onclick="installWatchdog(this)" title="安裝並啟用網路看門狗"><span>🐕</span> 安裝網路看門狗</button>
-      </div>
-      <div class="watchdog-config" style="margin-top:.75rem;">
-        <div class="form-group">
-          <label>🐕 看門狗設定</label>
-          <div class="hint">當網路斷線時，自動嘗試修復（重啟 NetworkManager → Tailscale → 最後重開機）。下方三個數字請依店點網路環境調整。</div>
-        </div>
-        <div class="watchdog-fields">
-          <div class="form-group">
-            <label>Ping 目標</label>
-            <input id="wd-target" value="8.8.8.8" placeholder="例如 8.8.8.8" title="看門狗會持續 ping 這個位址來判斷網路是否正常">
-            <div class="hint">建議填穩定的外部位址，例如 Google DNS 8.8.8.8 或店點閘道器 IP。</div>
-          </div>
-          <div class="form-group">
-            <label>檢查間隔（秒）</label>
-            <input id="wd-interval" value="60" type="number" min="10" max="3600" placeholder="例如 60" title="每隔幾秒檢查一次網路">
-            <div class="hint">預設 60 秒。間隔太短會頻繁 ping，太長則斷線後反應較慢。</div>
-          </div>
-          <div class="form-group">
-            <label>連續失敗幾次後修復</label>
-            <input id="wd-retries" value="3" type="number" min="1" max="20" placeholder="例如 3" title="連續幾次 ping 失敗就執行修復動作">
-            <div class="hint">預設 3 次。次數太少可能誤判短暫抖動，太多則延遲修復。</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card settings-col-4">
-    <h2><span class="icon">🖐️</span>WebDAV / 手動同步</h2>
-    <form id="webdav-form" onsubmit="saveWebDAV(event)">
-      <div class="webdav-grid">
-        <div class="form-group full-width">
-          <label>WebDAV URL</label>
-          <input name="url" id="url" value="{{ settings.url }}" required placeholder="https://example.com/webdav" title="QNAP WebDAV URL">
-        </div>
-        <div class="form-group">
-          <label>Username</label>
-          <input name="username" id="username" value="{{ settings.username }}" autocomplete="off" required placeholder="請輸入 Username" title="WebDAV 使用者名稱">
-        </div>
-        <div class="form-group">
-          <label>Password</label>
-          <div class="password-wrap">
-            <input type="password" name="password" id="webdav-password" autocomplete="off" placeholder="請輸入 Password" title="WebDAV 密碼（首次設定必填，之後留空可保留現有密碼）">
-            <button type="button" class="eye-btn" onclick="togglePwd('webdav-password', this)" title="顯示 / 隱藏密碼">👁</button>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Remote Music Path</label>
-          <input name="remote_path" id="remote_path" value="{{ settings.remote_path_raw }}" required placeholder="/NikkoMusic" title="NAS 上的音樂路徑，例如 /NikkoMusic">
-        </div>
-        <div class="form-group">
-          <label>Local Music Path</label>
-          <input name="local_path" id="local_path" value="{{ settings.local_path }}" required placeholder="/volume1/music" title="本地音樂儲存路徑">
-        </div>
-      </div>
-    </form>
-    <div class="webdav-btn-row">
-      <button type="submit" form="webdav-form" id="btn-save-webdav" class="primary icon-left" title="儲存 WebDAV 連線設定"><span>💾</span> 儲存設定</button>
-      <button class="primary icon-left" onclick="testWebDAVConnection(this)" id="btn-dryrun" title="測試 WebDAV 連線是否正常"><span>🔌</span> 測試連線</button>
-      <button class="success icon-left" onclick="startSync(this, false)" id="btn-sync" title="立即執行 NAS 到本地的音樂同步"><span>▶</span> 立即同步</button>
-    </div>
-  </div>
-
-  <div class="card settings-col-5">
     <h2><span class="icon">🌐</span>網路設定</h2>
     <form id="network-form" onsubmit="saveNetworkSettings(event)">
       <div class="network-grid">
@@ -208,18 +113,115 @@
       <div id="network-msg" class="network-msg"></div>
     </form>
   </div>
-</div>
 
-<div class="card" id="op-status-card">
-  <h2><span class="icon">📋</span>操作狀態</h2>
-  <pre class="log-output" id="op-status">等待操作…</pre>
-  <div class="progress-track" id="op-progress-track" style="display:none; margin-top:.75rem;"><div class="progress-bar-fill" id="op-progress-bar"></div></div>
-  <div class="progress-stats" id="op-progress-stats" style="display:none; margin-top:.5rem;">
-    <span>進度：<b id="op-progress-percent">0%</b></span>
-    <span>已傳輸：<b id="op-transferred">-</b></span>
-    <span>總計：<b id="op-total">-</b></span>
-    <span>速度：<b id="op-speed">-</b></span>
-    <span>ETA：<b id="op-eta">-</b></span>
+  <div class="card settings-col-4">
+    <h2><span class="icon">🔄</span>同步設定</h2>
+    <form id="sync-form" onsubmit="saveSyncSettings(event)">
+      <div class="form-group">
+        <label>同步模式</label>
+        <select name="sync_mode" id="sync_mode" title="選擇 rclone 同步模式">
+          <option value="sync" {% if settings.sync_mode == 'sync' %}selected{% endif %}>sync（NAS 為主，本地同步）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="switch-label" title="開啟後會依照下方時間每日自動同步">
+          <span class="switch"><input type="checkbox" name="daily_sync_enabled" id="daily_sync_enabled" value="1" {% if settings.daily_sync_enabled %}checked{% endif %}><span class="slider"></span></span>
+          啟用每日同步
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="switch-label" title="同步完成後自動重新載入播放清單">
+          <span class="switch"><input type="checkbox" name="auto_restart_player" id="auto_restart_player" value="1" {% if settings.auto_restart_player %}checked{% endif %}><span class="slider"></span></span>
+          同步完成後自動重啟播放器
+        </label>
+      </div>
+      <div class="form-group">
+        <label>每日同步時間</label>
+        <input name="sync_time" id="sync_time" value="{{ settings.sync_time }}" required placeholder="HH:MM" title="每日自動執行同步的時間">
+      </div>
+      <div class="form-group">
+        <label>開機延遲同步（分鐘）</label>
+        <input name="boot_delay_min" id="boot_delay_min" type="number" value="{{ settings.boot_delay_min }}" required title="開機後等待多久再執行第一次同步">
+      </div>
+      <button type="submit" class="primary block icon-left" title="儲存同步相關設定"><span>💾</span> 儲存同步設定</button>
+    </form>
+  </div>
+
+  <div class="card settings-col-init">
+    <h2><span class="icon">🛠️</span>系統初始化</h2>
+    <div class="init-stack">
+      <div class="init-row">
+        <button class="block icon-left" onclick="runAction(this, '/api/setup/apt-update', null, 'op-status')" title="執行 apt update + upgrade"><span>🔄</span> 系統更新</button>
+        <button class="block icon-left" onclick="installWatchdog(this)" title="安裝並啟用網路看門狗"><span>🐕</span> 安裝網路看門狗</button>
+      </div>
+      <div class="init-row">
+        <button class="block icon-left" onclick="runAction(this, '/api/setup/install-rclone', null, 'op-status')" title="安裝 rclone 同步工具"><span>📦</span> 安裝 rclone</button>
+        <button class="block icon-left" onclick="runAction(this, '/api/setup/install-mpv', null, 'op-status')" title="安裝 mpv 音樂播放器"><span>🎵</span> 安裝 mpv</button>
+      </div>
+      <div class="init-row">
+        <button class="block icon-left" onclick="runAction(this, '/api/setup/create-folders', null, 'op-status')" title="建立音樂與 log 資料夾"><span>📁</span> 建立音樂資料夾</button>
+        <button class="block icon-left" onclick="runAction(this, '/api/setup/install-service', null, 'op-status')" title="重新載入 systemd 設定"><span>⚙️</span> 重新載入 systemd</button>
+      </div>
+      <div class="watchdog-config" style="margin-top:.75rem;">
+        <div class="form-group">
+          <label>🐕 看門狗設定</label>
+          <div class="hint">當網路斷線時，自動嘗試修復（重啟 NetworkManager → Tailscale → 最後重開機）。下方三個數字請依店點網路環境調整。</div>
+        </div>
+        <div class="watchdog-fields">
+          <div class="form-group">
+            <label>Ping 目標</label>
+            <input id="wd-target" value="8.8.8.8" placeholder="例如 8.8.8.8" title="看門狗會持續 ping 這個位址來判斷網路是否正常">
+            <div class="hint">建議填穩定的外部位址，例如 Google DNS 8.8.8.8 或店點閘道器 IP。</div>
+          </div>
+          <div class="form-group">
+            <label>檢查間隔（秒）</label>
+            <input id="wd-interval" value="300" type="number" min="10" max="3600" placeholder="例如 300" title="每隔幾秒檢查一次網路">
+            <div class="hint">預設 300 秒（5 分鐘）。間隔太短會頻繁 ping，太長則斷線後反應較慢。</div>
+          </div>
+          <div class="form-group">
+            <label>連續失敗幾次後修復</label>
+            <input id="wd-retries" value="5" type="number" min="1" max="20" placeholder="例如 5" title="連續幾次 ping 失敗就執行修復動作">
+            <div class="hint">預設 5 次。次數太少可能誤判短暫抖動，太多則延遲修復。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card settings-col-5">
+    <h2><span class="icon">🖐️</span>WebDAV / 手動同步</h2>
+    <form id="webdav-form" onsubmit="saveWebDAV(event)">
+      <div class="webdav-grid">
+        <div class="form-group full-width">
+          <label>WebDAV URL</label>
+          <input name="url" id="url" value="{{ settings.url }}" required placeholder="https://example.com/webdav" title="QNAP WebDAV URL">
+        </div>
+        <div class="form-group">
+          <label>Username</label>
+          <input name="username" id="username" value="{{ settings.username }}" autocomplete="off" required placeholder="請輸入 Username" title="WebDAV 使用者名稱">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="password-wrap">
+            <input type="password" name="password" id="webdav-password" autocomplete="off" value="{{ '********' if settings.webdav_password_set else '' }}" placeholder="請輸入 Password" title="WebDAV 密碼（首次設定必填，之後留空可保留現有密碼）">
+            <button type="button" class="eye-btn" onclick="togglePwd('webdav-password', this)" title="顯示 / 隱藏密碼">👁</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Remote Music Path</label>
+          <input name="remote_path" id="remote_path" value="{{ settings.remote_path_raw }}" required placeholder="/NikkoMusic" title="NAS 上的音樂路徑，例如 /NikkoMusic">
+        </div>
+        <div class="form-group">
+          <label>Local Music Path</label>
+          <input name="local_path" id="local_path" value="{{ settings.local_path }}" required placeholder="/volume1/music" title="本地音樂儲存路徑">
+        </div>
+      </div>
+    </form>
+    <div class="webdav-btn-row">
+      <button type="submit" form="webdav-form" id="btn-save-webdav" class="primary icon-left" title="儲存 WebDAV 連線設定"><span>💾</span> 儲存設定</button>
+      <button class="primary icon-left" onclick="testWebDAVConnection(this)" id="btn-dryrun" title="測試 WebDAV 連線是否正常"><span>🔌</span> 測試連線</button>
+      <button class="success icon-left" onclick="startSync(this, false)" id="btn-sync" title="立即執行 NAS 到本地的音樂同步"><span>▶</span> 立即同步</button>
+    </div>
   </div>
 </div>
 
