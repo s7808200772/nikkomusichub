@@ -69,10 +69,12 @@ NIKKO_COOKIE_SECURE=0
 NIKKO_DEFAULT_PASSWORD=topup30%off
 NIKKO_MQTT_COMMAND_SECRET=${MQTT_COMMAND_SECRET}
 NIKKO_MQTT_TOPIC_PREFIX=${MQTT_TOPIC_PREFIX}
-NIKKO_MQTT_TLS=1
-NIKKO_MQTT_TLS_VERIFY=1
-NIKKO_MQTT_PORT=8883
-NIKKO_MQTT_BROKER=broker.hivemq.com
+NIKKO_MQTT_TLS=0
+NIKKO_MQTT_TLS_VERIFY=0
+NIKKO_MQTT_PORT=1883
+NIKKO_MQTT_BROKER=114.55.1.51
+NIKKO_MQTT_USERNAME=admin
+NIKKO_MQTT_PASSWORD=topup30%off
 EOF
   chmod 600 "${ENV_FILE}"
 fi
@@ -86,6 +88,28 @@ if ! grep -qE '^NIKKO_DEFAULT_PASSWORD=' "${ENV_FILE}" 2>/dev/null; then
   umask 077
   echo "NIKKO_DEFAULT_PASSWORD=${DEFAULT_PASS}" >> "${ENV_FILE}"
   PASSWORD_ENV_WAS_MISSING=1
+fi
+
+# Migrate legacy MQTT defaults (broker.hivemq.com:8883) to the new internal broker.
+_ensure_env() {
+  local key="$1"
+  local value="$2"
+  if ! grep -qE "^${key}=" "${ENV_FILE}" 2>/dev/null; then
+    echo "${key}=${value}" >> "${ENV_FILE}"
+  fi
+}
+if [ -f "${ENV_FILE}" ]; then
+  if grep -qE '^NIKKO_MQTT_BROKER=broker\.hivemq\.com' "${ENV_FILE}" || \
+     grep -qE '^NIKKO_MQTT_PORT=8883' "${ENV_FILE}"; then
+    sed -i 's/^NIKKO_MQTT_BROKER=.*/NIKKO_MQTT_BROKER=114.55.1.51/' "${ENV_FILE}"
+    sed -i 's/^NIKKO_MQTT_PORT=.*/NIKKO_MQTT_PORT=1883/' "${ENV_FILE}"
+    sed -i 's/^NIKKO_MQTT_TLS=.*/NIKKO_MQTT_TLS=0/' "${ENV_FILE}"
+    sed -i 's/^NIKKO_MQTT_TLS_VERIFY=.*/NIKKO_MQTT_TLS_VERIFY=0/' "${ENV_FILE}"
+    sed -i 's/^NIKKO_MQTT_USERNAME=.*/NIKKO_MQTT_USERNAME=admin/' "${ENV_FILE}"
+    sed -i 's/^NIKKO_MQTT_PASSWORD=.*/NIKKO_MQTT_PASSWORD=topup30%off/' "${ENV_FILE}"
+  fi
+  _ensure_env NIKKO_MQTT_USERNAME admin
+  _ensure_env NIKKO_MQTT_PASSWORD topup30%off
 fi
 # Only rewrite the initial password file if the env variable was missing, which
 # indicates this is either a fresh install or an upgrade from a version that did
@@ -109,9 +133,19 @@ chown -R "${USER_NAME}:${USER_NAME}" "${INSTALL_DIR}/data"
 
 # Generate a default MQTT store ID based on hostname
 MQTT_STORE_ID=$(hostname | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
-if [ -z "${MQTT_STORE_ID}" ]; then
+if [ -n "${MQTT_STORE_ID}" ]; then
+  MQTT_STORE_ID="store-${MQTT_STORE_ID}"
+else
   MQTT_STORE_ID="store-$(openssl rand -hex 4)"
 fi
+
+# Seed default store_id and store_name into the local SQLite database.
+PYTHONPATH="${APP_DIR}" "${INSTALL_DIR}/venv/bin/python" -c "
+from app.db import init_db, set_setting
+init_db()
+set_setting('store_id', '${MQTT_STORE_ID}')
+set_setting('store_name', 'NikkoMusicHub 店點')
+" || log "WARNING: could not seed default store_id"
 
 SYSTEMD_SRC_DIR="${APP_DIR}/app/systemd"
 log "Installing systemd services from ${SYSTEMD_SRC_DIR}..."

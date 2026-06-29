@@ -92,10 +92,10 @@ export default function OtaClient({ initialStores, supabaseOk }) {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.5rem' }}>
             {stores.map((s) => (
-              <label key={s.storeId} className="card" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', padding: '0.75rem', margin: 0 }}>
-                <input type="checkbox" checked={selected.has(s.storeId)} onChange={() => toggleSelect(s.storeId)} />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{s.storeName}</div>
+              <label key={s.storeId} className="card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.75rem', margin: 0 }}>
+                <input type="checkbox" checked={selected.has(s.storeId)} onChange={() => toggleSelect(s.storeId)} style={{ width: '1.1rem', height: '1.1rem', flexShrink: 0 }} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.storeName}</div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{s.storeId}</div>
                 </div>
               </label>

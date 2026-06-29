@@ -28,15 +28,22 @@ async def webdav_page(request: Request):
     return RedirectResponse(url="/settings", status_code=303)
 
 
+def _remote_path_display(remote_path: str) -> str:
+    # Convert stored rclone path like "nikko_nas:NikkoMusic/sub" to "NikkoMusic\sub"
+    path = remote_path.split(":", 1)[-1].lstrip("/")
+    return path.replace("/", "\\")
+
+
 @router.get("/api/webdav/settings")
 async def webdav_settings(request: Request):
     get_current_user_or_local(request)
+    remote_path = get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT)
     return {
-        "remote_name": get_setting("webdav_remote", RCLONE_REMOTE_NAME_DEFAULT),
         "url": get_setting("webdav_url", RCLONE_WEBDAV_URL_DEFAULT),
         "vendor": get_setting("webdav_vendor", RCLONE_WEBDAV_VENDOR_DEFAULT),
         "username": get_setting("webdav_username", ""),
-        "remote_path": get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT),
+        "remote_path": remote_path,
+        "remote_path_display": _remote_path_display(remote_path),
         "local_path": get_setting("local_music_path", str(MUSIC_DIR)),
         "sync_mode": get_setting("sync_mode", "sync"),
         "daily_sync_enabled": bool(int(get_setting("daily_sync_enabled", "1"))),
@@ -50,7 +57,6 @@ async def webdav_settings(request: Request):
 @router.post("/api/webdav/settings")
 async def save_webdav_settings(
     request: Request,
-    remote_name: str = Form(RCLONE_REMOTE_NAME_DEFAULT),
     url: str = Form(RCLONE_WEBDAV_URL_DEFAULT),
     vendor: str = Form(RCLONE_WEBDAV_VENDOR_DEFAULT),
     username: str = Form(""),
@@ -59,11 +65,15 @@ async def save_webdav_settings(
     local_path: str = Form(str(MUSIC_DIR)),
 ):
     user = get_current_user_or_local(request)
-    remote_name = re.sub(r"[^a-zA-Z0-9_-]", "", remote_name) or RCLONE_REMOTE_NAME_DEFAULT
+    remote_name = RCLONE_REMOTE_NAME_DEFAULT
     if not safe_path_validate(local_path):
         return {"ok": False, "stderr": "Invalid local path"}
     if not username:
         return {"ok": False, "stderr": "Username is required"}
+
+    # Normalize remote path display (\NikkoMusic) to rclone format (nikko_nas:NikkoMusic)
+    clean_path = remote_path.strip().lstrip("\\").lstrip("/").replace("\\", "/")
+    stored_remote_path = f"{remote_name}:{clean_path}" if clean_path else RCLONE_REMOTE_PATH_DEFAULT
 
     # Only rewrite rclone config if a password was provided; otherwise keep existing config
     if password:
@@ -78,13 +88,13 @@ async def save_webdav_settings(
     set_setting("webdav_url", url)
     set_setting("webdav_vendor", vendor)
     set_setting("webdav_username", username)
-    set_setting("webdav_remote_path", remote_path)
+    set_setting("webdav_remote_path", stored_remote_path)
     set_setting("local_music_path", local_path)
 
     audit(user, "save_webdav_settings", {
         "remote": remote_name,
         "url": url,
-        "remote_path": remote_path,
+        "remote_path": stored_remote_path,
     })
     return {"ok": True}
 

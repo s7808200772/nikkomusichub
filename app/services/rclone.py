@@ -49,6 +49,11 @@ def _obscure_password(password: str) -> str:
     return res["stdout"].strip()
 
 
+def obscure_password(password: str) -> str:
+    """Public wrapper for rclone obscure."""
+    return _obscure_password(password)
+
+
 def write_rclone_config(
     remote_name: str,
     url: str,

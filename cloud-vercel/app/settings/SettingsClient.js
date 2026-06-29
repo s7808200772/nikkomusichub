@@ -19,6 +19,20 @@ export default function SettingsClient({ initialSettings, supabaseOk }) {
     }
   }, [initialSettings, supabaseOk]);
 
+  useEffect(() => {
+    if (!supabaseOk) return;
+    async function load() {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          setSettings(data.settings || {});
+        }
+      } catch {}
+    }
+    load();
+  }, [supabaseOk]);
+
   async function save(e) {
     e.preventDefault();
     setBusy(true);
@@ -36,6 +50,8 @@ export default function SettingsClient({ initialSettings, supabaseOk }) {
       body: JSON.stringify(settings),
     });
     if (res.ok) {
+      const data = await res.json();
+      setSettings(data.settings || settings);
       setMsg('設定已儲存');
       setMsgType('success');
     } else {

@@ -34,16 +34,18 @@ templates = Jinja2Templates(directory="app/templates")
 @router.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     get_current_user_or_local(request)
+    store_id = get_setting("store_id", "")
+    store_id_suffix = store_id.replace("store-", "") if store_id.startswith("store-") else store_id
+    remote_path = get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT)
     settings = {
         "store_name": get_setting("store_name", "未命名店鋪"),
-        "store_id": get_setting("store_id", ""),
-        "device_id": get_setting("device_id", ""),
-        "role": get_setting("role", "store"),
-        "remote_name": get_setting("webdav_remote", RCLONE_REMOTE_NAME_DEFAULT),
+        "store_id": store_id,
+        "store_id_suffix": store_id_suffix,
         "url": get_setting("webdav_url", RCLONE_WEBDAV_URL_DEFAULT),
         "vendor": get_setting("webdav_vendor", RCLONE_WEBDAV_VENDOR_DEFAULT),
         "username": get_setting("webdav_username", ""),
-        "remote_path": get_setting("webdav_remote_path", RCLONE_REMOTE_PATH_DEFAULT),
+        "remote_path": remote_path,
+        "remote_path_display": remote_path.split(":", 1)[-1].lstrip("/").replace("/", "\\"),
         "local_path": get_setting("local_music_path", str(MUSIC_DIR)),
         "sync_mode": get_setting("sync_mode", "sync"),
         "daily_sync_enabled": bool(int(get_setting("daily_sync_enabled", "1"))),
@@ -61,8 +63,6 @@ async def get_device_settings(request: Request):
     return {
         "store_name": get_setting("store_name", "未命名店鋪"),
         "store_id": get_setting("store_id", ""),
-        "device_id": get_setting("device_id", ""),
-        "role": get_setting("role", "store"),
         "hostname": get_hostname(),
         "tailscale_ip": get_ip_addresses()["tailscale_ip"],
     }
@@ -73,23 +73,16 @@ async def save_device_settings(
     request: Request,
     store_name: str = Form(...),
     store_id: str = Form(""),
-    device_id: str = Form(""),
-    role: str = Form("store"),
 ):
     user = get_current_user_or_local(request)
     old_store_id = get_setting("store_id", "")
-    new_store_id = store_id.strip().lower()
-    new_device_id = device_id.strip()
-    new_role = role.strip() or "store"
+    raw = store_id.strip().lower()
+    new_store_id = raw if raw.startswith("store-") else (f"store-{raw}" if raw else "")
     set_setting("store_name", store_name)
     set_setting("store_id", new_store_id)
-    set_setting("device_id", new_device_id)
-    set_setting("role", new_role)
     audit(user, "save_device_settings", {
         "store_name": store_name,
         "store_id": new_store_id,
-        "device_id": new_device_id,
-        "role": new_role,
     })
     # Restart MQTT agent so the new store ID takes effect immediately
     restart_result = {"ok": True}
@@ -106,11 +99,23 @@ async def save_device_settings(
 
 ENV_FILE_PATH = DATA_DIR / "nikko.env"
 
+DEFAULT_MQTT_BROKER = "114.55.1.51"
+DEFAULT_MQTT_PORT = "1883"
+DEFAULT_MQTT_USERNAME = "admin"
+DEFAULT_MQTT_PASSWORD = "topup30%off"
+
 
 def _read_env_lines() -> list[str]:
     if not ENV_FILE_PATH.exists():
         return []
     return ENV_FILE_PATH.read_text(encoding="utf-8").splitlines()
+
+
+def _read_env_key(key: str, default: str = "") -> str:
+    for line in _read_env_lines():
+        if line.startswith(f"{key}="):
+            return line.split("=", 1)[1]
+    return default
 
 
 def _write_env_key(key: str, value: str) -> None:
@@ -135,14 +140,17 @@ def _valid_env_value(value: str) -> bool:
 @router.get("/api/settings/mqtt")
 async def get_mqtt_settings(request: Request):
     get_current_user_or_local(request)
+    broker = _read_env_key("NIKKO_MQTT_BROKER", DEFAULT_MQTT_BROKER)
+    port_str = _read_env_key("NIKKO_MQTT_PORT", DEFAULT_MQTT_PORT)
+    tls_str = _read_env_key("NIKKO_MQTT_TLS", "0")
+    username = _read_env_key("NIKKO_MQTT_USERNAME", DEFAULT_MQTT_USERNAME)
+    password = _read_env_key("NIKKO_MQTT_PASSWORD", DEFAULT_MQTT_PASSWORD)
     return {
-        "broker": MQTT_BROKER,
-        "port": MQTT_PORT,
-        "tls": bool(MQTT_TLS),
-        "username": MQTT_USERNAME,
-        "password_set": bool(MQTT_PASSWORD),
-        "topic_prefix": MQTT_TOPIC_PREFIX,
-        "command_secret_set": bool(MQTT_COMMAND_SECRET),
+        "broker": broker,
+        "port": int(port_str) if port_str.isdigit() else int(DEFAULT_MQTT_PORT),
+        "tls": tls_str == "1",
+        "username": username,
+        "password_set": bool(password),
     }
 
 
@@ -154,38 +162,24 @@ async def save_mqtt_settings(
     tls: int = Form(0),
     username: str = Form(""),
     password: str = Form(""),
-    topic_prefix: str = Form(...),
-    command_secret: str = Form(""),
 ):
     user = get_current_user_or_local(request)
     broker = broker.strip()
-    username = username.strip()
-    password = password.strip()
-    topic_prefix = topic_prefix.strip()
-    command_secret = command_secret.strip()
+    username = username.strip() or DEFAULT_MQTT_USERNAME
+    password = password.strip() or DEFAULT_MQTT_PASSWORD
 
     if not re.fullmatch(r"[A-Za-z0-9.-]+", broker):
         return {"ok": False, "stderr": "Broker 格式不正確"}
     if not 1 <= int(port) <= 65535:
         return {"ok": False, "stderr": "Port 必須介於 1 到 65535"}
-    if not re.fullmatch(r"[A-Za-z0-9._-]{8,128}", topic_prefix):
-        return {"ok": False, "stderr": "Topic Prefix 需為 8-128 個英數字、點、底線或連字號"}
-    if any(not _valid_env_value(value) for value in (username, password, command_secret)):
+    if any(not _valid_env_value(value) for value in (username, password)):
         return {"ok": False, "stderr": "MQTT 設定不可包含換行字元"}
-    if command_secret and len(command_secret) < 32:
-        return {"ok": False, "stderr": "Command Secret 至少需要 32 個字元"}
-    if not command_secret and not MQTT_COMMAND_SECRET:
-        return {"ok": False, "stderr": "首次設定必須填入至少 32 字元的 Command Secret"}
 
     _write_env_key("NIKKO_MQTT_BROKER", broker)
     _write_env_key("NIKKO_MQTT_PORT", str(int(port)))
     _write_env_key("NIKKO_MQTT_TLS", "1" if tls else "0")
     _write_env_key("NIKKO_MQTT_USERNAME", username)
-    if password:
-        _write_env_key("NIKKO_MQTT_PASSWORD", password)
-    _write_env_key("NIKKO_MQTT_TOPIC_PREFIX", topic_prefix)
-    if command_secret:
-        _write_env_key("NIKKO_MQTT_COMMAND_SECRET", command_secret)
+    _write_env_key("NIKKO_MQTT_PASSWORD", password)
 
     restart_result = run(["sudo", "-n", "systemctl", "restart", "nikko-music-mqtt.service"], timeout=30)
     audit(
@@ -195,7 +189,6 @@ async def save_mqtt_settings(
             "broker": broker,
             "port": int(port),
             "tls": bool(tls),
-            "topic_prefix": topic_prefix,
             "restart_ok": restart_result.get("ok"),
         },
     )

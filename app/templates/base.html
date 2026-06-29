@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>{% block title %}NikkoMusicHub{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css?v=20260628-13">
+  <link rel="stylesheet" href="/static/style.css?v=20260629-01">
   <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -49,11 +49,11 @@
           <span class="nav-icon">📋</span>
           <span>日誌紀錄</span>
         </a>
-      </nav>
-
-      {% block sidebar_status %}{% endblock %}
-
-      <div class="sidebar-footer">
+        <a href="/version" class="{% if request.url.path == '/version' %}active{% endif %}" hx-get="/version" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
+          <span class="nav-icon">📦</span>
+          <span>版本更新</span>
+        </a>
+        <div style="margin:.4rem 0; border-top:1px solid var(--border);"></div>
         <a href="/change-password" class="{% if request.url.path == '/change-password' %}active{% endif %}" hx-get="/change-password" hx-target="#main-content" hx-select="#main-content" hx-push-url="true">
           <span class="nav-icon">🔐</span>
           <span>修改密碼</span>
@@ -62,7 +62,12 @@
           <span class="nav-icon">⏏️</span>
           <span>Logout</span>
         </a>
-        <div class="sidebar-version">© 2024 NikkoMusicHub<br>All rights reserved.</div>
+      </nav>
+
+      {% block sidebar_status %}{% endblock %}
+
+      <div class="sidebar-footer">
+        <div class="sidebar-version">© 2026 NikkoMusicHub<br>All rights reserved.</div>
       </div>
     </aside>
 
@@ -72,7 +77,7 @@
   </div>
 
   <div id="toast" class="toast" style="display:none;"></div>
-  <script src="/static/app.js?v=20260628-13"></script>
+  <script src="/static/app.js?v=20260629-01"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

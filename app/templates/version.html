@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}版本更新 - NikkoMusicHub{% endblock %}
+{% block topbar_left %}<span class="page-title"><span class="icon">📦</span>版本更新</span>{% endblock %}
+{% block sidebar_status %}{% endblock %}
+{% block content %}
+
+<div class="settings-layout">
+  <div class="card settings-col-1" style="grid-row:1;">
+    <h2><span class="icon">🔖</span>目前版本</h2>
+    <div class="status-row" style="font-size:.9rem;"><span class="label">Git Commit</span><span class="value" id="v-git">{{ version.git }}</span></div>
+    <div class="status-row" style="font-size:.9rem;"><span class="label">店點</span><span class="value">{{ version.store_name }}</span></div>
+    <div class="status-row" style="font-size:.9rem;"><span class="label">Store ID</span><span class="value">{{ version.store_id }}</span></div>
+    <div style="margin-top:1rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+      <button class="primary" onclick="checkUpdate(this)"><span>🔄</span> 檢查更新</button>
+      <button class="outline" onclick="runUpdate(this)"><span>⬆️</span> 立即更新</button>
+      <button class="outline" onclick="rollback(this)"><span>↩️</span> 回滾上一版</button>
+    </div>
+    <pre class="log-output" id="v-output" style="margin-top:1rem; min-height:80px;">等待操作…</pre>
+  </div>
+
+  <div class="card settings-col-3" style="grid-column:4 / span 9;">
+    <h2><span class="icon">📝</span>更新紀錄 Changelog</h2>
+    <div class="changelog">
+      {% for entry in changelog %}
+      <div class="changelog-entry">
+        <div class="changelog-version">{{ entry.version }} <span class="changelog-date">{{ entry.date }}</span></div>
+        <ul>
+          {% for item in entry.items %}
+          <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+async function checkUpdate(btn) {
+  setBusy(btn, true);
+  const res = await apiGet('/api/version');
+  document.getElementById('v-output').textContent = '目前版本：' + (res.git || 'unknown') + '\nStore ID：' + (res.store_id || '-') + '\n店點：' + (res.store_name || '-');
+  setBusy(btn, false);
+}
+async function runUpdate(btn) {
+  if (!confirm('確定要執行 git pull 並重啟服務嗎？')) return;
+  setBusy(btn, true);
+  const res = await apiPost('/api/system/update', null);
+  document.getElementById('v-output').textContent = (res.ok ? '更新指令已執行' : '更新失敗') + '\n' + (res.stdout || '') + '\n' + (res.stderr || '');
+  setBusy(btn, false);
+}
+async function rollback(btn) {
+  if (!confirm('確定要回滾到上一個標記版本嗎？')) return;
+  setBusy(btn, true);
+  const res = await apiPost('/api/system/rollback', null);
+  document.getElementById('v-output').textContent = (res.ok ? '回滾完成' : '回滾失敗') + '\n' + (res.stderr || '');
+  setBusy(btn, false);
+}
+</script>
+{% endblock %}

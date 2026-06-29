@@ -239,9 +239,39 @@ def handle_command(command_key, payload=None):
             files = list_music_files(MUSIC_DIR)
             return True, {"count": len(files), "files": files[:500]}
         if command_key == "webdav_list_music":
-            remote = get_setting("webdav_remote", "nikko_nas")
-            remote_path = get_setting("webdav_remote_path", "nikko_nas:music")
-            res = rclone.list_remote_music(remote, remote_path)
+            cfg = payload if isinstance(payload, dict) else {}
+            url = cfg.get("url") or get_setting("webdav_url", "")
+            username = cfg.get("username") or get_setting("webdav_username", "")
+            password = cfg.get("password") or get_setting("webdav_password", "")
+            remote_path = cfg.get("remotePath") or get_setting("webdav_remote_path", "nikko_nas:music")
+
+            if url and username and password:
+                # Inline WebDAV listing using provided credentials.
+                path = remote_path.split(":", 1)[-1].lstrip("/") if ":" in remote_path else remote_path.lstrip("/")
+                try:
+                    obscured = rclone.obscure_password(password)
+                except Exception as e:
+                    return False, {"error": f"Failed to prepare password: {e}"}
+                res = run(
+                    [
+                        "rclone", "lsf", f":webdav:{path}",
+                        "--webdav-url", url,
+                        "--webdav-user", username,
+                        "--webdav-pass", obscured,
+                        "--webdav-vendor", "other",
+                        "--filter", "+ *.mp3",
+                        "--filter", "+ *.MP3",
+                        "--filter", "- *",
+                        "--contimeout", "10s",
+                        "--timeout", "30s",
+                    ],
+                    timeout=60,
+                )
+            else:
+                # Fallback to existing rclone config on the Pi.
+                remote = get_setting("webdav_remote", "nikko_nas")
+                res = rclone.list_remote_music(remote, remote_path)
+
             if not res.get("ok"):
                 return False, {"error": res.get("stderr") or res.get("stdout") or "unknown"}
             files = [line.strip() for line in (res.get("stdout") or "").splitlines() if line.strip()]

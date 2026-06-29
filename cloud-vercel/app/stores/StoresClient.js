@@ -56,8 +56,10 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
     e.preventDefault();
     setMsg('');
     setBusy(true);
+    const rawId = form.storeId.trim().replace(/^store-/i, '');
+    const storeId = rawId ? `store-${rawId}` : '';
     const payload = {
-      storeId: form.storeId.trim(),
+      storeId,
       storeName: form.storeName.trim(),
       mqttBroker: form.mqttBroker.trim(),
       mqttPort: form.mqttPort ? parseInt(form.mqttPort, 10) : null,
@@ -177,7 +179,8 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
           <div className="form-row">
             <div className="form-group">
               <label><Hash size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Store ID *</label>
-              <input value={form.storeId || ''} onChange={(e) => setForm({ ...form, storeId: e.target.value })} placeholder="store-001" required />
+              <input value={form.storeId || ''} onChange={(e) => setForm({ ...form, storeId: e.target.value })} placeholder="001" required />
+              <small style={{ color: 'var(--muted)', fontSize: '0.75rem' }}>會自動加上 store- 前綴，例如輸入 001 即為 store-001</small>
             </div>
             <div className="form-group">
               <label><Server size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} /> 店名 *</label>
@@ -198,11 +201,11 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
 
           <div className="form-row">
             <div className="form-group">
-              <label>MQTT 使用者（選填）</label>
+              <label>MQTT 使用者（留空即使用預設值）</label>
               <input value={form.mqttUsername || ''} onChange={(e) => setForm({ ...form, mqttUsername: e.target.value })} placeholder={initialSettings?.defaultMqttUsername || 'nikko'} />
             </div>
             <div className="form-group">
-              <label>MQTT 密碼（選填）</label>
+              <label>MQTT 密碼（留空即使用預設值）</label>
               <input type="password" value={form.mqttPassword || ''} onChange={(e) => setForm({ ...form, mqttPassword: e.target.value })} placeholder={initialSettings?.defaultMqttPassword ? '已設定預設密碼' : '公開 broker 可留空'} />
             </div>
           </div>
@@ -338,7 +341,7 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
                   <input type="number" value={editing.mqttPort} onChange={(e) => setEditing({ ...editing, mqttPort: e.target.value })} required />
                 </div>
                 <div className="form-group">
-                  <label>MQTT 使用者</label>
+                  <label>MQTT 使用者（留空即使用預設值）</label>
                   <input value={editing.mqttUsername} onChange={(e) => setEditing({ ...editing, mqttUsername: e.target.value })} />
                 </div>
               </div>
@@ -359,7 +362,7 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
                 驗證 broker TLS 憑證
               </label>
               <div className="form-group">
-                <label>MQTT 密碼</label>
+                <label>MQTT 密碼（留空即使用預設值）</label>
                 <input type="password" value={editing.mqttPassword} onChange={(e) => setEditing({ ...editing, mqttPassword: e.target.value })} placeholder="留空則不變" />
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>

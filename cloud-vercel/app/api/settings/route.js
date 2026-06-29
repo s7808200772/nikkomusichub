@@ -26,6 +26,10 @@ export async function POST(request) {
     defaultMqttPassword: data.defaultMqttPassword || '',
     defaultMqttTls: data.defaultMqttTls === true,
     defaultMqttTlsVerify: data.defaultMqttTlsVerify === true,
+    webdavUrl: data.webdavUrl?.trim() || '',
+    webdavRemotePath: data.webdavRemotePath?.trim() || '',
+    webdavUsername: data.webdavUsername?.trim() || '',
+    webdavPassword: data.webdavPassword || '',
   };
   await saveSettings(settings);
   return NextResponse.json({ settings });

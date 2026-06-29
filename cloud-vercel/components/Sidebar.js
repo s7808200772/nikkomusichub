@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Cloud, LayoutDashboard, Store, LogOut, Bell } from 'lucide-react';
+import { Cloud, LayoutDashboard, Store, LogOut, Bell, Package } from 'lucide-react';
 
 export default function Sidebar() {
   const router = useRouter();
@@ -18,6 +18,7 @@ export default function Sidebar() {
     { href: '/', label: '控制中心', icon: LayoutDashboard },
     { href: '/stores', label: '店點管理', icon: Store },
     { href: '/monitoring', label: '監控紀錄', icon: Bell },
+    { href: '/changelog', label: '版本更新', icon: Package },
   ];
 
   return (

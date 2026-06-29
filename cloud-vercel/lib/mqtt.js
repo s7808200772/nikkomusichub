@@ -107,6 +107,7 @@ export function publishCommand({ broker, port, username, password, tls = true, t
           timestamp: Date.now(),
           nonce: randomUUID(),
           confirm: DANGEROUS_KEYS.has(commandKey),
+          ...(options.payload ? { payload: options.payload } : {}),
         };
         command.signature = signCommand(command, storeId, COMMAND_SECRET);
         const payload = JSON.stringify(command);

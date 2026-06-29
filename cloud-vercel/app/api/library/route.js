@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { listStores, getStore, isSupabaseConfigured } from '@/lib/db';
+import { listStores, getStore, getSettings, isSupabaseConfigured } from '@/lib/db';
 import { publishCommandWithRetry } from '@/lib/mqtt';
 
 export async function GET(request) {
@@ -16,6 +16,17 @@ export async function GET(request) {
   const stores = storeId ? [await getStore(storeId)].filter(Boolean) : await listStores();
   const commandKey = source === 'webdav' ? 'webdav_list_music' : 'library_list';
 
+  let payload = undefined;
+  if (source === 'webdav') {
+    const settings = await getSettings();
+    payload = {
+      url: settings?.webdavUrl,
+      remotePath: settings?.webdavRemotePath,
+      username: settings?.webdavUsername,
+      password: settings?.webdavPassword,
+    };
+  }
+
   const results = await Promise.all(
     stores.map(async (store) => {
       const result = await publishCommandWithRetry({
@@ -27,6 +38,7 @@ export async function GET(request) {
         tlsVerify: store.tlsVerify === true,
         storeId: store.storeId,
         commandKey,
+        payload,
         timeout: 30000,
         retries: 1,
       });
