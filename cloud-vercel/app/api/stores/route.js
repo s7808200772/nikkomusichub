@@ -30,14 +30,12 @@ export async function POST(request) {
   const store = {
     storeId: data.storeId?.trim(),
     storeName: data.storeName?.trim(),
-    deviceId: data.deviceId?.trim() || '',
-    role: data.role?.trim() || 'store',
-    mqttBroker: data.mqttBroker?.trim() || 'broker.hivemq.com',
-    mqttPort: parseInt(data.mqttPort || '8883', 10),
+    mqttBroker: data.mqttBroker?.trim() || '',
+    mqttPort: data.mqttPort ? parseInt(data.mqttPort, 10) : null,
     mqttUsername: data.mqttUsername?.trim() || '',
     mqttPassword: data.mqttPassword?.trim() || '',
-    mqttTls: data.mqttTls !== false,
-    tlsVerify: data.tlsVerify !== false,
+    mqttTls: data.mqttTls === true,
+    tlsVerify: data.tlsVerify === true,
   };
   if (!store.storeId || !store.storeName) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -58,14 +56,14 @@ export async function PUT(request) {
   const existing = await getStore(data.storeId);
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const updated = { ...existing };
-  ['storeName', 'deviceId', 'role', 'mqttBroker', 'mqttPort', 'mqttUsername', 'mqttPassword', 'mqttTls', 'tlsVerify'].forEach((k) => {
+  ['storeName', 'mqttBroker', 'mqttPort', 'mqttUsername', 'mqttPassword', 'mqttTls', 'tlsVerify'].forEach((k) => {
     if (data[k] === undefined) return;
-    if (k === 'mqttPort') updated[k] = parseInt(data[k], 10);
+    if (k === 'mqttPort') updated[k] = data[k] ? parseInt(data[k], 10) : null;
     else if (k === 'mqttPassword') {
       const v = data[k]?.trim();
       if (v) updated[k] = v;
     } else if (k === 'mqttTls' || k === 'tlsVerify') {
-      updated[k] = data[k] !== false;
+      updated[k] = data[k] === true;
     } else {
       updated[k] = data[k]?.trim();
     }

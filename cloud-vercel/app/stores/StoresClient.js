@@ -5,19 +5,29 @@ import { Plus, Trash2, Server, Hash, Save, AlertCircle, CheckCircle2, Search, Pe
 import { loadLocalStores, saveLocalStores } from '@/lib/localStorage';
 
 const DEFAULT_STORE = {
-  deviceId: '',
-  role: 'store',
-  mqttBroker: 'broker.hivemq.com',
-  mqttPort: 8883,
-  mqttTls: true,
-  tlsVerify: true,
+  mqttBroker: '',
+  mqttPort: '',
+  mqttTls: false,
+  tlsVerify: false,
   mqttUsername: '',
   mqttPassword: '',
 };
 
-export default function StoresClient({ initialStores, supabaseOk }) {
+function applyDefaultSettings(form, settings) {
+  return {
+    ...form,
+    mqttBroker: form.mqttBroker || settings?.defaultMqttBroker || '',
+    mqttPort: form.mqttPort || settings?.defaultMqttPort || '',
+    mqttUsername: form.mqttUsername || settings?.defaultMqttUsername || '',
+    mqttPassword: form.mqttPassword || settings?.defaultMqttPassword || '',
+    mqttTls: form.mqttTls ?? settings?.defaultMqttTls ?? false,
+    tlsVerify: form.tlsVerify ?? settings?.defaultMqttTlsVerify ?? false,
+  };
+}
+
+export default function StoresClient({ initialStores, initialSettings, supabaseOk }) {
   const [stores, setStores] = useState(initialStores || []);
-  const [form, setForm] = useState({ ...DEFAULT_STORE });
+  const [form, setForm] = useState(() => applyDefaultSettings({ ...DEFAULT_STORE }, initialSettings));
   const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState('');
   const [busy, setBusy] = useState(false);
@@ -46,20 +56,21 @@ export default function StoresClient({ initialStores, supabaseOk }) {
     e.preventDefault();
     setMsg('');
     setBusy(true);
+    const payload = {
+      storeId: form.storeId.trim(),
+      storeName: form.storeName.trim(),
+      mqttBroker: form.mqttBroker.trim(),
+      mqttPort: form.mqttPort ? parseInt(form.mqttPort, 10) : null,
+      mqttTls: form.mqttTls === true,
+      tlsVerify: form.tlsVerify === true,
+      mqttUsername: form.mqttUsername.trim(),
+      mqttPassword: form.mqttPassword,
+    };
     if (!supabaseOk) {
-      const { mqttPassword: _mqttPassword, mqttUsername: _mqttUsername, ...safeForm } = form;
-      const newStore = {
-        ...safeForm,
-        storeId: form.storeId.trim(),
-        storeName: form.storeName.trim(),
-        deviceId: form.deviceId.trim(),
-        role: form.role.trim() || 'store',
-        tlsVerify: form.tlsVerify !== false,
-      };
-      const next = [...stores, newStore];
+      const next = [...stores, payload];
       saveLocalStores(next);
       setStores(next);
-      setForm({ ...DEFAULT_STORE });
+      setForm(applyDefaultSettings({ ...DEFAULT_STORE }, initialSettings));
       setMsg('店點已儲存至瀏覽器；遠端 MQTT 功能需先設定 Supabase');
       setMsgType('success');
       setBusy(false);
@@ -68,11 +79,11 @@ export default function StoresClient({ initialStores, supabaseOk }) {
     const res = await fetch('/api/stores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
     if (res.ok) {
-      setForm({ ...DEFAULT_STORE });
+      setForm(applyDefaultSettings({ ...DEFAULT_STORE }, initialSettings));
       setMsg('店點新增成功');
       setMsgType('success');
       load();
@@ -176,57 +187,42 @@ export default function StoresClient({ initialStores, supabaseOk }) {
 
           <div className="form-row">
             <div className="form-group">
-              <label>裝置 ID（選填）</label>
-              <input value={form.deviceId || ''} onChange={(e) => setForm({ ...form, deviceId: e.target.value })} placeholder="pi-001" />
-            </div>
-            <div className="form-group">
-              <label>角色</label>
-              <select value={form.role || 'store'} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                <option value="store">門市播放機</option>
-                <option value="backup">備援播放機</option>
-                <option value="test">測試設備</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
               <label>MQTT Broker *</label>
-              <input value={form.mqttBroker || 'broker.hivemq.com'} onChange={(e) => setForm({ ...form, mqttBroker: e.target.value })} placeholder="broker.hivemq.com" required />
+              <input value={form.mqttBroker || ''} onChange={(e) => setForm({ ...form, mqttBroker: e.target.value })} placeholder={initialSettings?.defaultMqttBroker || '114.55.1.51'} required />
             </div>
             <div className="form-group">
-              <label>MQTT Port</label>
-              <input type="number" value={form.mqttPort || 8883} onChange={(e) => setForm({ ...form, mqttPort: e.target.value })} />
+              <label>MQTT Port *</label>
+              <input type="number" value={form.mqttPort || ''} onChange={(e) => setForm({ ...form, mqttPort: e.target.value })} placeholder={initialSettings?.defaultMqttPort || '1883'} required />
             </div>
           </div>
-
-          <label className="switch-row" style={{ marginBottom: '1rem' }}>
-            <input
-              type="checkbox"
-              checked={form.mqttTls !== false}
-              onChange={(e) => setForm({ ...form, mqttTls: e.target.checked })}
-            />
-            使用 TLS 加密連線（建議，預設 Port 8883）
-          </label>
-          <label className="switch-row" style={{ marginBottom: '1rem' }}>
-            <input
-              type="checkbox"
-              checked={form.tlsVerify !== false}
-              onChange={(e) => setForm({ ...form, tlsVerify: e.target.checked })}
-            />
-            驗證 broker TLS 憑證（取消可連線自簽憑證，僅建議測試使用）
-          </label>
 
           <div className="form-row">
             <div className="form-group">
               <label>MQTT 使用者（選填）</label>
-              <input value={form.mqttUsername || ''} onChange={(e) => setForm({ ...form, mqttUsername: e.target.value })} placeholder="公開 broker 可留空" />
+              <input value={form.mqttUsername || ''} onChange={(e) => setForm({ ...form, mqttUsername: e.target.value })} placeholder={initialSettings?.defaultMqttUsername || 'nikko'} />
             </div>
             <div className="form-group">
               <label>MQTT 密碼（選填）</label>
-              <input type="password" value={form.mqttPassword || ''} onChange={(e) => setForm({ ...form, mqttPassword: e.target.value })} placeholder="公開 broker 可留空" />
+              <input type="password" value={form.mqttPassword || ''} onChange={(e) => setForm({ ...form, mqttPassword: e.target.value })} placeholder={initialSettings?.defaultMqttPassword ? '已設定預設密碼' : '公開 broker 可留空'} />
             </div>
           </div>
+
+          <label className="switch-row" style={{ marginBottom: '1rem' }}>
+            <input
+              type="checkbox"
+              checked={form.mqttTls === true}
+              onChange={(e) => setForm({ ...form, mqttTls: e.target.checked })}
+            />
+            使用 TLS 加密連線（未勾選時以純文字連線）
+          </label>
+          <label className="switch-row" style={{ marginBottom: '1rem' }}>
+            <input
+              type="checkbox"
+              checked={form.tlsVerify === true}
+              onChange={(e) => setForm({ ...form, tlsVerify: e.target.checked })}
+            />
+            驗證 broker TLS 憑證
+          </label>
 
           {msg && (
             <div className={`badge badge-${msgType === 'success' ? 'green' : 'red'}`} style={{ marginBottom: '1rem', width: 'fit-content' }}>
@@ -275,16 +271,11 @@ export default function StoresClient({ initialStores, supabaseOk }) {
                 <tr key={s.storeId}>
                   <td>
                     <div style={{ fontWeight: 600 }}>{s.storeName}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
-                      {s.storeId} · {s.deviceId || '無裝置 ID'}
-                    </div>
-                    <span className={`badge badge-${s.role === 'test' ? 'yellow' : s.role === 'backup' ? 'blue' : 'gray'}`} style={{ marginTop: '0.35rem' }}>
-                      {s.role || 'store'}
-                    </span>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{s.storeId}</div>
                   </td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      {s.mqttTls !== false && <span className="badge badge-blue">TLS</span>}
+                      {s.mqttTls === true && <span className="badge badge-blue">TLS</span>}
                       <span>{s.mqttBroker}:{s.mqttPort}</span>
                     </div>
                   </td>
@@ -337,20 +328,6 @@ export default function StoresClient({ initialStores, supabaseOk }) {
                   <input value={editing.storeName} onChange={(e) => setEditing({ ...editing, storeName: e.target.value })} required />
                 </div>
                 <div className="form-group">
-                  <label>裝置 ID</label>
-                  <input value={editing.deviceId || ''} onChange={(e) => setEditing({ ...editing, deviceId: e.target.value })} />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>角色</label>
-                  <select value={editing.role || 'store'} onChange={(e) => setEditing({ ...editing, role: e.target.value })}>
-                    <option value="store">門市播放機</option>
-                    <option value="backup">備援播放機</option>
-                    <option value="test">測試設備</option>
-                  </select>
-                </div>
-                <div className="form-group">
                   <label>MQTT Broker</label>
                   <input value={editing.mqttBroker} onChange={(e) => setEditing({ ...editing, mqttBroker: e.target.value })} required />
                 </div>
@@ -368,7 +345,7 @@ export default function StoresClient({ initialStores, supabaseOk }) {
               <label className="switch-row" style={{ marginBottom: '1rem' }}>
                 <input
                   type="checkbox"
-                  checked={editing.mqttTls !== false}
+                  checked={editing.mqttTls === true}
                   onChange={(e) => setEditing({ ...editing, mqttTls: e.target.checked })}
                 />
                 使用 TLS 加密連線
@@ -376,7 +353,7 @@ export default function StoresClient({ initialStores, supabaseOk }) {
               <label className="switch-row" style={{ marginBottom: '1rem' }}>
                 <input
                   type="checkbox"
-                  checked={editing.tlsVerify !== false}
+                  checked={editing.tlsVerify === true}
                   onChange={(e) => setEditing({ ...editing, tlsVerify: e.target.checked })}
                 />
                 驗證 broker TLS 憑證

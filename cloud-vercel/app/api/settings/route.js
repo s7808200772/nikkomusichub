@@ -22,6 +22,10 @@ export async function POST(request) {
   const settings = {
     defaultMqttBroker: data.defaultMqttBroker?.trim() || '',
     defaultMqttPort: data.defaultMqttPort ? parseInt(data.defaultMqttPort, 10) : '',
+    defaultMqttUsername: data.defaultMqttUsername?.trim() || '',
+    defaultMqttPassword: data.defaultMqttPassword || '',
+    defaultMqttTls: data.defaultMqttTls === true,
+    defaultMqttTlsVerify: data.defaultMqttTlsVerify === true,
   };
   await saveSettings(settings);
   return NextResponse.json({ settings });

@@ -82,11 +82,9 @@ export default function AlertsClient({ initialAlerts, supabaseOk }) {
             <table className="list-table">
               <thead>
                 <tr>
-                  <th>店點</th>
-                  <th>類型</th>
-                  <th>訊息</th>
-                  <th>時間</th>
-                  <th>狀態</th>
+                  <th style={{ width: '140px' }}>店點</th>
+                  <th>告警內容</th>
+                  <th style={{ width: '160px' }}>時間</th>
                   <th style={{ width: '1%' }}>操作</th>
                 </tr>
               </thead>
@@ -96,19 +94,18 @@ export default function AlertsClient({ initialAlerts, supabaseOk }) {
                   return (
                     <tr key={a.id}>
                       <td><strong>{a.store_id}</strong></td>
-                      <td><span className={`badge badge-${severityColor}`}>{TYPE_LABELS[a.type] || a.type}</span></td>
-                      <td>{a.message}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <span className={`badge badge-${severityColor}`}>{TYPE_LABELS[a.type] || a.type}</span>
+                          <span>{a.message}</span>
+                        </div>
+                      </td>
                       <td style={{ fontSize: '0.85rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{new Date(a.created_at).toLocaleString('zh-TW')}</td>
                       <td>
                         {a.acknowledged_at ? (
-                          <span className="badge badge-green">已處理</span>
+                          <span className="badge badge-green"><CheckCircle2 size={12} /> 已處理</span>
                         ) : (
-                          <span className={`badge badge-${severityColor}`}>未處理</span>
-                        )}
-                      </td>
-                      <td>
-                        {!a.acknowledged_at && (
-                          <button className="primary" onClick={() => acknowledge(a.id)} disabled={ackLoading === a.id}>
+                          <button className="primary" onClick={() => acknowledge(a.id)} disabled={ackLoading === a.id} style={{ whiteSpace: 'nowrap' }}>
                             {ackLoading === a.id ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} />} 標記已處理
                           </button>
                         )}

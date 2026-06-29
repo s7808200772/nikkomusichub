@@ -210,11 +210,11 @@ export async function publishBatch({ stores, commandKey, timeout = 25000 }) {
       updateStoreResult(job.id, store.storeId, 'pending', null, null);
       const result = await publishCommandWithRetry({
         broker: store.mqttBroker,
-        port: store.mqttPort,
+        port: store.mqttPort || (store.mqttTls === true ? 8883 : 1883),
         username: store.mqttUsername,
         password: store.mqttPassword,
-        tls: store.mqttTls !== false,
-        tlsVerify: store.tlsVerify !== false,
+        tls: store.mqttTls === true,
+        tlsVerify: store.tlsVerify === true,
         storeId: store.storeId,
         commandKey,
         timeout,

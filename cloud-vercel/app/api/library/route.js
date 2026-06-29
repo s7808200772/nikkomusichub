@@ -12,20 +12,22 @@ export async function GET(request) {
 
   const { searchParams } = new URL(request.url);
   const storeId = searchParams.get('storeId');
+  const source = searchParams.get('source') || 'store';
   const stores = storeId ? [await getStore(storeId)].filter(Boolean) : await listStores();
+  const commandKey = source === 'webdav' ? 'webdav_list_music' : 'library_list';
 
   const results = await Promise.all(
     stores.map(async (store) => {
       const result = await publishCommandWithRetry({
         broker: store.mqttBroker,
-        port: store.mqttPort,
+        port: store.mqttPort || (store.mqttTls === true ? 8883 : 1883),
         username: store.mqttUsername,
         password: store.mqttPassword,
-        tls: store.mqttTls !== false,
-        tlsVerify: store.tlsVerify !== false,
+        tls: store.mqttTls === true,
+        tlsVerify: store.tlsVerify === true,
         storeId: store.storeId,
-        commandKey: 'library_list',
-        timeout: 20000,
+        commandKey,
+        timeout: 30000,
         retries: 1,
       });
       return {

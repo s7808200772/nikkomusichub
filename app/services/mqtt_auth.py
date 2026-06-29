@@ -25,6 +25,7 @@ ALLOWED_COMMANDS = frozenset(
         "restart_player",
         "reboot",
         "library_list",
+        "webdav_list_music",
         "get_log",
         "ota_update",
         "rollback",

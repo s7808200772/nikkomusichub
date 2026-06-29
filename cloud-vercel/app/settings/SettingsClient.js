@@ -52,23 +52,62 @@ export default function SettingsClient({ initialSettings, supabaseOk }) {
           <KeyRound size={20} color="var(--accent-2)" /> MQTT 預設 Broker
         </h2>
         <form onSubmit={save}>
-          <div className="form-group">
-            <label>預設 MQTT Broker</label>
-            <input
-              value={settings.defaultMqttBroker || ''}
-              onChange={(e) => setSettings({ ...settings, defaultMqttBroker: e.target.value })}
-              placeholder="broker.hivemq.com"
-            />
+          <div className="form-row">
+            <div className="form-group">
+              <label>預設 MQTT Broker</label>
+              <input
+                value={settings.defaultMqttBroker || ''}
+                onChange={(e) => setSettings({ ...settings, defaultMqttBroker: e.target.value })}
+                placeholder="114.55.1.51"
+              />
+            </div>
+            <div className="form-group">
+              <label>預設 MQTT Port</label>
+              <input
+                type="number"
+                value={settings.defaultMqttPort || ''}
+                onChange={(e) => setSettings({ ...settings, defaultMqttPort: e.target.value })}
+                placeholder="1883"
+              />
+            </div>
           </div>
-          <div className="form-group">
-            <label>預設 MQTT Port</label>
-            <input
-              type="number"
-              value={settings.defaultMqttPort || ''}
-              onChange={(e) => setSettings({ ...settings, defaultMqttPort: e.target.value })}
-              placeholder="8883"
-            />
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>預設 MQTT 使用者</label>
+              <input
+                value={settings.defaultMqttUsername || ''}
+                onChange={(e) => setSettings({ ...settings, defaultMqttUsername: e.target.value })}
+                placeholder="nikko"
+              />
+            </div>
+            <div className="form-group">
+              <label>預設 MQTT 密碼</label>
+              <input
+                type="password"
+                value={settings.defaultMqttPassword || ''}
+                onChange={(e) => setSettings({ ...settings, defaultMqttPassword: e.target.value })}
+                placeholder="預設密碼"
+              />
+            </div>
           </div>
+
+          <label className="switch-row" style={{ marginBottom: '1rem' }}>
+            <input
+              type="checkbox"
+              checked={settings.defaultMqttTls === true}
+              onChange={(e) => setSettings({ ...settings, defaultMqttTls: e.target.checked })}
+            />
+            預設使用 TLS 加密連線
+          </label>
+          <label className="switch-row" style={{ marginBottom: '1rem' }}>
+            <input
+              type="checkbox"
+              checked={settings.defaultMqttTlsVerify === true}
+              onChange={(e) => setSettings({ ...settings, defaultMqttTlsVerify: e.target.checked })}
+            />
+            預設驗證 broker TLS 憑證
+          </label>
 
           {msg && (
             <div className={`badge badge-${msgType === 'success' ? 'green' : 'red'}`} style={{ marginBottom: '1rem', width: 'fit-content' }}>

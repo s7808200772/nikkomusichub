@@ -24,16 +24,21 @@ mkdir -p "${INSTALL_DIR}"/{app,logs,scripts,data}
 chown -R "${USER_NAME}:${USER_NAME}" "${INSTALL_DIR}"
 
 # Determine source directory
-if [ -f "$(dirname "$0")/app/main.py" ]; then
-  SOURCE_DIR="$(cd "$(dirname "$0")" && pwd)"
-  log "Using local source: ${SOURCE_DIR}"
+# Allow callers (e.g. repair-pi.sh) to pass SOURCE_DIR explicitly.
+if [ -z "${SOURCE_DIR}" ]; then
+  if [ -f "$(dirname "$0")/app/main.py" ]; then
+    SOURCE_DIR="$(cd "$(dirname "$0")" && pwd)"
+    log "Using local source: ${SOURCE_DIR}"
+  else
+    SOURCE_DIR="/tmp/nikkomusichub"
+    rm -rf "${SOURCE_DIR}"
+    log "Cloning repository..."
+    git clone --depth 1 --branch "${DEFAULT_BRANCH}" "${REPO_URL}" "${SOURCE_DIR}"
+    cd "${SOURCE_DIR}"
+    log "Installed from commit: $(git rev-parse HEAD 2>/dev/null || echo unknown)"
+  fi
 else
-  SOURCE_DIR="/tmp/nikkomusichub"
-  rm -rf "${SOURCE_DIR}"
-  log "Cloning repository..."
-  git clone --depth 1 --branch "${DEFAULT_BRANCH}" "${REPO_URL}" "${SOURCE_DIR}"
-  cd "${SOURCE_DIR}"
-  log "Installed from commit: $(git rev-parse HEAD 2>/dev/null || echo unknown)"
+  log "Using caller-provided source: ${SOURCE_DIR}"
 fi
 
 log "Copying application files..."

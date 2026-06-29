@@ -238,6 +238,14 @@ def handle_command(command_key, payload=None):
         if command_key == "library_list":
             files = list_music_files(MUSIC_DIR)
             return True, {"count": len(files), "files": files[:500]}
+        if command_key == "webdav_list_music":
+            remote = get_setting("webdav_remote", "nikko_nas")
+            remote_path = get_setting("webdav_remote_path", "nikko_nas:music")
+            res = rclone.list_remote_music(remote, remote_path)
+            if not res.get("ok"):
+                return False, {"error": res.get("stderr") or res.get("stdout") or "unknown"}
+            files = [line.strip() for line in (res.get("stdout") or "").splitlines() if line.strip()]
+            return True, {"count": len(files), "files": files[:500]}
         if command_key == "get_log":
             log_type = (payload.get("log_type") if isinstance(payload, dict) else None) or "system"
             path_map = {

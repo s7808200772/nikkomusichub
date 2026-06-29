@@ -26,13 +26,13 @@ export default function StoresHubClient({
   return (
     <Tabs tabs={TABS} activeKey={activeTab} onChange={setActiveTab}>
       {activeTab === 'stores' && (
-        <StoresClient initialStores={initialStores} supabaseOk={supabaseOk} />
+        <StoresClient initialStores={initialStores} initialSettings={initialSettings} supabaseOk={supabaseOk} />
       )}
       {activeTab === 'library' && (
         <LibraryClient initialStores={initialStores} supabaseOk={supabaseOk} />
       )}
       {activeTab === 'ota' && (
-        <OtaClient initialStores={initialStores} initialLogs={initialLogs} supabaseOk={supabaseOk} />
+        <OtaClient initialStores={initialStores} supabaseOk={supabaseOk} />
       )}
       {activeTab === 'settings' && (
         <SettingsClient initialSettings={initialSettings} supabaseOk={supabaseOk} />
