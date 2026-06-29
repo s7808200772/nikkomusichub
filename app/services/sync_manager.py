@@ -9,6 +9,7 @@ from pathlib import Path
 from app.config import BASE_DIR, MUSIC_DIR, MUSIC_OLD_DIR, RCLONE_CONFIG_PATH, RCLONE_REMOTE_PATH_DEFAULT
 from app.db import add_sync_log, set_setting
 from app.services import mpv
+from app.services import rclone as rclone_service
 from app.services.system import command_exists, get_disk_usage, safe_path_validate
 
 
@@ -220,6 +221,20 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool, use_staging: boo
         add_sync_log(started_at, finished_at, "failed", "暫存路徑無效", "", "")
         return
 
+    # Compare remote vs local file lists so dry-run can report files that would be
+    # downloaded, including local files the user just deleted.
+    local_set = _mp3_relative_set(local_path_obj)
+    remote_set: set[str] = set()
+    if command_exists("rclone") and RCLONE_CONFIG_PATH.exists():
+        remote_list = rclone_service.list_remote_music(remote_name, f"{remote_name}:{remote_dir}")
+        if remote_list.get("ok"):
+            remote_set = {
+                line.strip()
+                for line in remote_list.get("stdout", "").splitlines()
+                if line.strip()
+            }
+    would_download = len(remote_set - local_set)
+
     if use_staging and not dry_run:
         _empty_dir(STAGING_DIR)
     target_path.mkdir(parents=True, exist_ok=True)
@@ -255,7 +270,10 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool, use_staging: boo
             text=True,
             bufsize=1,
         )
-        for line in proc.stdout:
+        while True:
+            line = proc.stdout.readline()
+            if not line:
+                break
             line = line.rstrip()
             stdout_lines.append(line)
             parsed = _parse_progress_line(line)
@@ -288,7 +306,10 @@ def _run_sync(remote_path: str, local_path: str, dry_run: bool, use_staging: boo
 
     status = "success" if ok else "failed"
     if dry_run:
-        message = "Dry-run 完成" if ok else "Dry-run 失敗"
+        if ok:
+            message = f"測試完成：將從 NAS 下載 {would_download} 個檔案（包含你剛刪除的本地檔案）"
+        else:
+            message = "Dry-run 失敗"
     else:
         if ok:
             message = "同步完成"

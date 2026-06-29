@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Trash2, Server, Hash, Save, AlertCircle, CheckCircle2, Search, Pencil, X, Activity, Loader2, Wifi, WifiOff, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, Server, Hash, Save, AlertCircle, CheckCircle2, Search, Pencil, X, Activity, Loader2, Wifi, WifiOff, Eye, EyeOff, Shield, ShieldCheck, ShieldOff, FileText, PlaySquare } from 'lucide-react';
 import { loadLocalStores, saveLocalStores } from '@/lib/localStorage';
 
 const DEFAULT_STORE = {
@@ -226,6 +226,75 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
     setTestStatus((prev) => ({ ...prev, [storeId]: { ...data, loading: false } }));
   }
 
+  const [watchdogModal, setWatchdogModal] = useState(null);
+  const [watchdogBusy, setWatchdogBusy] = useState({});
+  const [watchdogResult, setWatchdogResult] = useState({});
+
+  async function watchdogAction(action, storeId) {
+    if (!supabaseOk) {
+      setMsg('需先設定 Supabase 才能使用看門狗功能');
+      setMsgType('error');
+      return;
+    }
+    if ((action === 'install' || action === 'disable') && !confirm(`確定要${action === 'install' ? '安裝/更新' : '停用'} ${storeId} 的網路看門狗？`)) {
+      return;
+    }
+    setWatchdogBusy((prev) => ({ ...prev, [`${action}:${storeId}`]: true }));
+    try {
+      const res = await fetch('/api/watchdog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, storeId }),
+      });
+      const data = await res.json();
+      setWatchdogResult((prev) => ({ ...prev, [storeId]: data }));
+      if (action === 'status' || action === 'logs') {
+        setWatchdogModal({ storeId, action, data });
+      } else {
+        setMsg(`${storeId} 看門狗${action === 'install' ? '安裝/更新' : action === 'disable' ? '停用' : '操作'}：${data.ok ? '成功' : '失敗'}`);
+        setMsgType(data.ok ? 'success' : 'error');
+      }
+    } catch (e) {
+      setMsg(`看門狗操作失敗：${e.message}`);
+      setMsgType('error');
+    } finally {
+      setWatchdogBusy((prev) => ({ ...prev, [`${action}:${storeId}`]: false }));
+    }
+  }
+
+  async function bulkWatchdog(action) {
+    if (!supabaseOk) {
+      setMsg('需先設定 Supabase 才能使用看門狗功能');
+      setMsgType('error');
+      return;
+    }
+    const ids = filtered.map((s) => s.storeId);
+    if (ids.length === 0) {
+      setMsg('沒有店點可操作');
+      setMsgType('error');
+      return;
+    }
+    if ((action === 'install' || action === 'disable') && !confirm(`確定要${action === 'install' ? '批量安裝/更新' : '批量停用'} ${ids.length} 間店的網路看門狗？`)) {
+      return;
+    }
+    setWatchdogBusy((prev) => ({ ...prev, [`bulk:${action}`]: true }));
+    try {
+      const res = await fetch('/api/watchdog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, storeIds: ids }),
+      });
+      const data = await res.json();
+      setMsg(`批量看門狗${action === 'install' ? '安裝/更新' : '停用'}：已送出 ${data.count || 0} 間店（jobId: ${data.jobId || '-'}）`);
+      setMsgType(data.ok ? 'success' : 'error');
+    } catch (e) {
+      setMsg(`批量看門狗操作失敗：${e.message}`);
+      setMsgType('error');
+    } finally {
+      setWatchdogBusy((prev) => ({ ...prev, [`bulk:${action}`]: false }));
+    }
+  }
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return stores;
@@ -324,14 +393,38 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
             <Server size={20} color="var(--accent-2)" /> 已登錄店點
             <span className="badge badge-gray">{filtered.length} / {stores.length}</span>
           </h2>
-          <div style={{ position: 'relative', minWidth: '240px' }}>
-            <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索 Store ID、店名、Broker"
-              style={{ paddingLeft: '2.4rem', marginBottom: 0 }}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="primary"
+              style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem' }}
+              onClick={() => bulkWatchdog('install')}
+              disabled={watchdogBusy[`bulk:install`]}
+              title="批量安裝/更新 Network Watchdog"
+            >
+              {watchdogBusy[`bulk:install`] ? <Loader2 size={14} className="spin" /> : <ShieldCheck size={14} />}
+              批量安裝看門狗
+            </button>
+            <button
+              type="button"
+              className="ghost"
+              style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem' }}
+              onClick={() => bulkWatchdog('disable')}
+              disabled={watchdogBusy[`bulk:disable`]}
+              title="批量停用 Network Watchdog"
+            >
+              {watchdogBusy[`bulk:disable`] ? <Loader2 size={14} className="spin" /> : <ShieldOff size={14} />}
+              批量停用看門狗
+            </button>
+            <div style={{ position: 'relative', minWidth: '240px' }}>
+              <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="搜索 Store ID、店名、Broker"
+                style={{ paddingLeft: '2.4rem', marginBottom: 0 }}
+              />
+            </div>
           </div>
         </div>
 
@@ -343,6 +436,7 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
                 <th>Broker</th>
                 <th>使用者</th>
                 <th>連線</th>
+                <th>看門狗</th>
                 <th style={{ textAlign: 'right' }}>操作</th>
               </tr>
             </thead>
@@ -371,6 +465,42 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
                     ) : (
                       <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>未測試</span>
                     )}
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                      <button
+                        className="icon-btn"
+                        onClick={() => watchdogAction('install', s.storeId)}
+                        disabled={watchdogBusy[`install:${s.storeId}`]}
+                        title="安裝/更新看門狗"
+                      >
+                        {watchdogBusy[`install:${s.storeId}`] ? <Loader2 size={14} className="spin" /> : <ShieldCheck size={14} />}
+                      </button>
+                      <button
+                        className="icon-btn"
+                        onClick={() => watchdogAction('status', s.storeId)}
+                        disabled={watchdogBusy[`status:${s.storeId}`]}
+                        title="看門狗狀態"
+                      >
+                        {watchdogBusy[`status:${s.storeId}`] ? <Loader2 size={14} className="spin" /> : <Activity size={14} />}
+                      </button>
+                      <button
+                        className="icon-btn"
+                        onClick={() => watchdogAction('logs', s.storeId)}
+                        disabled={watchdogBusy[`logs:${s.storeId}`]}
+                        title="看門狗 Log"
+                      >
+                        {watchdogBusy[`logs:${s.storeId}`] ? <Loader2 size={14} className="spin" /> : <FileText size={14} />}
+                      </button>
+                      <button
+                        className="danger icon-btn"
+                        onClick={() => watchdogAction('disable', s.storeId)}
+                        disabled={watchdogBusy[`disable:${s.storeId}`]}
+                        title="停用看門狗"
+                      >
+                        {watchdogBusy[`disable:${s.storeId}`] ? <Loader2 size={14} className="spin" /> : <ShieldOff size={14} />}
+                      </button>
+                    </div>
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
@@ -458,6 +588,83 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
           </div>
         )}
       </div>
+
+      {watchdogModal && (
+        <div
+          className="modal-backdrop"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setWatchdogModal(null);
+          }}
+        >
+          <div className="card" style={{ maxWidth: '720px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0 }}>
+                <Shield size={18} color="var(--accent-2)" style={{ verticalAlign: 'middle', marginRight: 6 }} />
+                {watchdogModal.storeId} 看門狗{watchdogModal.action === 'status' ? '狀態' : 'Log'}
+              </h3>
+              <button type="button" className="icon-btn" onClick={() => setWatchdogModal(null)} title="關閉">
+                <X size={18} />
+              </button>
+            </div>
+            {!watchdogModal.data?.ok && (
+              <div className="badge badge-red" style={{ marginBottom: '1rem', width: 'fit-content' }}>
+                <AlertCircle size={14} /> 取得失敗：{watchdogModal.data?.error || '未知錯誤'}
+              </div>
+            )}
+            {watchdogModal.data?.ok && watchdogModal.action === 'status' && watchdogModal.data?.result && (
+              <div style={{ marginBottom: '1rem' }}>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Timer 執行中</label>
+                    <div>{watchdogModal.data.result.timer_active ? '是' : '否'}</div>
+                  </div>
+                  <div className="form-group">
+                    <label>開機自動啟動</label>
+                    <div>{watchdogModal.data.result.timer_enabled ? '是' : '否'}</div>
+                  </div>
+                  <div className="form-group">
+                    <label>Service 存在</label>
+                    <div>{watchdogModal.data.result.service_exists ? '是' : '否'}</div>
+                  </div>
+                  <div className="form-group">
+                    <label>連續失敗次數</label>
+                    <div>{watchdogModal.data.result.fail_count ?? 0}</div>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>最後動作</label>
+                  <pre style={{ whiteSpace: 'pre-wrap', background: 'var(--bg-2)', padding: '0.75rem', borderRadius: '0.5rem' }}>{watchdogModal.data.result.last_action || '無紀錄'}</pre>
+                </div>
+                <div className="form-group">
+                  <label>上次重啟時間戳</label>
+                  <pre style={{ whiteSpace: 'pre-wrap', background: 'var(--bg-2)', padding: '0.75rem', borderRadius: '0.5rem' }}>{watchdogModal.data.result.last_reboot || '無紀錄'}</pre>
+                </div>
+              </div>
+            )}
+            {watchdogModal.data?.ok && watchdogModal.action === 'logs' && (
+              <div className="form-group">
+                <label>最近 50 行 log</label>
+                <pre style={{ whiteSpace: 'pre-wrap', background: 'var(--bg-2)', padding: '0.75rem', borderRadius: '0.5rem', maxHeight: '50vh', overflow: 'auto' }}>
+                  {watchdogModal.data.result?.logs || '無 log'}
+                </pre>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" className="ghost" onClick={() => setWatchdogModal(null)}>關閉</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

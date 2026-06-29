@@ -424,7 +424,7 @@ async function startSync(btn, dryRun) {
       document.getElementById('btn-save-webdav').disabled = false;
       let message = p.message;
       if (dryRun) {
-        message = buildDryRunMessage(p.stdout, p.status);
+        message = p.message || buildDryRunMessage(p.stdout, p.status);
       } else if (p.status === 'success') {
         message = buildSyncSummaryMessage(p);
       } else {

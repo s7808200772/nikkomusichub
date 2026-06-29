@@ -45,9 +45,9 @@ def _apply_priority(priority: str) -> list:
         if "ethernet" in conn_type:
             found_eth = True
             for cmd in [
-                ["nmcli", "connection", "modify", name, "ipv4.route-metric", eth_metric],
-                ["nmcli", "connection", "modify", name, "ipv6.route-metric", eth_metric],
-                ["nmcli", "connection", "modify", name, "connection.autoconnect-priority", eth_auto],
+                ["sudo", "nmcli", "connection", "modify", name, "ipv4.route-metric", eth_metric],
+                ["sudo", "nmcli", "connection", "modify", name, "ipv6.route-metric", eth_metric],
+                ["sudo", "nmcli", "connection", "modify", name, "connection.autoconnect-priority", eth_auto],
             ]:
                 r = run(cmd, timeout=10)
                 if not r.get("ok"):
@@ -55,9 +55,9 @@ def _apply_priority(priority: str) -> list:
         elif "wireless" in conn_type or "wifi" in conn_type:
             found_wifi = True
             for cmd in [
-                ["nmcli", "connection", "modify", name, "ipv4.route-metric", wifi_metric],
-                ["nmcli", "connection", "modify", name, "ipv6.route-metric", wifi_metric],
-                ["nmcli", "connection", "modify", name, "connection.autoconnect-priority", wifi_auto],
+                ["sudo", "nmcli", "connection", "modify", name, "ipv4.route-metric", wifi_metric],
+                ["sudo", "nmcli", "connection", "modify", name, "ipv6.route-metric", wifi_metric],
+                ["sudo", "nmcli", "connection", "modify", name, "connection.autoconnect-priority", wifi_auto],
             ]:
                 r = run(cmd, timeout=10)
                 if not r.get("ok"):

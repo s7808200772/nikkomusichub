@@ -50,6 +50,16 @@ if [ ! -f "${APP_DIR}/app/mqtt_client.py" ]; then
   exit 1
 fi
 
+log "Recording installed git version..."
+GIT_COMMIT="unknown"
+GIT_BRANCH="unknown"
+if [ -d "${SOURCE_DIR}/.git" ]; then
+  GIT_COMMIT=$(cd "${SOURCE_DIR}" && git rev-parse HEAD 2>/dev/null || echo unknown)
+  GIT_BRANCH=$(cd "${SOURCE_DIR}" && git branch --show-current 2>/dev/null || echo unknown)
+fi
+printf '{"commit":"%s","branch":"%s"}\n' "${GIT_COMMIT}" "${GIT_BRANCH}" > "${INSTALL_DIR}/data/git-version.json"
+chmod 600 "${INSTALL_DIR}/data/git-version.json"
+
 log "Setting up Python virtual environment..."
 python3 -m venv "${INSTALL_DIR}/venv"
 "${INSTALL_DIR}/venv/bin/pip" install --upgrade pip
@@ -146,13 +156,15 @@ fi
 # Allow the service user to run the specific systemctl commands the app needs.
 log "Configuring passwordless sudo for ${USER_NAME}..."
 SYSTEMCTL_BIN="$(command -v systemctl || echo /usr/bin/systemctl)"
+NMCLI_BIN="$(command -v nmcli || echo /usr/bin/nmcli)"
 NIKKO_SUDOERS="/etc/sudoers.d/nikko-music"
 umask 077
 cat > "${NIKKO_SUDOERS}.tmp" <<EOF
-# NikkoMusicHub service user: passwordless sudo for app-managed systemd units.
-Cmnd_Alias NIKKO_SYSTEMCTL = ${SYSTEMCTL_BIN} restart nikko-music-hub-web.service, ${SYSTEMCTL_BIN} restart nikko-music-player.service, ${SYSTEMCTL_BIN} start nikko-music-player.service, ${SYSTEMCTL_BIN} stop nikko-music-player.service, ${SYSTEMCTL_BIN} enable nikko-music-player.service, ${SYSTEMCTL_BIN} disable nikko-music-player.service, ${SYSTEMCTL_BIN} restart nikko-music-mqtt.service, ${SYSTEMCTL_BIN} restart nikko-music-sync.timer, ${SYSTEMCTL_BIN} start nikko-music-sync.timer, ${SYSTEMCTL_BIN} stop nikko-music-sync.timer, ${SYSTEMCTL_BIN} daemon-reload, ${SYSTEMCTL_BIN} restart nikko-music-boot-sync.service, ${SYSTEMCTL_BIN} restart nikko-music-watchdog.service, ${SYSTEMCTL_BIN} restart nikko-music-watchdog.timer, ${SYSTEMCTL_BIN} restart nikko-music-backup.service, ${SYSTEMCTL_BIN} restart nikko-music-backup.timer
+# NikkoMusicHub service user: passwordless sudo for app-managed systemd units and network priority.
+Cmnd_Alias NIKKO_SYSTEMCTL = ${SYSTEMCTL_BIN} start nikko-music-hub-web.service, ${SYSTEMCTL_BIN} stop nikko-music-hub-web.service, ${SYSTEMCTL_BIN} restart nikko-music-hub-web.service, ${SYSTEMCTL_BIN} enable nikko-music-hub-web.service, ${SYSTEMCTL_BIN} disable nikko-music-hub-web.service, ${SYSTEMCTL_BIN} start nikko-music-player.service, ${SYSTEMCTL_BIN} stop nikko-music-player.service, ${SYSTEMCTL_BIN} restart nikko-music-player.service, ${SYSTEMCTL_BIN} enable nikko-music-player.service, ${SYSTEMCTL_BIN} disable nikko-music-player.service, ${SYSTEMCTL_BIN} start nikko-music-mqtt.service, ${SYSTEMCTL_BIN} stop nikko-music-mqtt.service, ${SYSTEMCTL_BIN} restart nikko-music-mqtt.service, ${SYSTEMCTL_BIN} enable nikko-music-mqtt.service, ${SYSTEMCTL_BIN} disable nikko-music-mqtt.service, ${SYSTEMCTL_BIN} start nikko-music-sync.timer, ${SYSTEMCTL_BIN} stop nikko-music-sync.timer, ${SYSTEMCTL_BIN} restart nikko-music-sync.timer, ${SYSTEMCTL_BIN} enable nikko-music-sync.timer, ${SYSTEMCTL_BIN} disable nikko-music-sync.timer, ${SYSTEMCTL_BIN} start nikko-music-boot-sync.service, ${SYSTEMCTL_BIN} stop nikko-music-boot-sync.service, ${SYSTEMCTL_BIN} restart nikko-music-boot-sync.service, ${SYSTEMCTL_BIN} enable nikko-music-boot-sync.service, ${SYSTEMCTL_BIN} disable nikko-music-boot-sync.service, ${SYSTEMCTL_BIN} start nikko-music-watchdog.service, ${SYSTEMCTL_BIN} stop nikko-music-watchdog.service, ${SYSTEMCTL_BIN} restart nikko-music-watchdog.service, ${SYSTEMCTL_BIN} enable nikko-music-watchdog.service, ${SYSTEMCTL_BIN} disable nikko-music-watchdog.service, ${SYSTEMCTL_BIN} start nikko-music-watchdog.timer, ${SYSTEMCTL_BIN} stop nikko-music-watchdog.timer, ${SYSTEMCTL_BIN} restart nikko-music-watchdog.timer, ${SYSTEMCTL_BIN} enable nikko-music-watchdog.timer, ${SYSTEMCTL_BIN} disable nikko-music-watchdog.timer, ${SYSTEMCTL_BIN} start nikko-music-backup.service, ${SYSTEMCTL_BIN} stop nikko-music-backup.service, ${SYSTEMCTL_BIN} restart nikko-music-backup.service, ${SYSTEMCTL_BIN} enable nikko-music-backup.service, ${SYSTEMCTL_BIN} disable nikko-music-backup.service, ${SYSTEMCTL_BIN} start NetworkManager.service, ${SYSTEMCTL_BIN} stop NetworkManager.service, ${SYSTEMCTL_BIN} restart NetworkManager.service, ${SYSTEMCTL_BIN} enable NetworkManager.service, ${SYSTEMCTL_BIN} disable NetworkManager.service, ${SYSTEMCTL_BIN} start dhcpcd.service, ${SYSTEMCTL_BIN} stop dhcpcd.service, ${SYSTEMCTL_BIN} restart dhcpcd.service, ${SYSTEMCTL_BIN} enable dhcpcd.service, ${SYSTEMCTL_BIN} disable dhcpcd.service, ${SYSTEMCTL_BIN} start networking.service, ${SYSTEMCTL_BIN} stop networking.service, ${SYSTEMCTL_BIN} restart networking.service, ${SYSTEMCTL_BIN} enable networking.service, ${SYSTEMCTL_BIN} disable networking.service, ${SYSTEMCTL_BIN} start tailscaled.service, ${SYSTEMCTL_BIN} stop tailscaled.service, ${SYSTEMCTL_BIN} restart tailscaled.service, ${SYSTEMCTL_BIN} enable tailscaled.service, ${SYSTEMCTL_BIN} disable tailscaled.service, ${SYSTEMCTL_BIN} daemon-reload
+Cmnd_Alias NIKKO_NMCLI = ${NMCLI_BIN} connection modify *, ${NMCLI_BIN} connection up *, ${NMCLI_BIN} device set *
 
-${USER_NAME} ALL=(ALL) NOPASSWD: NIKKO_SYSTEMCTL
+${USER_NAME} ALL=(ALL) NOPASSWD: NIKKO_SYSTEMCTL, NIKKO_NMCLI
 EOF
 if visudo -cf "${NIKKO_SUDOERS}.tmp" >/dev/null 2>&1; then
   chmod 440 "${NIKKO_SUDOERS}.tmp"

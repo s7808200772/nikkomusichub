@@ -36,6 +36,7 @@ from app.config import (
     MQTT_USERNAME,
     MUSIC_DIR,
     PLAYER_LOG_PATH,
+    PLAYER_SERVICE,
     RCLONE_CONFIG_PATH,
     SYNC_LOG_PATH,
 )
@@ -70,6 +71,12 @@ from app.services.system import (
     service_status,
     tail_log,
     get_music_folder_size,
+)
+from app.services.watchdog import (
+    disable_watchdog,
+    get_watchdog_logs,
+    get_watchdog_status,
+    install_watchdog,
 )
 
 # Ensure log directory exists before configuring file handler
@@ -135,7 +142,7 @@ def build_dashboard():
     mpv_status = mpv.get_status()
     rclone_installed = command_exists("rclone")
     mpv_installed = command_exists("mpv")
-    player_active = service_status("nikko-music-player.service")
+    player_active = service_status(PLAYER_SERVICE)
 
     webdav_ok = False
     if rclone_installed and RCLONE_CONFIG_PATH.exists():
@@ -192,10 +199,10 @@ def build_system_info():
         "music_folder_size": get_music_folder_size(MUSIC_DIR),
         "mp3_count": count_mp3_files(MUSIC_DIR),
         "web_service_status": service_status("nikko-music-hub-web.service"),
-        "player_service_status": service_status("nikko-music-player.service"),
+        "player_service_status": service_status(PLAYER_SERVICE),
         "sync_timer_status": service_status("nikko-music-sync.timer"),
         "mqtt_service_status": service_status("nikko-music-mqtt.service"),
-        "player_service_enabled": service_enabled("nikko-music-player.service"),
+        "player_service_enabled": service_enabled(PLAYER_SERVICE),
     }
 
 
@@ -321,6 +328,20 @@ def handle_command(command_key, payload=None):
                 )
             threading.Thread(target=_rollback, daemon=True).start()
             return True, {"ok": True, "message": "Rollback started in background"}
+        if command_key == "network_watchdog_install":
+            res = install_watchdog()
+            return res.get("ok", False), res
+        if command_key == "network_watchdog_disable":
+            res = disable_watchdog()
+            return res.get("ok", False), res
+        if command_key == "network_watchdog_status":
+            res = get_watchdog_status()
+            return res.get("ok", False), res
+        if command_key == "network_watchdog_logs":
+            cfg = payload if isinstance(payload, dict) else {}
+            lines = cfg.get("lines", 50)
+            res = get_watchdog_logs(int(lines))
+            return res.get("ok", False), res
         return False, {"error": f"Unknown command: {command_key}"}
     except Exception as e:
         logger.exception("Command %s failed", command_key)

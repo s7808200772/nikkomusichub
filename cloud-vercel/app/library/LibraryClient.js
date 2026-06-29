@@ -223,7 +223,17 @@ export default function LibraryClient({ initialStores, initialSettings, supabase
       } else {
         const allFiles = new Set();
         okResults.forEach((s) => {
-          (s.data.files || []).forEach((f) => allFiles.add(typeof f === 'string' ? f : f.path || JSON.stringify(f)));
+          (s.data.files || []).forEach((f) => {
+            const path = typeof f === 'string' ? f : f.path || JSON.stringify(f);
+            if (
+              typeof path === 'string' &&
+              !path.includes('@Recently-Snapshot') &&
+              !path.includes('@Recycle') &&
+              /\.mp3$/i.test(path)
+            ) {
+              allFiles.add(path);
+            }
+          });
         });
         const list = Array.from(allFiles).sort();
         setFiles(list);

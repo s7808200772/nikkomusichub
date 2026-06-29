@@ -123,9 +123,13 @@ async def rescan_music(request: Request):
 @router.post("/api/system/test-audio")
 async def api_test_audio(request: Request, device: str = Form("")):
     user = get_current_user_or_local(request)
+    if not device:
+        device = get_setting("audio_output_device", "")
     res = test_audio(device=device)
     audit(user, "test_audio", {"ok": res["ok"], "device": device})
-    return res
+    if res["ok"]:
+        return {"ok": True, "message": "測試音訊播放成功", "stdout": res.get("stdout", ""), "stderr": res.get("stderr", "")}
+    return {"ok": False, "stderr": "測試音訊播放失敗：" + (res.get("stderr") or res.get("stdout") or "unknown")}
 
 
 @router.post("/api/system/clear-music")

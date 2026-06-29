@@ -38,7 +38,7 @@ nikko-<store_id>-<device_id>-<random>
 ### 2. 帳密儲存
 
 - Pi：`nikko.env` 中 `NIKKO_MQTT_USERNAME`、`NIKKO_MQTT_PASSWORD`。
-- Cloud：`stores` 資料表 `mqtt_username`、`mqtt_password`。
+- Cloud：`stores.data` JSONB 中的 `mqttUsername`、`mqttPassword` 等連線資訊。
 - 兩者皆不寫入 Git，Cloud 端透過 Vercel / Supabase 環境變數管理。
 
 ### 3. Command Secret 輪替
@@ -51,10 +51,10 @@ nikko-<store_id>-<device_id>-<random>
 
 ### 4. 權限最小化
 
-- EMQX ACL 規則：
-  - 每個帳號只能 publish 到 `nikko/<store_id>/resp`。
-  - 每個帳號只能 subscribe `nikko/<store_id>/cmd`。
-  - Cloud 服務帳號可 publish 到所有 `nikko/+/cmd` 並 subscribe 所有 `nikko/+/resp`。
+- EMQX ACL 規則（以預設 prefix `nikko` 為例）：
+  - 每個帳號只能 publish 到 `<prefix>/<store_id>/resp`。
+  - 每個帳號只能 subscribe `<prefix>/<store_id>/cmd`。
+  - Cloud 服務帳號可 publish 到所有 `<prefix>/+/cmd` 並 subscribe 所有 `<prefix>/+/resp`。
 
 ## 為何不現在實作獨立帳密
 

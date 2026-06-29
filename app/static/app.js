@@ -47,6 +47,22 @@ function formatTime(sec) {
   return `${m}:${s}`;
 }
 
+function formatSyncTime(iso) {
+  if (!iso || iso === '-') return '-';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${day} ${h}:${min}`;
+  } catch (e) {
+    return iso;
+  }
+}
+
 function showToast(message, type='info') {
   const t = document.getElementById('toast');
   if (!t) return;
@@ -181,7 +197,7 @@ function renderRightPanel(data) {
       <div class="metric-row"><span class="label">Remote Path</span><span class="value small">${data.webdav_remote_path}</span></div>
       <div class="metric-row"><span class="label">本地路徑</span><span class="value small">${data.local_music_path}</span></div>
       <div class="metric-row"><span class="label">MP3 數量</span><span class="value">${data.mp3_count}</span></div>
-      <div class="metric-row"><span class="label">最近同步</span><span class="value small">${data.last_sync_at || '從未'} ${data.last_sync_status || ''}</span></div>
+      <div class="metric-row"><span class="label">最近同步</span><span class="value small">${formatSyncTime(data.last_sync_at)} ${data.last_sync_status || ''}</span></div>
     </div>
 
     <div class="card">

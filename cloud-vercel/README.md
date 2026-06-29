@@ -9,6 +9,7 @@
 - **總覽控制台 `/`**：各店狀態、統計卡片、遠端指令控制台
 - **店點管理 `/stores`**：店點列表、MQTT 設定、音樂庫同步、OTA 更新、預設 Broker
 - **監控與紀錄 `/monitoring`**：告警中心、遠端 Log
+- **中央音樂庫 `/library`**：瀏覽 NAS 音樂並批次同步到店點
 - 遠端執行預定義指令（播放控制、同步、重啟、重開機）
 
 ## 運作方式
@@ -72,8 +73,10 @@ npx vercel --prod
 ```
 cloud-vercel/
 ├── app/
-│   ├── api/              # 後端 API（auth、command、stores、settings、ota、logs、alerts...）
+│   ├── api/              # 後端 API（auth、command、stores、settings、ota、logs、alerts、library...）
+│   ├── changelog/        # 版本更新紀錄
 │   ├── commands/         # CommandsClient（現由總覽控制台引用）
+│   ├── library/          # 中央音樂庫（NAS 瀏覽與批次同步）
 │   ├── login/
 │   ├── monitoring/       # 告警 + Log 整合頁面
 │   ├── stores/           # 店點 + Library + OTA + Settings 整合頁面

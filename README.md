@@ -35,9 +35,14 @@ curl -fsSL https://raw.githubusercontent.com/s7808200772/nikkomusichub/security-
 
 後續操作：
 1. 用瀏覽器開啟上述網址並登入。
-2. 進入 Settings 頁面確認 rclone 與 mpv 設定正確（已無 Setup Wizard）。
+2. 進入 Settings 頁面確認 rclone 與 mpv 設定正確。
 3. 進入 NAS WebDAV Sync 設定 QNAP WebDAV 帳號密碼並測試連線。
 4. 同步音樂後即可播放。
+
+## 預設帳號密碼
+
+- 管理帳號：`nikkolh`
+- Pi 初始密碼：`topup30%off`（首次登入後請立即修改）
 
 ## 設定 Cloud
 

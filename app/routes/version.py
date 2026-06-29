@@ -1,8 +1,12 @@
 """Version and OTA endpoints."""
+import json
+from pathlib import Path
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from app.config import DATA_DIR
 from app.db import audit, get_setting
 from app.routes.auth import get_current_user_or_local
 from app.services.system import get_git_version, run
@@ -65,13 +69,38 @@ CHANGELOG = [
 ]
 
 
+def _get_installed_git_version() -> dict:
+    path = Path(DATA_DIR) / "git-version.json"
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return {
+                    "commit": data.get("commit") or "unknown",
+                    "branch": data.get("branch") or "unknown",
+                }
+        except Exception:
+            pass
+    return {"commit": "unknown", "branch": "unknown"}
+
+
+def get_git_version_info() -> dict:
+    """Return git commit/branch, falling back to the version recorded at install time."""
+    live = get_git_version()
+    if live.get("commit") and live.get("commit") != "unknown":
+        return live
+    return _get_installed_git_version()
+
+
 @router.get("/version", response_class=HTMLResponse)
 async def version_page(request: Request):
     get_current_user_or_local(request)
+    git = get_git_version_info()
     return templates.TemplateResponse("version.html", {
         "request": request,
         "version": {
-            "git": get_git_version(),
+            "commit": git.get("commit", "unknown"),
+            "branch": git.get("branch", "unknown"),
             "store_id": get_setting("store_id", ""),
             "store_name": get_setting("store_name", "未命名店鋪"),
         },
@@ -82,8 +111,10 @@ async def version_page(request: Request):
 @router.get("/api/version")
 def version(request: Request):
     get_current_user_or_local(request)
+    git = get_git_version_info()
     return {
-        "git": get_git_version(),
+        "commit": git.get("commit", "unknown"),
+        "branch": git.get("branch", "unknown"),
         "store_id": get_setting("store_id", ""),
         "store_name": get_setting("store_name", "未命名店鋪"),
     }

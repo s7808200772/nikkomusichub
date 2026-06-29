@@ -31,6 +31,10 @@ const COMMANDS = [
   { key: 'get_log', label: '查看 Log' },
   { key: 'ota_update', label: 'OTA 更新', dangerous: true },
   { key: 'rollback', label: 'Rollback', dangerous: true },
+  { key: 'network_watchdog_install', label: '安裝/更新網路看門狗', dangerous: true },
+  { key: 'network_watchdog_disable', label: '停用網路看門狗', dangerous: true },
+  { key: 'network_watchdog_status', label: '看門狗狀態' },
+  { key: 'network_watchdog_logs', label: '看門狗 Log' },
 ];
 
 const DANGEROUS_KEYS = new Set(COMMANDS.filter((c) => c.dangerous).map((c) => c.key));

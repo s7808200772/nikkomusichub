@@ -29,11 +29,15 @@ ALLOWED_COMMANDS = frozenset(
         "get_log",
         "ota_update",
         "rollback",
+        "network_watchdog_install",
+        "network_watchdog_disable",
+        "network_watchdog_status",
+        "network_watchdog_logs",
     }
 )
 
 # Commands that can alter state or interrupt service. Require payload["confirm"]=True.
-DANGEROUS_COMMANDS = frozenset({"reboot", "restart_player", "sync", "clear_local_music", "system_update", "ota_update", "rollback"})
+DANGEROUS_COMMANDS = frozenset({"reboot", "restart_player", "sync", "clear_local_music", "system_update", "ota_update", "rollback", "network_watchdog_install", "network_watchdog_disable"})
 
 
 def _stable_json(value) -> str:

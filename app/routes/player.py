@@ -183,7 +183,12 @@ async def player_delete_file(request: Request, path: str = Form(...)):
     full_path = _resolve_music_path(path)
     if not safe_path_validate(full_path):
         return {"ok": False, "stderr": "Invalid path"}
+    status = mpv.get_status()
     res = mpv.remove_file(full_path)
+    if res.get("ok"):
+        if status.get("state") != "stopped":
+            mpv.stop()
+        mpv.reload_playlist()
     audit(user, "player_delete_file", {"path": path, "ok": res["ok"]})
     return res
 

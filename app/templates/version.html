@@ -5,17 +5,22 @@
 {% block content %}
 
 <div class="settings-layout">
-  <div class="card settings-col-1" style="grid-row:1;">
-    <h2><span class="icon">🔖</span>目前版本</h2>
-    <div class="status-row" style="font-size:.9rem;"><span class="label">Git Commit</span><span class="value" id="v-git">{{ version.git }}</span></div>
-    <div class="status-row" style="font-size:.9rem;"><span class="label">店點</span><span class="value">{{ version.store_name }}</span></div>
-    <div class="status-row" style="font-size:.9rem;"><span class="label">Store ID</span><span class="value">{{ version.store_id }}</span></div>
-    <div style="margin-top:1rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+  <div class="card version-card" style="grid-column: 1 / -1; grid-row:1;">
+    <div class="version-info">
+      <h2><span class="icon">🔖</span>目前版本</h2>
+      <div class="version-rows">
+        <div class="status-row"><span class="label">Git Commit</span><span class="value" id="v-commit">{{ version.commit }}</span></div>
+        <div class="status-row"><span class="label">Git Branch</span><span class="value" id="v-branch">{{ version.branch }}</span></div>
+        <div class="status-row"><span class="label">店點</span><span class="value">{{ version.store_name }}</span></div>
+        <div class="status-row"><span class="label">Store ID</span><span class="value">{{ version.store_id }}</span></div>
+      </div>
+    </div>
+    <div class="version-actions">
       <button class="primary" onclick="checkUpdate(this)"><span>🔄</span> 檢查更新</button>
       <button class="outline" onclick="runUpdate(this)"><span>⬆️</span> 立即更新</button>
       <button class="outline" onclick="rollback(this)"><span>↩️</span> 回滾上一版</button>
     </div>
-    <pre class="log-output" id="v-output" style="margin-top:1rem; min-height:80px;">等待操作…</pre>
+    <pre class="log-output" id="v-output" style="width:100%; margin-top:1rem; min-height:80px;">等待操作…</pre>
   </div>
 
   <div class="card settings-col-3" style="grid-column:4 / span 9;">
@@ -39,7 +44,9 @@
 async function checkUpdate(btn) {
   setBusy(btn, true);
   const res = await apiGet('/api/version');
-  document.getElementById('v-output').textContent = '目前版本：' + (res.git || 'unknown') + '\nStore ID：' + (res.store_id || '-') + '\n店點：' + (res.store_name || '-');
+  document.getElementById('v-commit').textContent = res.commit || 'unknown';
+  document.getElementById('v-branch').textContent = res.branch || 'unknown';
+  document.getElementById('v-output').textContent = '目前版本：' + (res.commit || 'unknown') + ' (' + (res.branch || 'unknown') + ')' + '\nStore ID：' + (res.store_id || '-') + '\n店點：' + (res.store_name || '-');
   setBusy(btn, false);
 }
 async function runUpdate(btn) {

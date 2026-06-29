@@ -10,6 +10,7 @@ import app.config as config
 from app.config import (
     MUSIC_DIR,
     PLAYER_LOG_PATH,
+    PLAYER_SERVICE,
     RCLONE_CONFIG_PATH,
     SYNC_LOG_PATH,
 )
@@ -81,7 +82,7 @@ def dashboard_data(request: Request):
     mpv_status = mpv.get_status()
     rclone_installed = command_exists("rclone")
     mpv_installed = command_exists("mpv")
-    player_active = service_status("nikko-music-player.service")
+    player_active = service_status(PLAYER_SERVICE)
 
     # Report whether WebDAV is configured. Actual reachability is checked
     # separately via /api/health/qnap so the dashboard worker is not blocked.
@@ -90,6 +91,14 @@ def dashboard_data(request: Request):
     last_sync = get_setting("last_sync_at")
     last_sync_status = get_setting("last_sync_status", "never")
     last_sync_message = get_setting("last_sync_message", "")
+
+    last_sync_display = last_sync
+    if last_sync:
+        try:
+            from datetime import datetime
+            last_sync_display = datetime.fromisoformat(last_sync).strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            pass
 
     recent_errors = ""
     for log_path in (SYNC_LOG_PATH, PLAYER_LOG_PATH):
@@ -113,7 +122,7 @@ def dashboard_data(request: Request):
         "player_active": player_active,
         "webdav_configured": webdav_configured,
         "webdav_connected": False,
-        "last_sync_at": last_sync,
+        "last_sync_at": last_sync_display,
         "last_sync_status": last_sync_status,
         "last_sync_message": last_sync_message,
         "webdav_remote": get_setting("webdav_remote", "qnapmusic"),
@@ -134,10 +143,10 @@ def dashboard_data(request: Request):
         "cpu_temp_c": get_cpu_temp(),
         "music_folder_size": get_music_folder_size(MUSIC_DIR),
         "web_service_status": service_status("nikko-music-hub-web.service"),
-        "player_service_status": service_status("nikko-music-player.service"),
+        "player_service_status": service_status(PLAYER_SERVICE),
         "sync_timer_status": service_status("nikko-music-sync.timer"),
         "mqtt_service_status": service_status("nikko-music-mqtt.service"),
-        "player_service_enabled": service_enabled("nikko-music-player.service"),
+        "player_service_enabled": service_enabled(PLAYER_SERVICE),
         "dashboard_version": _dashboard_version,
     }
 
