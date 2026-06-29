@@ -1,17 +1,19 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   Play, Pause, SkipBack, SkipForward, RefreshCw, FolderSearch, RotateCcw, Power,
   Activity, Cpu, Music2, Terminal, Server, Wifi, WifiOff, Loader2,
   ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Search
 } from 'lucide-react';
+import ResponseFormatter from '@/components/ResponseFormatter';
+import { fetchWithTimeout, humanizeCommandError } from '@/lib/fetchUtils';
 
 const CATEGORIES = [
   {
     key: 'playback',
     label: '音樂播放',
-    color: '#22c55e',
+    color: 'var(--success)',
     commands: [
       { key: 'player_play', label: '播放 / 繼續', icon: Play },
       { key: 'player_pause', label: '暫停', icon: Pause },
@@ -23,7 +25,7 @@ const CATEGORIES = [
   {
     key: 'system',
     label: '系統狀態',
-    color: '#a78bfa',
+    color: 'var(--accent-2)',
     commands: [
       { key: 'status_dashboard', label: 'Dashboard', icon: Activity },
       { key: 'status_system', label: '系統資訊', icon: Cpu },
@@ -32,7 +34,7 @@ const CATEGORIES = [
   {
     key: 'sync',
     label: '同步與掃描',
-    color: '#0ea5e9',
+    color: 'var(--accent)',
     commands: [
       { key: 'sync', label: '同步 NAS WebDAV', icon: RefreshCw },
       { key: 'rescan', label: '重新掃描', icon: FolderSearch },
@@ -41,7 +43,7 @@ const CATEGORIES = [
   {
     key: 'control',
     label: '服務控制',
-    color: '#f59e0b',
+    color: 'var(--warning)',
     commands: [
       { key: 'restart_player', label: '重啟播放服務', icon: RotateCcw },
       { key: 'reboot', label: '重開機', icon: Power },
@@ -50,11 +52,19 @@ const CATEGORIES = [
 ];
 
 const ALL_COMMANDS = CATEGORIES.flatMap((c) => c.commands);
-
-const DANGEROUS_COMMANDS = new Set(['reboot', 'restart_player', 'sync', 'ota_update', 'rollback']);
+const DANGEROUS_COMMANDS = new Set(['reboot', 'restart_player', 'sync', 'ota_update', 'rollback', 'network_watchdog_install', 'network_watchdog_disable']);
+const LONG_COMMANDS = new Set(['sync', 'reboot', 'restart_player', 'rescan', 'ota_update', 'rollback']);
 
 function getCommandLabel(key) {
   return ALL_COMMANDS.find((c) => c.key === key)?.label || key;
+}
+
+function commandTimeout(commandKey) {
+  if (commandKey === 'network_watchdog_install') return 120000;
+  if (commandKey === 'get_log') return 15000;
+  if (LONG_COMMANDS.has(commandKey)) return 60000;
+  if (commandKey.startsWith('status_')) return 25000;
+  return 30000;
 }
 
 function confirmDangerous(commandKey, target) {
@@ -84,6 +94,26 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
     setStores(initialStores || []);
   }, [initialStores]);
 
+  const fetchStatus = useCallback(async (storeId) => {
+    if (!supabaseOk) return;
+    setStatus((prev) => ({ ...prev, [storeId]: { ...(prev[storeId] || {}), loading: true } }));
+    const timeout = 25000;
+    try {
+      const res = await fetchWithTimeout('/api/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId, commandKey: 'status_dashboard', timeout }),
+      }, timeout + 5000);
+      const data = await res.json();
+      setStatus((prev) => ({ ...prev, [storeId]: { ...data, loading: false } }));
+    } catch (e) {
+      setStatus((prev) => ({
+        ...prev,
+        [storeId]: { ok: false, error: humanizeCommandError(e.message, timeout), loading: false },
+      }));
+    }
+  }, [supabaseOk]);
+
   useEffect(() => {
     if (!supabaseOk) return;
     stores.forEach((s) => fetchStatus(s.storeId));
@@ -91,19 +121,7 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
       stores.forEach((s) => fetchStatus(s.storeId));
     }, 60000);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stores, supabaseOk]);
-
-  async function fetchStatus(storeId) {
-    setStatus((prev) => ({ ...prev, [storeId]: { loading: true } }));
-    const res = await fetch('/api/command', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ storeId, commandKey: 'status_dashboard' }),
-    });
-    const data = await res.json();
-    setStatus((prev) => ({ ...prev, [storeId]: { ...data, loading: false } }));
-  }
+  }, [stores, supabaseOk, fetchStatus]);
 
   async function runForStore(storeId, commandKey) {
     if (!supabaseOk) {
@@ -123,18 +141,30 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
       ...prev,
       [storeId]: { ...(prev[storeId] || {}), [commandKey]: { loading: true } },
     }));
-    const res = await fetch('/api/command', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ storeId, commandKey }),
-    });
-    const data = await res.json();
-    setResults((prev) => ({
-      ...prev,
-      [storeId]: { ...(prev[storeId] || {}), [commandKey]: { ...data, loading: false } },
-    }));
-    setExpanded((prev) => ({ ...prev, [storeId]: true }));
-    return data;
+    const timeout = commandTimeout(commandKey);
+    try {
+      const res = await fetchWithTimeout('/api/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId, commandKey, timeout }),
+      }, timeout + 10000);
+      const data = await res.json();
+      const humanError = data.ok ? null : humanizeCommandError(data.error, timeout);
+      setResults((prev) => ({
+        ...prev,
+        [storeId]: { ...(prev[storeId] || {}), [commandKey]: { ...data, error: humanError || data.error, loading: false } },
+      }));
+      setExpanded((prev) => ({ ...prev, [storeId]: true }));
+      return data;
+    } catch (e) {
+      const humanError = humanizeCommandError(e.message, timeout);
+      setResults((prev) => ({
+        ...prev,
+        [storeId]: { ...(prev[storeId] || {}), [commandKey]: { ok: false, error: humanError, loading: false } },
+      }));
+      setExpanded((prev) => ({ ...prev, [storeId]: true }));
+      return { ok: false, error: humanError };
+    }
   }
 
   async function runForAll(commandKey) {
@@ -178,28 +208,37 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
       return;
     }
     setBatchLoading(true);
-    const res = await fetch('/api/command/batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ storeIds: Array.from(selected), commandKey }),
-    });
-    const data = await res.json();
-    setBatchLoading(false);
-    if (data.jobId) {
-      setBatchJob({ id: data.jobId, polling: true });
-      pollJob(data.jobId);
+    try {
+      const res = await fetchWithTimeout('/api/command/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeIds: Array.from(selected), commandKey }),
+      }, 30000);
+      const data = await res.json();
+      if (data.jobId) {
+        setBatchJob({ id: data.jobId, polling: true });
+        pollJob(data.jobId);
+      }
+    } catch (e) {
+      setBatchLoading(false);
     }
   }
 
   async function pollJob(jobId) {
     const interval = setInterval(async () => {
-      const res = await fetch(`/api/command/batch?jobId=${jobId}`);
-      const data = await res.json();
-      if (data.job) {
-        setBatchJob(data.job);
-        if (data.job.pending === 0) {
-          clearInterval(interval);
+      try {
+        const res = await fetch(`/api/command/batch?jobId=${jobId}`);
+        const data = await res.json();
+        if (data.job) {
+          setBatchJob(data.job);
+          if (data.job.pending === 0) {
+            clearInterval(interval);
+            setBatchLoading(false);
+          }
         }
+      } catch {
+        clearInterval(interval);
+        setBatchLoading(false);
       }
     }, 2000);
   }
@@ -224,6 +263,14 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
         s.mqttBroker.toLowerCase().includes(q)
     );
   }, [stores, search]);
+
+  function renderButtonState(r) {
+    if (!r) return null;
+    if (r.loading) return <Loader2 size={16} className="spin" />;
+    if (r.ok) return <CheckCircle2 size={16} />;
+    if (r.error) return <AlertCircle size={16} />;
+    return null;
+  }
 
   return (
     <>
@@ -251,7 +298,7 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
                  s.status === 'no_response' ? <WifiOff size={14} color="var(--warning)" /> :
                  <Loader2 size={14} className="spin" color="var(--accent-2)" />}
                 <span>{s.storeId}</span>
-                <span style={{ color: 'var(--muted)' }}>{s.error || ''}</span>
+                <span style={{ color: 'var(--muted)', wordBreak: 'break-word' }}>{s.error || ''}</span>
               </div>
             ))}
           </div>
@@ -338,7 +385,7 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
                         </td>
                         <td>
                           <button
-                            className="ghost icon-btn"
+                            className={`ghost icon-btn ${st?.loading ? 'loading' : ''}`}
                             onClick={() => fetchStatus(s.storeId)}
                             disabled={st?.loading}
                             title={statusTooltip(st)}
@@ -352,17 +399,20 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
                             <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
                               {cat.commands.map((c) => {
                                 const Icon = c.icon;
-                                const loading = results[s.storeId]?.[c.key]?.loading;
+                                const r = results[s.storeId]?.[c.key];
+                                const loading = r?.loading;
+                                const isSuccess = r && !loading && r.ok;
+                                const isError = r && !loading && !r.ok;
                                 return (
                                   <button
                                     key={c.key}
-                                    className="ghost icon-btn"
+                                    className={`ghost icon-btn ${isSuccess ? 'success' : ''} ${isError ? 'error' : ''} ${loading ? 'loading' : ''}`}
                                     title={c.label}
                                     onClick={() => runForStore(s.storeId, c.key)}
                                     disabled={!supabaseOk || loading}
-                                    style={{ borderColor: 'rgba(255,255,255,0.06)', color: cat.color }}
+                                    style={{ borderColor: 'var(--border)', color: isSuccess || isError ? undefined : cat.color }}
                                   >
-                                    {loading ? <Loader2 size={16} className="spin" /> : <Icon size={16} />}
+                                    {renderButtonState(r) || <Icon size={16} />}
                                   </button>
                                 );
                               })}
@@ -378,13 +428,13 @@ export default function CommandsClient({ initialStores, supabaseOk }) {
                       {expanded[s.storeId] && (
                         <tr>
                           <td colSpan={8} style={{ background: 'var(--bg-2)', padding: 0 }}>
-                            <div className="log-output" style={{ maxHeight: '200px', margin: '0.75rem', border: 'none' }}>
+                            <div className="log-output" style={{ maxHeight: 'none', margin: '0.75rem', border: 'none', background: 'transparent' }}>
                               {last ? (
-                                last.error && !last.ok ? (
-                                  <span style={{ color: 'var(--danger)' }}>{last.error}</span>
-                                ) : (
-                                  JSON.stringify(last.result ?? last.parsed ?? null, null, 2)
-                                )
+                                <ResponseFormatter
+                                  commandKey={last.key}
+                                  data={last.result ?? last.parsed ?? null}
+                                  error={last.error}
+                                />
                               ) : '尚未執行指令'}
                             </div>
                           </td>

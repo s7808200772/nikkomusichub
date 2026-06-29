@@ -22,7 +22,7 @@ export async function POST(request) {
     tls: store.mqttTls === true,
     tlsVerify: store.tlsVerify === true,
     storeId: store.storeId,
-    timeout: 30000,
+    timeout: 15000,
   });
 
   return NextResponse.json({

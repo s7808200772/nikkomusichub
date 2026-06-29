@@ -97,11 +97,11 @@
     <div class="status-grid" id="status-grid">
       <div class="status-card">
         <h3><span class="icon">🏪</span>店家資訊</h3>
-        <div class="status-row"><span class="label">店名</span><span class="value" id="ss-store-name">{{ data.store_name or '-' }}</span></div>
-        <div class="status-row"><span class="label">Store ID</span><span class="value" id="ss-store-id">{{ data.store_id or config.MQTT_STORE_ID or '-' }}</span></div>
-        <div class="status-row"><span class="label">Hostname</span><span class="value" id="ss-hostname">{{ data.hostname or '-' }}</span></div>
-        <div class="status-row"><span class="label">Tailscale IP</span><span class="value" id="ss-tailscale-ip">{{ data.tailscale_ip or '-' }}</span></div>
-        <div class="status-row"><span class="label">LAN IP</span><span class="value" id="ss-lan-ip">{{ data.lan_ip or '-' }}</span></div>
+        <div class="status-row"><span class="label">店名</span><span class="value skeleton" id="ss-store-name">{{ data.store_name or '-' }}</span></div>
+        <div class="status-row"><span class="label">Store ID</span><span class="value skeleton" id="ss-store-id">{{ data.store_id or config.MQTT_STORE_ID or '-' }}</span></div>
+        <div class="status-row"><span class="label">Hostname</span><span class="value skeleton" id="ss-hostname">{{ data.hostname or '-' }}</span></div>
+        <div class="status-row"><span class="label">Tailscale IP</span><span class="value skeleton" id="ss-tailscale-ip">{{ data.tailscale_ip or '-' }}</span></div>
+        <div class="status-row"><span class="label">LAN IP</span><span class="value skeleton" id="ss-lan-ip">{{ data.lan_ip or '-' }}</span></div>
       </div>
 
       <div class="status-card">
@@ -111,33 +111,33 @@
           {{ ring('RAM', ram_pct, ram_color, 'ring-ram') }}
           {{ ring('磁碟', disk_pct, disk_color, 'ring-disk') }}
         </div>
-        <div class="status-row" style="margin-top:.4rem;"><span class="label">RAM 使用</span><span class="value" id="ss-ram">{{ data.ram.used_mb ~ '/' ~ data.ram.total_mb ~ ' MB' if data.ram else '-' }}</span></div>
-        <div class="status-row"><span class="label">磁碟空間</span><span class="value" id="ss-disk">{{ data.disk.total_gb ~ ' GB' if data.disk else '-' }}</span></div>
-        <div class="status-row"><span class="label">已運行</span><span class="value" id="ss-uptime">{{ duration(data.uptime_seconds or 0) }}</span></div>
-        <div class="status-row"><span class="label">Pi 型號</span><span class="value small" id="ss-pi-model" style="font-size:.7rem;">{{ data.pi_model or '-' }}</span></div>
-        <div class="status-row"><span class="label">作業系統</span><span class="value small" id="ss-os" style="font-size:.7rem;">{{ data.os_version or '-' }}</span></div>
-        <div class="status-row"><span class="label">Python</span><span class="value" id="ss-python">{{ data.python_version or '-' }}</span></div>
-        <div class="status-row"><span class="label">CPU 溫度</span><span class="value" id="ss-cpu-temp">{{ data.cpu_temp_c ~ ' °C' if data.cpu_temp_c is not none else '-' }}</span></div>
+        <div class="status-row" style="margin-top:.4rem;"><span class="label">RAM 使用</span><span class="value skeleton" id="ss-ram">{{ data.ram.used_mb ~ '/' ~ data.ram.total_mb ~ ' MB' if data.ram else '-' }}</span></div>
+        <div class="status-row"><span class="label">磁碟空間</span><span class="value skeleton" id="ss-disk">{{ data.disk.total_gb ~ ' GB' if data.disk else '-' }}</span></div>
+        <div class="status-row"><span class="label">已運行</span><span class="value skeleton" id="ss-uptime">{{ duration(data.uptime_seconds or 0) }}</span></div>
+        <div class="status-row"><span class="label">Pi 型號</span><span class="value small skeleton" id="ss-pi-model" style="font-size:.7rem;">{{ data.pi_model or '-' }}</span></div>
+        <div class="status-row"><span class="label">作業系統</span><span class="value small skeleton" id="ss-os" style="font-size:.7rem;">{{ data.os_version or '-' }}</span></div>
+        <div class="status-row"><span class="label">Python</span><span class="value skeleton" id="ss-python">{{ data.python_version or '-' }}</span></div>
+        <div class="status-row"><span class="label">CPU 溫度</span><span class="value skeleton" id="ss-cpu-temp">{{ data.cpu_temp_c ~ ' °C' if data.cpu_temp_c is not none else '-' }}</span></div>
       </div>
 
       <div class="status-card">
         <h3><span class="icon">🧩</span>元件與版本</h3>
-        <div class="status-row"><span class="label">rclone</span><span class="value" id="ss-rclone"><span class="dot {{ 'green' if data.rclone_installed else 'gray' }}"></span> <span id="ss-rclone-text">已{{ '安裝' if data.rclone_installed else '未安裝' }}</span></span></div>
-        <div class="status-row"><span class="label">rclone 版本</span><span class="value small" id="ss-rclone-ver" style="font-size:.7rem;">{{ data.rclone_version or '-' }}</span></div>
-        <div class="status-row"><span class="label">mpv</span><span class="value" id="ss-mpv"><span class="dot {{ 'green' if data.mpv_installed else 'gray' }}"></span> <span id="ss-mpv-text">已{{ '安裝' if data.mpv_installed else '未安裝' }}</span></span></div>
-        <div class="status-row"><span class="label">mpv 版本</span><span class="value small" id="ss-mpv-ver" style="font-size:.7rem;">{{ data.mpv_version or '-' }}</span></div>
-        <div class="status-row"><span class="label">音樂服務</span><span class="value" id="ss-player-svc"><span class="dot {{ 'green' if data.player_service_status == 'active' else 'gray' }}"></span> <span id="ss-player-svc-text">{{ data.player_service_status or 'inactive' }}</span></span></div>
+        <div class="status-row"><span class="label">rclone</span><span class="value" id="ss-rclone"><span class="dot {{ 'green' if data.rclone_installed else 'gray' }}"></span> <span class="skeleton" id="ss-rclone-text">已{{ '安裝' if data.rclone_installed else '未安裝' }}</span></span></div>
+        <div class="status-row"><span class="label">rclone 版本</span><span class="value small skeleton" id="ss-rclone-ver" style="font-size:.7rem;">{{ data.rclone_version or '-' }}</span></div>
+        <div class="status-row"><span class="label">mpv</span><span class="value" id="ss-mpv"><span class="dot {{ 'green' if data.mpv_installed else 'gray' }}"></span> <span class="skeleton" id="ss-mpv-text">已{{ '安裝' if data.mpv_installed else '未安裝' }}</span></span></div>
+        <div class="status-row"><span class="label">mpv 版本</span><span class="value small skeleton" id="ss-mpv-ver" style="font-size:.7rem;">{{ data.mpv_version or '-' }}</span></div>
+        <div class="status-row"><span class="label">音樂服務</span><span class="value" id="ss-player-svc"><span class="dot {{ 'green' if data.player_service_status == 'active' else 'gray' }}"></span> <span class="skeleton" id="ss-player-svc-text">{{ data.player_service_status or 'inactive' }}</span></span></div>
       </div>
 
       <div class="status-card">
         <h3><span class="icon">🌐</span>服務與同步</h3>
-        <div class="status-row"><span class="label">Web Player</span><span class="value" id="ss-web-svc"><span class="dot {{ 'green' if data.web_service_status == 'active' else 'gray' }}"></span> <span id="ss-web-svc-text">{{ data.web_service_status or 'inactive' }}</span></span></div>
-        <div class="status-row"><span class="label">Sync Timer</span><span class="value" id="ss-sync-svc"><span class="dot {{ 'green' if data.sync_timer_status == 'active' else 'gray' }}"></span> <span id="ss-sync-svc-text">{{ data.sync_timer_status or 'inactive' }}</span></span></div>
-        <div class="status-row"><span class="label">MQTT</span><span class="value" id="ss-mqtt-svc"><span class="dot {{ 'green' if data.mqtt_service_status == 'active' else 'gray' }}"></span> <span id="ss-mqtt-svc-text">{{ data.mqtt_service_status or 'inactive' }}</span></span></div>
-        <div class="status-row"><span class="label">WebDAV 設定</span><span class="value" id="ss-webdav-cfg"><span class="dot {{ 'green' if data.webdav_configured else 'gray' }}"></span> <span id="ss-webdav-cfg-text">{{ '已設定' if data.webdav_configured else '未設定' }}</span></span></div>
-        <div class="status-row"><span class="label">QNAP 連線</span><span class="value" id="ss-webdav"><span class="dot {{ 'green' if data.webdav_connected else 'gray' }}"></span> <span id="ss-webdav-text">檢查中…</span></span></div>
-        <div class="status-row"><span class="label">Tailscale</span><span class="value" id="ss-tailscale"><span class="dot {{ 'green' if data.tailscale_up else 'gray' }}"></span> <span id="ss-tailscale-text">{{ '上線' if data.tailscale_up else '未上線' }}</span></span></div>
-        <div class="status-row"><span class="label">最近同步</span><span class="value small" id="ss-last-sync" style="font-size:.65rem;">{{ data.last_sync_at or '-' }} {{ data.last_sync_status or '' }}</span></div>
+        <div class="status-row"><span class="label">Web Player</span><span class="value" id="ss-web-svc"><span class="dot {{ 'green' if data.web_service_status == 'active' else 'gray' }}"></span> <span class="skeleton" id="ss-web-svc-text">{{ data.web_service_status or 'inactive' }}</span></span></div>
+        <div class="status-row"><span class="label">Sync Timer</span><span class="value" id="ss-sync-svc"><span class="dot {{ 'green' if data.sync_timer_status == 'active' else 'gray' }}"></span> <span class="skeleton" id="ss-sync-svc-text">{{ data.sync_timer_status or 'inactive' }}</span></span></div>
+        <div class="status-row"><span class="label">MQTT</span><span class="value" id="ss-mqtt-svc"><span class="dot {{ 'green' if data.mqtt_service_status == 'active' else 'gray' }}"></span> <span class="skeleton" id="ss-mqtt-svc-text">{{ data.mqtt_service_status or 'inactive' }}</span></span></div>
+        <div class="status-row"><span class="label">WebDAV 設定</span><span class="value" id="ss-webdav-cfg"><span class="dot {{ 'green' if data.webdav_configured else 'gray' }}"></span> <span class="skeleton" id="ss-webdav-cfg-text">{{ '已設定' if data.webdav_configured else '未設定' }}</span></span></div>
+        <div class="status-row"><span class="label">QNAP 連線</span><span class="value" id="ss-webdav"><span class="dot {{ 'green' if data.webdav_connected else 'gray' }}"></span> <span class="skeleton" id="ss-webdav-text">檢查中…</span></span></div>
+        <div class="status-row"><span class="label">Tailscale</span><span class="value" id="ss-tailscale"><span class="dot {{ 'green' if data.tailscale_up else 'gray' }}"></span> <span class="skeleton" id="ss-tailscale-text">{{ '上線' if data.tailscale_up else '未上線' }}</span></span></div>
+        <div class="status-row"><span class="label">最近同步</span><span class="value small skeleton" id="ss-last-sync" style="font-size:.65rem;">{{ data.last_sync_at or '-' }} {{ data.last_sync_status or '' }}</span></div>
       </div>
     </div>
   </aside>
@@ -189,6 +189,9 @@ let libraryFiles = [];
 let dashData = {};
 let lastDashboardVersion = 0;
 let previousVolume = 100;
+let shufflePendingUntil = 0;
+let loopPendingUntil = 0;
+const TOGGLE_GRACE_MS = 1500;
 
 function ring(label, pct, color) {
   const r = 24;
@@ -202,6 +205,12 @@ function ring(label, pct, color) {
 function setText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
+}
+function setValue(id, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove('skeleton');
 }
 function setHtml(id, html) {
   const el = document.getElementById(id);
@@ -249,43 +258,43 @@ function updateStatusCards(data) {
   const ramColor = ramPct > 75 ? 'var(--danger)' : (ramPct > 50 ? 'var(--warning)' : 'var(--success)');
   const diskColor = diskPct > 90 ? 'var(--danger)' : 'var(--success)';
 
-  setText('ss-store-name', data.store_name || '-');
-  setText('ss-store-id', data.store_id || '-');
-  setText('ss-hostname', data.hostname || '-');
-  setText('ss-tailscale-ip', data.tailscale_ip || '-');
-  setText('ss-lan-ip', data.lan_ip || '-');
+  setValue('ss-store-name', data.store_name || '-');
+  setValue('ss-store-id', data.store_id || '-');
+  setValue('ss-hostname', data.hostname || '-');
+  setValue('ss-tailscale-ip', data.tailscale_ip || '-');
+  setValue('ss-lan-ip', data.lan_ip || '-');
 
   updateRing('ring-cpu', Math.round(data.cpu_percent || 0), cpuColor);
   updateRing('ring-ram', Math.round(ramPct), ramColor);
   updateRing('ring-disk', Math.round(diskPct), diskColor);
-  setText('ss-ram', data.ram ? data.ram.used_mb + '/' + data.ram.total_mb + ' MB' : '-');
-  setText('ss-disk', data.disk ? data.disk.total_gb + ' GB' : '-');
-  setText('ss-uptime', formatDuration(data.uptime_seconds || 0));
+  setValue('ss-ram', data.ram ? data.ram.used_mb + '/' + data.ram.total_mb + ' MB' : '-');
+  setValue('ss-disk', data.disk ? data.disk.total_gb + ' GB' : '-');
+  setValue('ss-uptime', formatDuration(data.uptime_seconds || 0));
 
-  setText('ss-pi-model', data.pi_model || '-');
-  setText('ss-os', data.os_version || '-');
-  setText('ss-python', data.python_version || '-');
-  setText('ss-cpu-temp', data.cpu_temp_c !== null ? data.cpu_temp_c + ' °C' : 'N/A');
+  setValue('ss-pi-model', data.pi_model || '-');
+  setValue('ss-os', data.os_version || '-');
+  setValue('ss-python', data.python_version || '-');
+  setValue('ss-cpu-temp', data.cpu_temp_c !== null ? data.cpu_temp_c + ' °C' : 'N/A');
 
   setDot('ss-rclone', data.rclone_installed);
-  setText('ss-rclone-text', '已' + (data.rclone_installed ? '安裝' : '未安裝'));
+  setValue('ss-rclone-text', '已' + (data.rclone_installed ? '安裝' : '未安裝'));
   setDot('ss-mpv', data.mpv_installed);
-  setText('ss-mpv-text', '已' + (data.mpv_installed ? '安裝' : '未安裝'));
+  setValue('ss-mpv-text', '已' + (data.mpv_installed ? '安裝' : '未安裝'));
   setDot('ss-player-svc', data.player_service_status === 'active');
-  setText('ss-player-svc-text', data.player_service_status || 'inactive');
-  setText('ss-rclone-ver', data.rclone_version || '-');
-  setText('ss-mpv-ver', data.mpv_version || '-');
+  setValue('ss-player-svc-text', data.player_service_status || 'inactive');
+  setValue('ss-rclone-ver', data.rclone_version || '-');
+  setValue('ss-mpv-ver', data.mpv_version || '-');
 
   setDot('ss-web-svc', data.web_service_status === 'active');
-  setText('ss-web-svc-text', data.web_service_status || 'inactive');
+  setValue('ss-web-svc-text', data.web_service_status || 'inactive');
   setDot('ss-sync-svc', data.sync_timer_status === 'active');
-  setText('ss-sync-svc-text', data.sync_timer_status || 'inactive');
+  setValue('ss-sync-svc-text', data.sync_timer_status || 'inactive');
   setDot('ss-mqtt-svc', data.mqtt_service_status === 'active');
-  setText('ss-mqtt-svc-text', data.mqtt_service_status || 'inactive');
+  setValue('ss-mqtt-svc-text', data.mqtt_service_status || 'inactive');
 
   setDot('ss-webdav-cfg', data.webdav_configured);
-  setText('ss-webdav-cfg-text', data.webdav_configured ? '已設定' : '未設定');
-  setText('ss-last-sync', (data.last_sync_at || '-') + ' ' + (data.last_sync_status || ''));
+  setValue('ss-webdav-cfg-text', data.webdav_configured ? '已設定' : '未設定');
+  setValue('ss-last-sync', (data.last_sync_at || '-') + ' ' + (data.last_sync_status || ''));
 
   const navStore = document.getElementById('nav-store-name');
   const navTs = document.getElementById('nav-tailscale-ip');
@@ -318,10 +327,14 @@ function updateMuteButton(muted) {
 }
 
 async function loadDashboardData() {
-  const data = await apiGet('/api/dashboard');
-  dashData = data;
-  lastDashboardVersion = data.dashboard_version || lastDashboardVersion;
-  updateStatusCards(data);
+  try {
+    const data = await apiGet('/api/dashboard');
+    dashData = data;
+    lastDashboardVersion = data.dashboard_version || lastDashboardVersion;
+    updateStatusCards(data);
+  } catch (e) {
+    console.warn('loadDashboardData failed', e);
+  }
 }
 
 async function listenEvents() {
@@ -340,6 +353,7 @@ async function listenEvents() {
 }
 
 async function refreshPlayer() {
+  try {
   const s = await apiGet('/api/player/status');
   currentState = s;
   document.getElementById('p-track').textContent = s.current || '無曲目';
@@ -362,13 +376,17 @@ async function refreshPlayer() {
   }
   updateMuteButton(s.mute);
 
-  document.getElementById('shuffle-toggle').checked = s.shuffle;
-  document.getElementById('loop-toggle').checked = s.loop;
+  const now = Date.now();
+  if (now >= shufflePendingUntil) document.getElementById('shuffle-toggle').checked = s.shuffle;
+  if (now >= loopPendingUntil) document.getElementById('loop-toggle').checked = s.loop;
 
   updateWaveform(s.state, s.mute ? 0 : s.volume);
 
   const svc = await apiGet('/api/player/service-status');
   document.getElementById('autostart-toggle').checked = svc.enabled;
+  } catch (e) {
+    console.warn('refreshPlayer failed', e);
+  }
 }
 
 function seekSlider(value) {
@@ -376,9 +394,13 @@ function seekSlider(value) {
 }
 
 async function loadLibrary() {
-  const lib = await apiGet('/api/player/library');
-  libraryFiles = lib.files || [];
-  renderLibrary(libraryFiles);
+  try {
+    const lib = await apiGet('/api/player/library');
+    libraryFiles = lib.files || [];
+    renderLibrary(libraryFiles);
+  } catch (e) {
+    console.warn('loadLibrary failed', e);
+  }
 }
 
 function renderLibrary(files) {
@@ -398,7 +420,6 @@ function renderLibrary(files) {
         <td style="color:var(--muted);font-size:.75rem; white-space:nowrap;">${mtime}</td>
         <td style="color:var(--muted);font-size:.75rem; white-space:nowrap;">${size} MB</td>
         <td class="actions">
-          <button class="btn-icon" onclick="playFile('${f.path}')" title="播放此曲">▶</button>
           <button class="btn-icon danger" onclick="deleteFile('${f.path}')" title="刪除此曲">🗑</button>
         </td>
       </tr>`;
@@ -427,15 +448,19 @@ function playlistName(item) {
 }
 
 async function loadPlaylist() {
-  const pl = await apiGet('/api/player/playlist');
-  const po = document.getElementById('playlist-output');
-  const plList = pl.playlist || [];
-  document.getElementById('pl-count').textContent = plList.length;
-  if (!plList.length) {
-    po.innerHTML = '<div class="empty-state"><div class="big-icon">📄</div><div>播放清單為空</div><div class="hint">從音樂庫中加入歌曲</div></div>';
-  } else {
-    po.innerHTML = '<table class="table"><tr><th>#</th><th>曲目</th></tr>' +
-      plList.map((t,i) => `<tr><td>${i+1}</td><td>${escapeHtml(playlistName(t))}</td></tr>`).join('') + '</table>';
+  try {
+    const pl = await apiGet('/api/player/playlist');
+    const po = document.getElementById('playlist-output');
+    const plList = pl.playlist || [];
+    document.getElementById('pl-count').textContent = plList.length;
+    if (!plList.length) {
+      po.innerHTML = '<div class="empty-state"><div class="big-icon">📄</div><div>播放清單為空</div><div class="hint">從音樂庫中加入歌曲</div></div>';
+    } else {
+      po.innerHTML = '<table class="table"><tr><th>#</th><th>曲目</th></tr>' +
+        plList.map((t,i) => `<tr><td>${i+1}</td><td>${escapeHtml(playlistName(t))}</td></tr>`).join('') + '</table>';
+    }
+  } catch (e) {
+    console.warn('loadPlaylist failed', e);
   }
 }
 
@@ -489,8 +514,20 @@ async function toggleMute() {
 }
 async function toggleShuffle() { await apiPost('/api/player/shuffle', new URLSearchParams({enabled: currentState.shuffle ? 0 : 1})); refreshPlayer(); }
 async function toggleLoop() { await apiPost('/api/player/loop', new URLSearchParams({enabled: currentState.loop ? 0 : 1})); refreshPlayer(); }
-async function toggleShuffleFromCheckbox() { await apiPost('/api/player/shuffle', new URLSearchParams({enabled: document.getElementById('shuffle-toggle').checked ? 1 : 0})); refreshPlayer(); }
-async function toggleLoopFromCheckbox() { await apiPost('/api/player/loop', new URLSearchParams({enabled: document.getElementById('loop-toggle').checked ? 1 : 0})); refreshPlayer(); }
+async function toggleShuffleFromCheckbox() {
+  const enabled = document.getElementById('shuffle-toggle').checked;
+  shufflePendingUntil = Date.now() + TOGGLE_GRACE_MS;
+  const res = await apiPost('/api/player/shuffle', new URLSearchParams({enabled: enabled ? 1 : 0}));
+  showToast(res.ok ? (enabled ? '隨機播放已開啟' : '隨機播放已關閉') : '隨機播放設定失敗', res.ok ? 'success' : 'error');
+  refreshPlayer();
+}
+async function toggleLoopFromCheckbox() {
+  const enabled = document.getElementById('loop-toggle').checked;
+  loopPendingUntil = Date.now() + TOGGLE_GRACE_MS;
+  const res = await apiPost('/api/player/loop', new URLSearchParams({enabled: enabled ? 1 : 0}));
+  showToast(res.ok ? (enabled ? '循環播放已開啟' : '循環播放已關閉') : '循環播放設定失敗', res.ok ? 'success' : 'error');
+  refreshPlayer();
+}
 async function toggleAutostart() {
   const enabled = document.getElementById('autostart-toggle').checked;
   const res = await apiPost(enabled ? '/api/player/enable-service' : '/api/player/disable-service', null);
@@ -529,7 +566,9 @@ async function loadConnectivity() {
     else if (qnap.webdav_ok === false) qnapText = 'WebDAV 失敗';
     else qnapText = '未設定';
     updateConnRow('ss-webdav', 'ss-webdav-text', qnapReachable, qnapText);
-  } catch (e) {}
+  } catch (e) {
+    console.warn('loadConnectivity failed', e);
+  }
 }
 
 loadDashboardData();

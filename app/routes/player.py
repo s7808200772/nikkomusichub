@@ -121,7 +121,9 @@ async def player_mute_toggle(request: Request):
 @router.post("/api/player/shuffle")
 async def player_shuffle(request: Request, enabled: int = Form(...)):
     user = get_current_user_or_local(request)
-    res = mpv.set_shuffle(bool(enabled))
+    set_setting("player_shuffle", "1" if enabled else "0")
+    res = mpv.set_shuffle(bool(enabled)) if mpv.mpv_is_running() else {"ok": True}
+    bump_dashboard_version()
     audit(user, "player_shuffle", {"enabled": bool(enabled)})
     return res
 
@@ -129,7 +131,9 @@ async def player_shuffle(request: Request, enabled: int = Form(...)):
 @router.post("/api/player/loop")
 async def player_loop(request: Request, enabled: int = Form(...)):
     user = get_current_user_or_local(request)
-    res = mpv.set_loop(bool(enabled))
+    set_setting("player_loop", "1" if enabled else "0")
+    res = mpv.set_loop(bool(enabled)) if mpv.mpv_is_running() else {"ok": True}
+    bump_dashboard_version()
     audit(user, "player_loop", {"enabled": bool(enabled)})
     return res
 

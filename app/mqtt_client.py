@@ -71,6 +71,7 @@ from app.services.system import (
     service_status,
     tail_log,
     get_music_folder_size,
+    get_git_version,
 )
 from app.services.watchdog import (
     disable_watchdog,
@@ -189,6 +190,7 @@ def build_system_info():
         "python_version": get_python_version(),
         "rclone_version": get_rclone_version(),
         "mpv_version": get_mpv_version(),
+        "git": get_git_version(),
         "hostname": get_hostname(),
         "lan_ip": ips["lan_ip"],
         "tailscale_ip": ips["tailscale_ip"],

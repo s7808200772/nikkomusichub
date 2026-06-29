@@ -1,10 +1,27 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { RefreshCw, RotateCcw, Loader2, Server, CheckSquare, Square, GitCommit } from 'lucide-react';
+import { RefreshCw, RotateCcw, Loader2, Server, CheckSquare, Square, GitCommit, AlertCircle } from 'lucide-react';
 import { loadLocalStores } from '@/lib/localStorage';
+import { fetchWithTimeout, humanizeCommandError } from '@/lib/fetchUtils';
 
 const STORES_CHANGED_EVENT = 'nikko-stores-changed';
+
+function formatVersion(data) {
+  if (!data) return null;
+  const parsed = data.parsed || data.result || {};
+  if (parsed.git) {
+    const short = parsed.git.commit && parsed.git.commit.length > 7 ? parsed.git.commit.slice(0, 7) : parsed.git.commit;
+    if (short && parsed.git.branch && parsed.git.branch !== 'unknown') {
+      return { value: `${short} (${parsed.git.branch})`, ok: true };
+    }
+    if (short) return { value: short, ok: true };
+  }
+  const version = parsed.version || parsed.git_version;
+  if (version && version !== '未知') return { value: version, ok: true };
+  if (data.ok === false) return { value: humanizeCommandError(data.error, 25000), ok: false };
+  return { value: '無法取得', ok: false, help: 'Pi 未回報版本資訊，請確認 Pi 端已上線且狀態正常' };
+}
 
 export default function OtaClient({ initialStores, supabaseOk }) {
   const [stores, setStores] = useState(initialStores || []);
@@ -14,12 +31,15 @@ export default function OtaClient({ initialStores, supabaseOk }) {
   const [latestVersion, setLatestVersion] = useState(null);
   const [versions, setVersions] = useState({});
   const [versionError, setVersionError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   const refreshStores = useCallback(async () => {
+    setRefreshing(true);
     if (!supabaseOk) {
       if (typeof window !== 'undefined') {
         setStores(loadLocalStores() || initialStores || []);
       }
+      setRefreshing(false);
       return;
     }
     try {
@@ -29,6 +49,8 @@ export default function OtaClient({ initialStores, supabaseOk }) {
       setStores(data.stores || []);
     } catch {
       // keep existing stores on error
+    } finally {
+      setRefreshing(false);
     }
   }, [supabaseOk, initialStores]);
 
@@ -73,22 +95,38 @@ export default function OtaClient({ initialStores, supabaseOk }) {
   }, []);
 
   useEffect(() => {
+    const currentIds = new Set(stores.map((s) => s.storeId));
+    setVersions((prev) => {
+      const next = {};
+      for (const id of currentIds) {
+        if (prev[id]) next[id] = prev[id];
+      }
+      return next;
+    });
+  }, [stores.map((s) => s.storeId).join(',')]);
+
+  useEffect(() => {
     if (!supabaseOk) {
       setVersions(Object.fromEntries(stores.map((s) => [s.storeId, { error: '需先設定 Supabase' }])));
       return;
     }
+    const timeout = 25000;
     stores.forEach(async (s) => {
       try {
-        const res = await fetch('/api/command', {
+        setVersions((prev) => ({ ...prev, [s.storeId]: { loading: true } }));
+        const res = await fetchWithTimeout('/api/command', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ storeId: s.storeId, commandKey: 'status_system' }),
-        });
+          body: JSON.stringify({ storeId: s.storeId, commandKey: 'status_system', timeout }),
+        }, timeout + 5000);
         const data = await res.json();
-        const version = data.parsed?.version || data.parsed?.git_version || data.result?.version || data.result?.git_version || (data.ok ? '未知' : (data.error || '取得失敗'));
-        setVersions((prev) => ({ ...prev, [s.storeId]: { ok: data.ok, value: version } }));
+        const formatted = formatVersion(data);
+        setVersions((prev) => ({ ...prev, [s.storeId]: { ...formatted, loading: false } }));
       } catch (e) {
-        setVersions((prev) => ({ ...prev, [s.storeId]: { ok: false, value: e.message || '取得失敗' } }));
+        setVersions((prev) => ({
+          ...prev,
+          [s.storeId]: { ok: false, value: humanizeCommandError(e.message, timeout), loading: false },
+        }));
       }
     });
   }, [stores, supabaseOk]);
@@ -134,6 +172,7 @@ export default function OtaClient({ initialStores, supabaseOk }) {
 
   async function runAction(action) {
     if (!supabaseOk || selected.size === 0) return;
+    if (!confirm(`確定要對 ${selected.size} 家店點執行 ${action === 'ota_update' ? 'OTA 更新' : 'Rollback'} 嗎？`)) return;
     setLoading(true);
     setMsg('');
     const ids = Array.from(selected);
@@ -184,6 +223,10 @@ export default function OtaClient({ initialStores, supabaseOk }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button className="ghost" onClick={refreshStores} disabled={refreshing} title="重新整理店點列表">
+              {refreshing ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />}
+              重新整理
+            </button>
             <button className="ghost" onClick={selectAll} disabled={stores.length === 0} title="全選/取消全選店點">
               {allSelected ? <><Square size={14} /> 取消全選</> : <><CheckSquare size={14} /> 全選</>}
             </button>
@@ -213,18 +256,27 @@ export default function OtaClient({ initialStores, supabaseOk }) {
             <p>尚無店點</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.75rem' }}>
             {stores.map((s) => {
               const v = versions[s.storeId];
               return (
-                <label key={s.storeId} className="card" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer', padding: '0.75rem', margin: 0 }}>
+                <label key={s.storeId} className="card" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer', padding: '0.9rem', margin: 0 }}>
                   <input type="checkbox" checked={selected.has(s.storeId)} onChange={() => toggleSelect(s.storeId)} style={{ width: '1.1rem', height: '1.1rem', flexShrink: 0, marginTop: '0.15rem' }} />
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.storeName}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{s.storeId}</div>
                     <div style={{ fontSize: '0.8rem', color: v?.ok === false ? 'var(--danger)' : 'var(--muted)', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                       <GitCommit size={12} />
-                      {v ? (v.ok ? `版本：${v.value}` : `版本取得失敗：${v.value}`) : '正在取得版本…'}
+                      {v?.loading ? (
+                        <><Loader2 size={12} className="spin" /> 正在取得版本…</>
+                      ) : v ? (
+                        v.ok ? `版本：${v.value}` : (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
+                            <AlertCircle size={12} />
+                            {v.help ? `${v.value} · ${v.help}` : v.value}
+                          </span>
+                        )
+                      ) : '尚未取得版本'}
                     </div>
                   </div>
                 </label>

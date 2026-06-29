@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Wifi, WifiOff, Store, CheckCircle2, AlertCircle, Bell, Loader2 } from 'lucide-react';
 import { loadLocalStores } from '@/lib/localStorage';
+import { fetchWithTimeout, humanizeCommandError } from '@/lib/fetchUtils';
 
 export default function DashboardClient({ initialStores, supabaseOk, children }) {
   const [stores, setStores] = useState(initialStores || []);
   const [status, setStatus] = useState({});
   const [jobs, setJobs] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  async function fetchStatus(store) {
+  const fetchStatus = useCallback(async (store) => {
     if (!supabaseOk) {
       setStatus((prev) => ({
         ...prev,
@@ -18,14 +20,30 @@ export default function DashboardClient({ initialStores, supabaseOk, children })
       }));
       return;
     }
-    const res = await fetch('/api/command', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ storeId: store.storeId, commandKey: 'status_dashboard' }),
-    });
-    const data = await res.json();
-    setStatus((prev) => ({ ...prev, [store.storeId]: data }));
-  }
+    setStatus((prev) => ({ ...prev, [store.storeId]: { ...(prev[store.storeId] || {}), loading: true } }));
+    const timeout = 25000;
+    try {
+      const res = await fetchWithTimeout('/api/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId: store.storeId, commandKey: 'status_dashboard', timeout }),
+      }, timeout + 5000);
+      const data = await res.json();
+      setStatus((prev) => ({ ...prev, [store.storeId]: { ...data, loading: false } }));
+    } catch (e) {
+      setStatus((prev) => ({
+        ...prev,
+        [store.storeId]: { ok: false, error: humanizeCommandError(e.message, timeout), loading: false },
+      }));
+    }
+  }, [supabaseOk]);
+
+  const refreshAll = useCallback(async () => {
+    if (!supabaseOk) return;
+    setRefreshing(true);
+    await Promise.all(stores.map((s) => fetchStatus(s)));
+    setRefreshing(false);
+  }, [stores, supabaseOk, fetchStatus]);
 
   useEffect(() => {
     if (!supabaseOk && typeof window !== 'undefined') {
@@ -43,14 +61,18 @@ export default function DashboardClient({ initialStores, supabaseOk, children })
       stores.forEach((s) => fetchStatus(s));
     }, 60000);
     return () => clearInterval(id);
-  }, [stores.length, supabaseOk]);
+  }, [stores, supabaseOk, fetchStatus]);
 
   useEffect(() => {
     if (!supabaseOk) return;
     async function loadJobs() {
-      const res = await fetch('/api/command/batch');
-      const data = await res.json();
-      setJobs(data.jobs || []);
+      try {
+        const res = await fetch('/api/command/batch');
+        const data = await res.json();
+        setJobs(data.jobs || []);
+      } catch {
+        setJobs([]);
+      }
     }
     loadJobs();
     const id = setInterval(loadJobs, 10000);
@@ -60,9 +82,13 @@ export default function DashboardClient({ initialStores, supabaseOk, children })
   useEffect(() => {
     if (!supabaseOk) return;
     async function loadAlerts() {
-      const res = await fetch('/api/alerts');
-      const data = await res.json();
-      setAlerts(data.alerts || []);
+      try {
+        const res = await fetch('/api/alerts');
+        const data = await res.json();
+        setAlerts(data.alerts || []);
+      } catch {
+        setAlerts([]);
+      }
     }
     loadAlerts();
     const id = setInterval(loadAlerts, 30000);
@@ -75,40 +101,48 @@ export default function DashboardClient({ initialStores, supabaseOk, children })
   return (
     <>
       <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(14,165,233,0.15)', padding: '0.8rem', borderRadius: '0.8rem' }}>
-            <Store size={24} color="var(--accent-2)" />
-          </div>
-          <div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{stores.length}</div>
-            <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>總店數</div>
-          </div>
-        </div>
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(34,197,94,0.15)', padding: '0.8rem', borderRadius: '0.8rem' }}>
-            <Wifi size={24} color="var(--success)" />
-          </div>
-          <div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{online}</div>
-            <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>線上</div>
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ background: 'rgba(37,99,235,0.1)', padding: '0.8rem', borderRadius: '0.8rem' }}>
+              <Store size={24} color="var(--accent)" />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{stores.length}</div>
+              <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>總店數</div>
+            </div>
           </div>
         </div>
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(239,68,68,0.15)', padding: '0.8rem', borderRadius: '0.8rem' }}>
-            <WifiOff size={24} color="var(--danger)" />
-          </div>
-          <div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{stores.length - online}</div>
-            <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>異常</div>
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ background: 'rgba(22,163,74,0.1)', padding: '0.8rem', borderRadius: '0.8rem' }}>
+              <Wifi size={24} color="var(--success)" />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{online}</div>
+              <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>線上</div>
+            </div>
           </div>
         </div>
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(245,158,11,0.15)', padding: '0.8rem', borderRadius: '0.8rem' }}>
-            <Bell size={24} color="var(--warning)" />
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ background: 'rgba(220,38,38,0.08)', padding: '0.8rem', borderRadius: '0.8rem' }}>
+              <WifiOff size={24} color="var(--danger)" />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{stores.length - online}</div>
+              <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>異常</div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{unackAlerts.length}</div>
-            <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>未確認告警</div>
+        </div>
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ background: 'rgba(217,119,6,0.1)', padding: '0.8rem', borderRadius: '0.8rem' }}>
+              <Bell size={24} color="var(--warning)" />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{unackAlerts.length}</div>
+              <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>未確認告警</div>
+            </div>
           </div>
         </div>
       </div>
@@ -116,10 +150,24 @@ export default function DashboardClient({ initialStores, supabaseOk, children })
       {children}
 
       <div className="card">
-        <div className="page-header" style={{ marginBottom: '1rem' }}>
-          <h2 style={{ margin: 0 }}>中央控制台</h2>
-          <p style={{ margin: 0 }}>快速入口、最近批量任務與告警</p>
+        <div className="page-header" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h2 style={{ margin: 0 }}>中央控制台</h2>
+            <p style={{ margin: 0 }}>快速入口、最近批量任務與告警</p>
+          </div>
+          {supabaseOk && (
+            <button className="ghost" onClick={refreshAll} disabled={refreshing} title="重新整理所有店點狀態">
+              {refreshing ? <Loader2 size={16} className="spin" /> : <Wifi size={16} />}
+              {refreshing ? '更新中…' : '重新整理'}
+            </button>
+          )}
         </div>
+
+        {refreshing && (
+          <div className="refreshing-indicator" style={{ marginBottom: '0.75rem' }}>
+            <Loader2 size={14} className="spin" /> 正在更新店點狀態…
+          </div>
+        )}
 
         {jobs.length > 0 && (
           <div style={{ marginBottom: '1rem' }}>

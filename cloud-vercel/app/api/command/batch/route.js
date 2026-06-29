@@ -29,6 +29,10 @@ export async function POST(request) {
 
   const data = await request.json();
   const { storeIds, commandKey } = data || {};
+  let commandTimeout = 30000;
+  if (commandKey === 'network_watchdog_install') commandTimeout = 120000;
+  else if (commandKey === 'get_log') commandTimeout = 15000;
+  else if (['sync', 'reboot', 'restart_player', 'rescan', 'ota_update', 'rollback'].includes(commandKey)) commandTimeout = 60000;
   if (!Array.isArray(storeIds) || storeIds.length === 0) {
     return NextResponse.json({ error: 'storeIds array required' }, { status: 400 });
   }
@@ -45,6 +49,6 @@ export async function POST(request) {
     return NextResponse.json({ error: 'No valid stores found' }, { status: 404 });
   }
 
-  const { jobId } = await publishBatch({ stores, commandKey });
+  const { jobId } = await publishBatch({ stores, commandKey, timeout: commandTimeout });
   return NextResponse.json({ ok: true, jobId, total: stores.length });
 }

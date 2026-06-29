@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, Server, Hash, Save, AlertCircle, CheckCircle2, Search, Pencil, X, Activity, Loader2, Wifi, WifiOff, Eye, EyeOff, Shield, ShieldCheck, ShieldOff, FileText, PlaySquare } from 'lucide-react';
 import { loadLocalStores, saveLocalStores } from '@/lib/localStorage';
+import { fetchWithTimeout, humanizeCommandError } from '@/lib/fetchUtils';
 
 const DEFAULT_STORE = {
   storeId: '',
@@ -216,14 +217,22 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
       }));
       return;
     }
-    setTestStatus((prev) => ({ ...prev, [storeId]: { loading: true } }));
-    const res = await fetch('/api/test-connection', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ storeId }),
-    });
-    const data = await res.json();
-    setTestStatus((prev) => ({ ...prev, [storeId]: { ...data, loading: false } }));
+    setTestStatus((prev) => ({ ...prev, [storeId]: { ...(prev[storeId] || {}), loading: true } }));
+    const timeout = 15000;
+    try {
+      const res = await fetchWithTimeout('/api/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId }),
+      }, timeout + 5000);
+      const data = await res.json();
+      setTestStatus((prev) => ({ ...prev, [storeId]: { ...data, loading: false } }));
+    } catch (e) {
+      setTestStatus((prev) => ({
+        ...prev,
+        [storeId]: { ok: false, error: humanizeCommandError(e.message, timeout), loading: false },
+      }));
+    }
   }
 
   const [watchdogModal, setWatchdogModal] = useState(null);
@@ -240,22 +249,26 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
       return;
     }
     setWatchdogBusy((prev) => ({ ...prev, [`${action}:${storeId}`]: true }));
+    const timeout = action === 'install' ? 120000 : action === 'disable' ? 60000 : 15000;
     try {
-      const res = await fetch('/api/watchdog', {
+      const res = await fetchWithTimeout('/api/watchdog', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, storeId }),
-      });
+      }, timeout + 15000);
       const data = await res.json();
-      setWatchdogResult((prev) => ({ ...prev, [storeId]: data }));
+      const humanError = data.ok ? null : humanizeCommandError(data.error, timeout);
+      const final = { ...data, error: humanError || data.error };
+      setWatchdogResult((prev) => ({ ...prev, [storeId]: final }));
       if (action === 'status' || action === 'logs') {
-        setWatchdogModal({ storeId, action, data });
+        setWatchdogModal({ storeId, action, data: final });
       } else {
-        setMsg(`${storeId} 看門狗${action === 'install' ? '安裝/更新' : action === 'disable' ? '停用' : '操作'}：${data.ok ? '成功' : '失敗'}`);
-        setMsgType(data.ok ? 'success' : 'error');
+        setMsg(`${storeId} 看門狗${action === 'install' ? '安裝/更新' : action === 'disable' ? '停用' : '操作'}：${final.ok ? '成功' : '失敗'}`);
+        setMsgType(final.ok ? 'success' : 'error');
       }
     } catch (e) {
-      setMsg(`看門狗操作失敗：${e.message}`);
+      const humanError = humanizeCommandError(e.message, timeout);
+      setMsg(`看門狗操作失敗：${humanError}`);
       setMsgType('error');
     } finally {
       setWatchdogBusy((prev) => ({ ...prev, [`${action}:${storeId}`]: false }));
@@ -278,17 +291,19 @@ export default function StoresClient({ initialStores, initialSettings, supabaseO
       return;
     }
     setWatchdogBusy((prev) => ({ ...prev, [`bulk:${action}`]: true }));
+    const timeout = action === 'install' ? 120000 : action === 'disable' ? 60000 : 15000;
     try {
-      const res = await fetch('/api/watchdog', {
+      const res = await fetchWithTimeout('/api/watchdog', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, storeIds: ids }),
-      });
+      }, timeout + 15000);
       const data = await res.json();
       setMsg(`批量看門狗${action === 'install' ? '安裝/更新' : '停用'}：已送出 ${data.count || 0} 間店（jobId: ${data.jobId || '-'}）`);
       setMsgType(data.ok ? 'success' : 'error');
     } catch (e) {
-      setMsg(`批量看門狗操作失敗：${e.message}`);
+      const humanError = humanizeCommandError(e.message, timeout);
+      setMsg(`批量看門狗操作失敗：${humanError}`);
       setMsgType('error');
     } finally {
       setWatchdogBusy((prev) => ({ ...prev, [`bulk:${action}`]: false }));

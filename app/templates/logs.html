@@ -46,7 +46,7 @@
         <option value="error">ERROR / 失敗</option>
       </select>
       <button class="outline icon-left" onclick="exportCsv()" title="將目前日誌匯出為 CSV"><span>📥</span> 輸出 CSV</button>
-      <button class="outline" onclick="loadLogs()" title="重新整理日誌">🔄</button>
+      <button class="outline" onclick="loadLogs(this)" title="重新整理日誌">🔄</button>
     </div>
   </div>
 </div>
@@ -86,7 +86,7 @@ function typeBadge(type) {
 function typeDot(type) {
   const map = { audit: 'blue', sync: 'warning', player: 'info' };
   const color = { blue: 'var(--accent)', warning: 'var(--warning)', info: 'var(--info)' }[map[type] || 'blue'];
-  return `<span class="dot" style="background:${color}; box-shadow:0 0 6px ${color};"></span>`;
+  return `<span class="dot" style="background:${color};"></span>`;
 }
 
 function filterEntries() {
@@ -170,11 +170,18 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-async function loadLogs() {
-  const data = await apiGet('/api/logs/all');
-  allEntries = data.entries || [];
-  renderLogs();
-  loadStats();
+async function loadLogs(btn) {
+  if (btn) setBusy(btn, true);
+  try {
+    const data = await apiGet('/api/logs/all');
+    allEntries = data.entries || [];
+    renderLogs();
+    loadStats();
+  } catch (e) {
+    showToast('日誌載入失敗', 'error');
+  } finally {
+    if (btn) setBusy(btn, false);
+  }
 }
 
 async function loadStats() {

@@ -27,6 +27,12 @@ export async function POST(request) {
   const store = await getStore(data.storeId);
   if (!store) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
 
+  const requestedTimeout = Number(data.timeout);
+  let timeout = 30000;
+  if (Number.isFinite(requestedTimeout)) {
+    timeout = Math.min(Math.max(requestedTimeout, 5000), 180000);
+  }
+
   const result = await publishCommand({
     broker: store.mqttBroker,
     port: store.mqttPort || (store.mqttTls === true ? 8883 : 1883),
@@ -36,7 +42,7 @@ export async function POST(request) {
     tlsVerify: store.tlsVerify === true,
     storeId: store.storeId,
     commandKey: data.commandKey,
-    timeout: 25000,
+    timeout,
   });
 
   // Evaluate alert rules on status checks in the background.

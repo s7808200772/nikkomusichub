@@ -398,8 +398,10 @@ function buildSyncSummaryMessage(p) {
 }
 async function startSync(btn, dryRun) {
   if (progressTimer) clearInterval(progressTimer);
+  setBusy(btn, true);
   const res = await apiPost(dryRun ? '/api/webdav/dry-run' : '/api/webdav/sync', null);
   if (!res || !res.ok) {
+    setBusy(btn, false);
     showToast(res ? (res.stderr || '同步啟動失敗') : '未登入', 'error');
     return;
   }
@@ -419,6 +421,7 @@ async function startSync(btn, dryRun) {
     if (!p.running) {
       clearInterval(progressTimer);
       progressTimer = null;
+      setBusy(btn, false);
       document.getElementById('btn-dryrun').disabled = false;
       document.getElementById('btn-sync').disabled = false;
       document.getElementById('btn-save-webdav').disabled = false;

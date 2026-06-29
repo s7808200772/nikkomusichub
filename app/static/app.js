@@ -63,20 +63,79 @@ function formatSyncTime(iso) {
   }
 }
 
+let _toastTimer = null;
 function showToast(message, type='info') {
   const t = document.getElementById('toast');
   if (!t) return;
-  t.innerHTML = message;
-  t.style.display = 'block';
+  t.textContent = message;
   const color = type === 'success' ? 'var(--success)' : (type === 'error' ? 'var(--danger)' : (type === 'warning' ? 'var(--warning)' : 'var(--accent)'));
   t.style.borderLeftColor = color;
-  setTimeout(() => t.style.display = 'none', 4000);
+  t.classList.add('show');
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { t.classList.remove('show'); }, 4000);
 }
 
 function setBusy(btn, busy) {
+  if (!btn) return;
   btn.disabled = busy;
-  if (!btn.dataset.original) btn.dataset.original = btn.innerHTML;
-  btn.innerHTML = busy ? '執行中…' : btn.dataset.original;
+  if (busy) {
+    if (!btn.dataset.original) btn.dataset.original = btn.innerHTML;
+    btn.classList.add('loading');
+    btn.innerHTML = '<span class="spinner" style="width:.9em;height:.9em;border-width:2px;"></span> 執行中…';
+  } else {
+    btn.classList.remove('loading');
+    btn.innerHTML = btn.dataset.original || btn.textContent;
+  }
+}
+
+async function fetchWithTimeout(url, opts = {}, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...opts, signal: controller.signal });
+    clearTimeout(id);
+    return res;
+  } catch (e) {
+    clearTimeout(id);
+    throw e;
+  }
+}
+
+function updateDeviceStatus(state, detail = '') {
+  const el = document.getElementById('device-status');
+  if (!el) return;
+  const map = {
+    online:   { text: '上線', cls: 'online' },
+    offline:  { text: '離線', cls: 'offline' },
+    checking: { text: '檢查中…', cls: 'checking' },
+    error:    { text: '異常', cls: 'error' },
+    unknown:  { text: '未知', cls: 'unknown' },
+  };
+  const cfg = map[state] || map.unknown;
+  el.className = 'device-status ' + cfg.cls;
+  const dot = el.querySelector('.dot');
+  const text = el.querySelector('.status-text');
+  if (text) text.textContent = detail || cfg.text;
+  if (dot) {
+    dot.className = 'dot ' + (state === 'online' ? 'green pulse' : state === 'offline' ? 'red' : state === 'error' ? 'yellow' : 'gray');
+  }
+}
+
+async function pollDeviceStatus() {
+  updateDeviceStatus('checking');
+  try {
+    const res = await fetchWithTimeout('/api/health', {}, 8000);
+    if (!res.ok) {
+      updateDeviceStatus('error', 'HTTP ' + res.status);
+      return;
+    }
+    const data = await res.json();
+    if (data && data.ok) updateDeviceStatus('online', '裝置上線');
+    else updateDeviceStatus('error', '服務異常');
+  } catch (e) {
+    if (e.name === 'AbortError') updateDeviceStatus('error', '檢查逾時');
+    else updateDeviceStatus('offline', '連線中斷');
+  }
 }
 
 async function runAction(btn, url, body, outputId) {
@@ -238,6 +297,8 @@ async function loadRightPanel() {
 // Keep one initial request so shared headers (for example on Logs) still show
 // the store name and IP addresses.
 loadRightPanel();
+pollDeviceStatus();
+setInterval(pollDeviceStatus, 10000);
 
 // Sidebar clock
 function updateSidebarClock() {

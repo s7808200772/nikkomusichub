@@ -44,7 +44,8 @@ export async function POST(request) {
       if (stores.length === 0) {
         return NextResponse.json({ error: 'No valid stores found' }, { status: 404 });
       }
-      const job = await publishBatch({ stores, commandKey, payload: { lines }, timeout: 45000 });
+      const batchTimeout = commandKey === 'network_watchdog_install' ? 120000 : commandKey === 'network_watchdog_disable' ? 60000 : 15000;
+      const job = await publishBatch({ stores, commandKey, payload: { lines }, timeout: batchTimeout });
       return NextResponse.json({ ok: true, jobId: job.jobId, action, count: stores.length });
     }
 
@@ -56,6 +57,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Store not found' }, { status: 404 });
     }
 
+    const timeoutMs = action === 'install' ? 120000 : action === 'disable' ? 60000 : 15000;
     const result = await publishCommandWithRetry({
       broker: store.mqttBroker,
       port: store.mqttPort || (store.mqttTls === true ? 8883 : 1883),
@@ -66,8 +68,8 @@ export async function POST(request) {
       storeId: store.storeId,
       commandKey,
       payload: { lines },
-      timeout: 45000,
-      retries: 2,
+      timeout: timeoutMs,
+      retries: action === 'install' || action === 'disable' ? 1 : 2,
     });
 
     return NextResponse.json({

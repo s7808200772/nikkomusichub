@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 from app.config import MPV_SOCKET, MUSIC_DIR, PLAYER_LOG_PATH
-from app.db import get_setting
+from app.db import get_setting, set_setting
 from app.services.system import command_exists, ensure_local_music_fallback, run
 
 
@@ -53,6 +53,10 @@ def mpv_is_running() -> bool:
     return res["ok"]
 
 
+def _persisted_bool(key: str) -> bool:
+    return get_setting(key, "0") == "1"
+
+
 def get_status():
     res = _ipc_send({"command": ["get_property", "playback-time"]})
     if not res["ok"]:
@@ -62,8 +66,8 @@ def get_status():
             "position": 0,
             "duration": 0,
             "volume": 100,
-            "shuffle": False,
-            "loop": False,
+            "shuffle": _persisted_bool("player_shuffle"),
+            "loop": _persisted_bool("player_loop"),
             "playlist_count": 0,
         }
 
@@ -99,6 +103,12 @@ def get_status():
     }
 
 
+def _apply_player_settings():
+    """Apply persisted shuffle/loop settings to a running mpv instance."""
+    set_shuffle(_persisted_bool("player_shuffle"))
+    set_loop(_persisted_bool("player_loop"))
+
+
 def start_player() -> dict:
     if mpv_is_running():
         return {"ok": True, "stdout": "mpv already running", "stderr": ""}
@@ -126,15 +136,20 @@ def start_player() -> dict:
         env["XDG_RUNTIME_DIR"] = f"/run/user/{uid}"
         env["PULSE_RUNTIME_PATH"] = f"/run/user/{uid}/pulse"
 
+    shuffle_enabled = _persisted_bool("player_shuffle")
+    loop_enabled = _persisted_bool("player_loop")
+
     cmd = [
         "mpv",
         "--no-video",
-        "--shuffle",
-        "--loop-playlist=inf",
         f"--input-ipc-server={MPV_SOCKET}",
         "--playlist=" + str(playlist),
         f"--log-file={PLAYER_LOG_PATH}",
     ]
+    if shuffle_enabled:
+        cmd.append("--shuffle")
+    if loop_enabled:
+        cmd.append("--loop-playlist=inf")
     audio_device = get_setting("audio_output_device", "").strip()
     if audio_device:
         cmd.append(f"--audio-device={audio_device}")
@@ -151,6 +166,7 @@ def start_player() -> dict:
     # Give mpv a moment to start
     time.sleep(1.5)
     if mpv_is_running():
+        _apply_player_settings()
         return {"ok": True, "stdout": f"mpv started PID {proc.pid}", "stderr": ""}
     return {"ok": False, "stderr": "mpv failed to start, check player log"}
 
@@ -202,7 +218,10 @@ def seek(position: float):
 
 
 def load_file(path: str, mode: str = "replace"):
-    return _ipc_send({"command": ["loadfile", path, mode]})
+    res = _ipc_send({"command": ["loadfile", path, mode]})
+    if res.get("ok") and mpv_is_running():
+        _apply_player_settings()
+    return res
 
 
 def remove_file(path: str):
@@ -220,6 +239,8 @@ def reload_playlist():
         for file in files:
             f.write(str(file) + "\n")
     _ipc_send({"command": ["loadlist", str(playlist), "replace"]})
+    if mpv_is_running():
+        _apply_player_settings()
     return {"ok": True, "count": len(files)}
 
 

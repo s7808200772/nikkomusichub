@@ -30,7 +30,7 @@ export async function GET(request) {
     tlsVerify: store.tlsVerify === true,
     storeId: store.storeId,
     commandKey: 'get_log',
-    timeout: 20000,
+    timeout: 15000,
     retries: 1,
   });
 

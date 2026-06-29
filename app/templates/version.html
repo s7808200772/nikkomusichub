@@ -43,25 +43,42 @@
 <script>
 async function checkUpdate(btn) {
   setBusy(btn, true);
-  const res = await apiGet('/api/version');
-  document.getElementById('v-commit').textContent = res.commit || 'unknown';
-  document.getElementById('v-branch').textContent = res.branch || 'unknown';
-  document.getElementById('v-output').textContent = '目前版本：' + (res.commit || 'unknown') + ' (' + (res.branch || 'unknown') + ')' + '\nStore ID：' + (res.store_id || '-') + '\n店點：' + (res.store_name || '-');
-  setBusy(btn, false);
+  try {
+    const res = await apiGet('/api/version');
+    document.getElementById('v-commit').textContent = res.commit || 'unknown';
+    document.getElementById('v-branch').textContent = res.branch || 'unknown';
+    document.getElementById('v-output').textContent = '目前版本：' + (res.commit || 'unknown') + ' (' + (res.branch || 'unknown') + ')' + '\nStore ID：' + (res.store_id || '-') + '\n店點：' + (res.store_name || '-');
+  } catch (e) {
+    showToast('版本檢查失敗', 'error');
+  } finally {
+    setBusy(btn, false);
+  }
 }
 async function runUpdate(btn) {
   if (!confirm('確定要執行 git pull 並重啟服務嗎？')) return;
   setBusy(btn, true);
-  const res = await apiPost('/api/system/update', null);
-  document.getElementById('v-output').textContent = (res.ok ? '更新指令已執行' : '更新失敗') + '\n' + (res.stdout || '') + '\n' + (res.stderr || '');
-  setBusy(btn, false);
+  try {
+    const res = await apiPost('/api/system/update', null);
+    document.getElementById('v-output').textContent = (res.ok ? '更新指令已執行' : '更新失敗') + '\n' + (res.stdout || '') + '\n' + (res.stderr || '');
+    showToast(res.ok ? '更新指令已執行' : '更新失敗', res.ok ? 'success' : 'error');
+  } catch (e) {
+    showToast('更新請求失敗', 'error');
+  } finally {
+    setBusy(btn, false);
+  }
 }
 async function rollback(btn) {
   if (!confirm('確定要回滾到上一個標記版本嗎？')) return;
   setBusy(btn, true);
-  const res = await apiPost('/api/system/rollback', null);
-  document.getElementById('v-output').textContent = (res.ok ? '回滾完成' : '回滾失敗') + '\n' + (res.stderr || '');
-  setBusy(btn, false);
+  try {
+    const res = await apiPost('/api/system/rollback', null);
+    document.getElementById('v-output').textContent = (res.ok ? '回滾完成' : '回滾失敗') + '\n' + (res.stderr || '');
+    showToast(res.ok ? '回滾完成' : '回滾失敗', res.ok ? 'success' : 'error');
+  } catch (e) {
+    showToast('回滾請求失敗', 'error');
+  } finally {
+    setBusy(btn, false);
+  }
 }
 </script>
 {% endblock %}
